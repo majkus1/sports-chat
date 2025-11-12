@@ -47,6 +47,8 @@ const io = new Server(server, {
   maxHttpBufferSize: 1e6,
   pingTimeout: 20000,
   pingInterval: 25000,
+  transports: ['websocket', 'polling'], // Support both transports
+  allowEIO3: true, // Allow Engine.IO v3 clients
 });
 
 function readCookie(cookieHeader, name) {

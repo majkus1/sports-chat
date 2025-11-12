@@ -1,13 +1,9 @@
 import { useState, useEffect, useContext, useCallback } from 'react';
 import { UserContext } from '@/context/UserContext';
+import { useSocket } from '@/context/SocketContext';
 import Modal from './Modal';
 import PrivateChatComponent from './PrivateChatComponent';
-import io from 'socket.io-client';
 import { useTranslations } from 'next-intl'
-
-const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000', {
-  withCredentials: true
-});
 
 export default function UserPanel() {
   const [isPrivateChatOpen, setPrivateChatOpen] = useState(false);
@@ -18,6 +14,7 @@ export default function UserPanel() {
   const t = useTranslations('common');
 
   const { user, isAuthed, refreshUser } = useContext(UserContext);
+  const { socket, isConnected } = useSocket();
   const username = user?.username;
 
   const fetchWithRefresh = useCallback(async (url, opts = {}) => {
@@ -69,7 +66,7 @@ export default function UserPanel() {
   }, [isAuthed, refreshUser, fetchChatHistory]);
 
   useEffect(() => {
-    if (!isAuthed) return;
+    if (!isAuthed || !socket || !isConnected) return;
 
     const onReceive = (message) => {
       if (message?.receiver === username) fetchChatHistory();
@@ -81,7 +78,7 @@ export default function UserPanel() {
       socket.off('receive_message', onReceive);
       socket.off('receive_private_message', onReceive);
     };
-  }, [isAuthed, username, fetchChatHistory]);
+  }, [isAuthed, username, fetchChatHistory, socket, isConnected]);
 
   const openPrivateChat = (chatUsername) => {
     if (!chatUsername || chatUsername === username) return;

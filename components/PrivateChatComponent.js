@@ -1,16 +1,13 @@
 import { useState, useEffect, useContext, useRef, useCallback } from 'react'
 import { UserContext } from '../context/UserContext'
-import io from 'socket.io-client'
+import { useSocket } from '../context/SocketContext'
 import { useTranslations } from 'next-intl'
-
-const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000', {
-  withCredentials: true
-});
 
 const PrivateChatComponent = ({ receiver }) => {
 	const [messages, setMessages] = useState([])
 	const [currentMessage, setCurrentMessage] = useState('')
 	const { user, isAuthed } = useContext(UserContext)
+	const { socket, isConnected, connectionError } = useSocket()
 	const username = user?.username
 	const messagesContainerRef = useRef(null)
 	const t = useTranslations('common')
@@ -32,10 +29,14 @@ const PrivateChatComponent = ({ receiver }) => {
 	}, [messages])
 
 	useEffect(() => {
+		if (!socket || !receiver) return
+
 		const sender = username || 'Anonim'
 		const chatId = [sender, receiver].sort().join('_')
 
-		socket.emit('join_chat', chatId)
+		if (isConnected) {
+			socket.emit('join_chat', chatId)
+		}
 
 		const fetchMessages = async () => {
 			try {
@@ -54,18 +55,19 @@ const PrivateChatComponent = ({ receiver }) => {
 
 		fetchMessages()
 
-		socket.on('receive_private_message', message => {
+		const handleReceivePrivateMessage = (message) => {
 			console.log('Otrzymano prywatną wiadomość:', message)
 			if (message.chatId === chatId) {
 				setMessages(prevMessages => [...prevMessages, message])
 			}
-		})
+		}
+
+		socket.on('receive_private_message', handleReceivePrivateMessage)
 
 		return () => {
-			socket.off('receive_private_message')
-			socket.off('join_chat')
+			socket.off('receive_private_message', handleReceivePrivateMessage)
 		}
-	}, [receiver, username])
+	}, [receiver, username, socket, isConnected, fetchWithRefresh])
 
 	const handleSendMessage = async () => {
 		if (!receiver) {
@@ -87,12 +89,14 @@ const PrivateChatComponent = ({ receiver }) => {
 				})
 				const data = await response.json()
 				if (data.success) {
-					const messageObject = {
-						username: sender,
-						content: currentMessage,
-						chatId,
+					if (socket && isConnected) {
+						const messageObject = {
+							username: sender,
+							content: currentMessage,
+							chatId,
+						}
+						socket.emit('send_private_message', messageObject)
 					}
-					socket.emit('send_private_message', messageObject)
 					setCurrentMessage('')
 				} else {
 					console.error(data.message)
@@ -129,6 +133,11 @@ const PrivateChatComponent = ({ receiver }) => {
 
 	return (
 		<div className="private-content-chat">
+			{connectionError && (
+				<div style={{ padding: '10px', background: '#ffebee', color: '#c62828', marginBottom: '10px', borderRadius: '4px' }}>
+					{connectionError}
+				</div>
+			)}
 			<div>
 				<div className="messages-container" ref={messagesContainerRef}>
 					{messages.map((msg, idx) => (

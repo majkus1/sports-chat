@@ -7,6 +7,7 @@ import '../../styles/All.scss';
 import '../../styles/LoginModal.scss';
 import { UserProvider } from '@/context/UserContext';
 import { AlertProvider } from '@/context/AlertContext';
+import { SocketProvider } from '@/context/SocketContext';
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -31,7 +32,9 @@ export default async function LocaleLayout({ children, params }) {
         <NextIntlClientProvider messages={messages}>
           <AlertProvider>
             <UserProvider>
-              {children}
+              <SocketProvider>
+                {children}
+              </SocketProvider>
             </UserProvider>
           </AlertProvider>
         </NextIntlClientProvider>

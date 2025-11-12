@@ -1,14 +1,10 @@
 import { useState, useEffect, useContext, useRef, useCallback } from 'react'
 import { UserContext } from '../context/UserContext'
+import { useSocket } from '../context/SocketContext'
 import Modal from './Modal'
 import PrivateChatComponent from './PrivateChatComponent'
-import io from 'socket.io-client'
 import { GiPlayButton } from 'react-icons/gi'
 import { useTranslations, useLocale } from 'next-intl'
-
-const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000', {
-	withCredentials: true,
-})
 
 const ChatComponent = ({
 	chatId,
@@ -31,6 +27,7 @@ const ChatComponent = ({
 	const [analysis, setAnalysis] = useState({ text: '', pred: '' })
 
 	const { user, isAuthed } = useContext(UserContext)
+	const { socket, isConnected, connectionError } = useSocket()
 	const username = user?.username
 
 	const fetchWithRefresh = useCallback(async (url, opts = {}) => {
@@ -54,6 +51,8 @@ const ChatComponent = ({
 	}, [messages])
 
 	useEffect(() => {
+		if (!socket) return
+
 		const fetchMessages = async () => {
 			try {
 				const response = await fetch(`/api/getMessages?chatId=${chatId}`, {
@@ -67,17 +66,22 @@ const ChatComponent = ({
 		}
 		fetchMessages()
 
-		socket.emit('join_chat', chatId)
-		socket.on('receive_message', message => {
+		if (isConnected) {
+			socket.emit('join_chat', chatId)
+		}
+
+		const handleReceiveMessage = (message) => {
 			if (message.chatId === chatId) {
 				setMessages(prevMessages => [...prevMessages, message])
 			}
-		})
-		return () => {
-			socket.off('receive_message')
-			socket.off('join_chat')
 		}
-	}, [chatId])
+
+		socket.on('receive_message', handleReceiveMessage)
+		
+		return () => {
+			socket.off('receive_message', handleReceiveMessage)
+		}
+	}, [chatId, socket, isConnected])
 
 	useEffect(() => {
 		if (
@@ -279,12 +283,14 @@ const ChatComponent = ({
 				})
 				const data = await response.json()
 				if (data.success) {
-					const messageObject = {
-						username: username || 'Anonim',
-						content: currentMessage,
-						chatId,
+					if (socket && isConnected) {
+						const messageObject = {
+							username: username || 'Anonim',
+							content: currentMessage,
+							chatId,
+						}
+						socket.emit('send_message', messageObject)
 					}
-					socket.emit('send_message', messageObject)
 					setCurrentMessage('')
 				} else {
 					console.error('Błąd wysyłania wiadomości:', data.message)
@@ -315,6 +321,11 @@ const ChatComponent = ({
 
 	return (
 		<div>
+			{connectionError && (
+				<div style={{ padding: '10px', background: '#ffebee', color: '#c62828', marginBottom: '10px', borderRadius: '4px' }}>
+					{connectionError}
+				</div>
+			)}
 			{isPrivateChatOpen && (
 				<Modal onClose={() => setPrivateChatOpen(false)}>
 					<PrivateChatComponent receiver={selectedUser} />
