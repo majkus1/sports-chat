@@ -55,5 +55,6 @@
 	"register_username_taken": "Username is already taken",
 	"login_problem": "Problem downloading user profile.",
 	"register_success": "Successfully registered",
-	"profile_fetch_failed": "Failed to register, please try again."
+	"profile_fetch_failed": "Failed to register, please try again.",
+	"registering": "Registering..."
 }

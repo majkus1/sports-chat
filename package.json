@@ -30,6 +30,7 @@
 		"mongoose": "^8.17.1",
 		"next": "15.4.6",
 		"next-i18next": "^15.4.2",
+		"next-intl": "^4.5.1",
 		"nodemailer": "^7.0.5",
 		"openai": "^5.12.2",
 		"postcss": "^8.5.6",

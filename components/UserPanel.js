@@ -3,7 +3,7 @@ import { UserContext } from '@/context/UserContext';
 import Modal from './Modal';
 import PrivateChatComponent from './PrivateChatComponent';
 import io from 'socket.io-client';
-import { useTranslation } from 'next-i18next'
+import { useTranslations } from 'next-intl'
 
 const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000', {
   withCredentials: true
@@ -15,7 +15,7 @@ export default function UserPanel() {
   const [chatHistory, setChatHistory] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const { t } = useTranslation('common');
+  const t = useTranslations('common');
 
   const { user, isAuthed, refreshUser } = useContext(UserContext);
   const username = user?.username;

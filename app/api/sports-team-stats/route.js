@@ -1,0 +1,139 @@
+import { NextResponse } from 'next/server';
+
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const homeTeamId = searchParams.get('homeTeamId');
+  const awayTeamId = searchParams.get('awayTeamId');
+
+  if (!homeTeamId || !awayTeamId) {
+    return new NextResponse('Error: homeTeamId and awayTeamId parameters are required', { status: 400 });
+  }
+
+  // Get team names from query params if provided (optional)
+  const homeTeamName = searchParams.get('homeTeamName') || 'Home Team';
+  const awayTeamName = searchParams.get('awayTeamName') || 'Away Team';
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Team Statistics</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            width: 100%;
+            height: 100vh;
+            overflow: auto;
+            background-color: #f1f1f1;
+        }
+        .widget-wrapper {
+            max-width: 1100px;
+            margin: 60px auto 0 auto;
+            padding: 20px;
+            width: 100%;
+        }
+        .stats-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .team-stats {
+            background: #fff;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            width: 100%;
+        }
+        .team-stats h2 {
+            margin-bottom: 15px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        @media (min-width: 768px) {
+            .stats-container {
+                flex-direction: row;
+                align-items: flex-start;
+            }
+            .team-stats {
+                flex: 1;
+                min-width: 0;
+            }
+        }
+        @media (max-width: 767px) {
+            .widget-wrapper {
+                padding: 10px;
+            }
+            .team-stats h2 {
+                font-size: 20px;
+            }
+            .stats-container {
+                flex-direction: column;
+            }
+            /* Ensure home team is first (on top) on mobile */
+            .home-team {
+                order: 1;
+            }
+            .away-team {
+                order: 2;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="widget-wrapper">
+        <div class="stats-container">
+            <div class="team-stats home-team">
+                <h2>${homeTeamName}</h2>
+                <div id="home-team-content">
+                    <api-sports-widget 
+                        data-type="team" 
+                        data-team-id="${homeTeamId}"
+                        data-team-squad="true"
+                        data-team-statistics="true"
+                        data-target-player="modal"
+                    ></api-sports-widget>
+                </div>
+            </div>
+            <div class="team-stats away-team">
+                <h2>${awayTeamName}</h2>
+                <div id="away-team-content">
+                    <api-sports-widget 
+                        data-type="team" 
+                        data-team-id="${awayTeamId}"
+                        data-team-squad="true"
+                        data-team-statistics="true"
+                        data-target-player="modal"
+                    ></api-sports-widget>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuration widget - MUST BE AFTER team widgets and ONLY ONCE per page -->
+    <api-sports-widget 
+        data-type="config"
+        data-key="2e2840f792c22b93afecb2e6341e2de6"
+        data-sport="football"
+        data-lang="en"
+        data-theme="white"
+        data-show-errors="true"
+    ></api-sports-widget>
+    
+    <!-- Load widget script -->
+    <script type="module" crossorigin src="https://widgets.api-sports.io/3.1.0/widgets.js"></script>
+</body>
+</html>`;
+
+  return new NextResponse(html, {
+    headers: {
+      'Content-Type': 'text/html',
+    },
+  });
+}
+

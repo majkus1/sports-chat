@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext, useRef, useCallback } from 'react'
 import { UserContext } from '../context/UserContext'
 import io from 'socket.io-client'
-import { useTranslation } from 'next-i18next'
+import { useTranslations } from 'next-intl'
 
 const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000', {
   withCredentials: true
@@ -13,7 +13,7 @@ const PrivateChatComponent = ({ receiver }) => {
 	const { user, isAuthed } = useContext(UserContext)
 	const username = user?.username
 	const messagesContainerRef = useRef(null)
-	const { t } = useTranslation('common')
+	const t = useTranslations('common')
 
 	const fetchWithRefresh = useCallback(async (url, opts = {}) => {
 		const res = await fetch(url, { credentials: 'include', ...opts })

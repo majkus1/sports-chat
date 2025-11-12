@@ -1,27 +1,48 @@
-import { useRouter } from 'next/router'
-import { useContext } from 'react'
-import { UserContext } from '@/context/UserContext'
+'use client';
+
+import { useLocale } from 'next-intl';
+import { usePathname, useRouter } from '@/i18n/routing';
 
 export default function LanguageSwitcher({ onLanguageChange }) {
-  const router = useRouter()
-  const { setLanguage } = useContext(UserContext)
+  const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
 
-  const changeLanguage = (lng) => {
-    try { localStorage.setItem('language', lng) } catch {}
-    onLanguageChange?.()
-    setLanguage?.(lng)
-    router.push(router.asPath, router.asPath, { locale: lng })
-  }
+  const switchLanguage = (newLocale) => {
+    router.replace(pathname, { locale: newLocale });
+    if (onLanguageChange) {
+      onLanguageChange();
+    }
+  };
 
   return (
-    <div className="languageswitchers">
-      <button onClick={() => changeLanguage('en')} className="buttonlng">
-        <img src="/img/united-kingdom.png" className="languageimg" alt="English" />
+    <div className="language-switch">
+      <button
+        onClick={() => switchLanguage('pl')}
+        title="Polski"
+      >
+        <img 
+          src="/img/poland.png" 
+          alt="Polski" 
+          style={{ 
+            width: '20px', 
+            objectFit: 'cover'
+          }} 
+        />
       </button>
-      <button onClick={() => changeLanguage('pl')} className="buttonlng">
-        <img src="/img/poland.png" className="languageimg" alt="Polski" />
+      <button
+        onClick={() => switchLanguage('en')}
+        title="English"
+      >
+        <img 
+          src="/img/united-kingdom.png" 
+          alt="English" 
+          style={{ 
+            width: '20px', 
+            objectFit: 'cover'
+          }} 
+        />
       </button>
     </div>
-  )
+  );
 }
-

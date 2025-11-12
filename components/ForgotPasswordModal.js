@@ -1,10 +1,11 @@
 
 import { useState } from 'react'
-import { useTranslation } from 'next-i18next'
+import { useTranslations, useLocale } from 'next-intl'
 import { GiPlayButton } from 'react-icons/gi'
 
 export default function ForgotPasswordModal({ isOpen, onRequestClose }) {
-  const { t } = useTranslation('common')
+  const t = useTranslations('common')
+  const locale = useLocale()
   const [email, setEmail] = useState('')
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
@@ -21,7 +22,7 @@ export default function ForgotPasswordModal({ isOpen, onRequestClose }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, locale }),
       })
       setSent(true)
     } catch (err) {

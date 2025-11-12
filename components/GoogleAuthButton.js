@@ -1,10 +1,12 @@
 import { useEffect, useRef, useContext } from 'react';
 import { UserContext } from '@/context/UserContext';
-import { useTranslation } from 'next-i18next'
+import { useTranslations } from 'next-intl';
+import { useAlert } from '@/context/AlertContext';
 
 export default function GoogleAuthButton({ onSuccessClose }) {
   const { refreshUser } = useContext(UserContext);
-  const { t } = useTranslation('common');
+  const t = useTranslations('common');
+  const { showAlert } = useAlert();
   const googleDivRef = useRef(null);
 
   useEffect(() => {
@@ -26,15 +28,15 @@ export default function GoogleAuthButton({ onSuccessClose }) {
 
             if (!r.ok) {
               const msg = await r.text().catch(() => 'Google login failed');
-              alert(msg || 'Google login failed');
+              showAlert(msg || 'Google login failed', 'error');
               return;
             }
             await refreshUser();
-            alert(t('login_success'));
+            showAlert(t('login_success'), 'success');
             onSuccessClose?.();
           } catch (e) {
             console.error(e);
-            alert('Google login error');
+            showAlert('Google login error', 'error');
           }
         },
         ux_mode: 'popup',

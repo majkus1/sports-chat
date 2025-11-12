@@ -1,14 +1,16 @@
 import React, { useState, useContext } from 'react'
 import { UserContext } from '@/context/UserContext'
 import { GiPlayButton } from 'react-icons/gi'
-import { useTranslation } from 'next-i18next'
+import { useTranslations } from 'next-intl'
 import GoogleAuthButton from '@/components/GoogleAuthButton'
+import { useAlert } from '@/context/AlertContext'
 
 export default function LoginModal({ isOpen, onRequestClose, onLogin }) {
 	const [usernameInput, setUsernames] = useState('')
 	const [password, setPassword] = useState('')
 	const { setUser, setIsAuthed, refreshUser } = useContext(UserContext)
-	const { t } = useTranslation('common')
+	const t = useTranslations('common')
+	const { showAlert } = useAlert()
 
 	if (!isOpen) return null
 
@@ -25,17 +27,17 @@ export default function LoginModal({ isOpen, onRequestClose, onLogin }) {
 			const ok = await refreshUser()
 			if (ok) {
 				onLogin?.()
-				alert(t('login_success'))
+				showAlert(t('login_success'), 'success')
 				onRequestClose?.()
 			} else {
-				alert(t('login_problem'))
+				showAlert(t('login_problem'), 'error')
 			}
 		} 
 
 		const data = await response.json().catch(() => ({}))
 		if (!response.ok) {
 			const key = data?.error || 'server_error'
-			alert(t(key))
+			showAlert(t(key), 'error')
 			return
 		}
 	}

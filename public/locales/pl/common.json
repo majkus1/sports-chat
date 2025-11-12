@@ -54,6 +54,7 @@
   "register_email_taken": "Email jest zajęty",
   "register_username_taken": "Nazwa użytkownika jest zajęta",
   "login_problem": "Problem z pobraniem profilu użytkownika.",
-  "register_success": "Pomyślnie zarejestrowano",
-  "profile_fetch_failed": "Nie udało się zarejstrować, spróbuj ponownie."
+	"register_success": "Pomyślnie zarejestrowano",
+	"profile_fetch_failed": "Nie udało się zarejstrować, spróbuj ponownie.",
+	"registering": "Rejestrowanie..."
 }

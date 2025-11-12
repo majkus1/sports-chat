@@ -1,20 +1,24 @@
 import React, { useState, useContext } from 'react'
 import { GiPlayButton } from 'react-icons/gi'
-import { useTranslation } from 'next-i18next'
+import { useTranslations } from 'next-intl'
 import { UserContext } from '@/context/UserContext'
 import GoogleAuthButton from '@/components/GoogleAuthButton'
+import { useAlert } from '@/context/AlertContext'
 
 export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 	const [email, setEmail] = useState('')
 	const [password, setPassword] = useState('')
 	const [usernameInput, setUsernameInput] = useState('')
-	const { t } = useTranslation('common')
+	const [isRegistering, setIsRegistering] = useState(false)
+	const t = useTranslations('common')
 	const { refreshUser } = useContext(UserContext)
+	const { showAlert } = useAlert()
 
 	if (!isOpen) return null
 
 	const handleSubmit = async e => {
 		e.preventDefault()
+		setIsRegistering(true)
 
 		try {
 			const response = await fetch('/api/auth/register', {
@@ -28,21 +32,24 @@ export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 
 			if (!response.ok) {
 				const key = data?.error || 'server_error'
-				alert(t(key))
+				showAlert(t(key), 'error')
+				setIsRegistering(false)
 				return
 			}
 
 			const ok = await refreshUser()
 			if (ok) {
-				alert(t('register_success'))
+				showAlert(t('register_success'), 'success')
 				onRegister?.()
 				onRequestClose?.()
 			} else {
-				alert(t('profile_fetch_failed'))
+				showAlert(t('profile_fetch_failed'), 'error')
 			}
 		} catch (err) {
-			console.error(err)
-			alert(t('server_error'))
+			console.error('Registration error:', err)
+			showAlert(t('server_error'), 'error')
+		} finally {
+			setIsRegistering(false)
 		}
 	}
 
@@ -72,9 +79,9 @@ export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 						<label>{t('passw')}</label>
 						<input type="password" value={password} onChange={e => setPassword(e.target.value)} required />
 					</div>
-					<button type="submit" className="btn-to-reg">
+					<button type="submit" className="btn-to-reg" disabled={isRegistering}>
 						<GiPlayButton style={{ marginRight: '5px' }} />
-						{t('regi')}
+						{isRegistering ? t('registering') : t('regi')}
 					</button>
 				</form>
 			</div>

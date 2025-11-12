@@ -60,33 +60,25 @@ body {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: 5px;
-	color: black;
-	background-color: #ffffff;
+	padding: 10px 20px;
+	color: #fff;
+	background-color: #173b45;
 	font-family: 'Roboto Condensed', sans-serif;
-	border: 1px solid black;
-	border-radius: 10px;
+	border: none;
+	border-radius: 4px;
 	margin: 10px;
 	font-size: 16px;
-	font-weight: 100;
+	font-weight: 400;
 	cursor: pointer;
-	transition: all 0.4s;
+	transition: all 0.2s ease;
 	width: 250px;
 }
 
-.btn-login:hover {
-	color: #000000;
-	border: 1px solid white;
-}
-
-.btn-reg:hover {
-	color: #000000;
-	border: 1px solid white;
-}
-
+.btn-login:hover,
+.btn-reg:hover,
 .log-out-btn:hover {
-	color: #000000;
-	border: 1px solid white;
+	background-color: #1e4a56;
+	transform: scale(1.05);
 }
 
 .panel-button {
@@ -98,7 +90,7 @@ body {
 	margin-top: 15px;
 	margin-bottom: 15px;
 	padding: 10px;
-	box-shadow: 0px 0px 2px #000000;
+	box-shadow: rgba(0, 0, 0, 0.1) 0px 2px 8px;
 
 	ul {
 		li {
@@ -115,7 +107,8 @@ body {
 
 .box-search {
 	padding: 10px;
-	box-shadow: 0px 0px 2px #000000;
+	box-shadow: rgba(0, 0, 0, 0.1) 0px 2px 8px;
+	min-width: 300px;
 
 	ul {
 		li {
@@ -124,26 +117,27 @@ body {
 	}
 
 	input {
-		width: 140px;
+		min-width: 300px;
 	}
 	.search-btn {
-		// display: flex;
-		// align-items: center;
-		padding: 5px;
-		color: white;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 10px 20px;
+		color: #fff;
 		font-family: 'Roboto Condensed', sans-serif;
-		border: 3px solid #000000;
-		background-color: black;
+		border: none;
+		background-color: #173b45;
 		margin: 10px;
 		font-size: 16px;
-		font-weight: 100;
+		font-weight: 400;
 		cursor: pointer;
-		transition: all 0.4s;
-		border-radius: 5px;
+		transition: all 0.2s ease;
+		border-radius: 4px;
 	}
 	.search-btn:hover {
-		color: #000000;
-		background-color: #ffffff;
+		background-color: #1e4a56;
+		transform: scale(1.05);
 	}
 }
 
@@ -157,13 +151,24 @@ body {
 	h1 {
 		display: flex;
 		align-items: center;
-		font-size: 24px;
+		font-size: 18px;
 		text-transform: uppercase;
-		letter-spacing: 1.3px;
+		letter-spacing: 2px;
+		font-weight: bold;
 		.icon-sport {
 			width: 27px;
 			margin-right: 5px;
 		}
+	}
+
+	.h1-football {
+		border-left: 5px solid green;
+    padding-left: 5px;
+    background: #00800047;
+    border-radius: 10px;
+    padding: 8px 13px;
+    max-width: 250px;
+	box-shadow: rgba(0, 0, 0, 0.1) 0px 2px 8px;
 	}
 
 	.choose-time {
@@ -176,6 +181,7 @@ body {
 			font-style: italic;
 			text-decoration: none;
 			cursor: pointer;
+			font-family: 'Roboto Condensed', sans-serif;
 		}
 		.active-section {
 			text-decoration: underline;
@@ -226,20 +232,20 @@ body {
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			padding: 11px;
-			border: 2px solid #000000;
+			padding: 10px 20px;
+			border: none;
 			cursor: pointer;
-			-webkit-box-shadow: 5px 5px 0px 1px #000000;
-			-moz-box-shadow: 5px 5px 0px 1px #000000;
-			box-shadow: 5px 5px 0px 1px #000000;
-			transition: all 0.5s;
-			font-weight: 700;
-			color: black !important;
+			background-color: #173b45;
+			color: #fff;
+			border-radius: 4px;
+			transition: all 0.2s ease;
+			font-weight: 400;
+			font-size: 16px;
+			margin-top: 10px;
 		}
 		button:hover {
-			background-color: #000000;
-			color: #f1f1f1 !important;
-			border: 2px solid #f1f1f1;
+			background-color: #1e4a56;
+			transform: scale(1.05);
 			-webkit-box-shadow: 5px 5px 0px 1px transparent;
 			-moz-box-shadow: 5px 5px 0px 1px transparent;
 			box-shadow: 5px 5px 0px 1px transparent;
@@ -255,6 +261,43 @@ body {
 
 .match-analysis {
 	margin-bottom: 10px;
+	// position: relative;
+	// z-index: 1;
+}
+
+/* Simple CSS spinner - no complex animations that cause z-index issues */
+.simple-spinner {
+	width: 40px;
+	height: 40px;
+	border: 4px solid #e0e0e0;
+	border-top: 4px solid #173b45;
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+	display: inline-block;
+	margin-right: 10px;
+	position: relative;
+	z-index: 1;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+/* Alert animation */
+@keyframes slideDown {
+	from {
+		opacity: 0;
+		transform: translateX(-50%) translateY(-20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(-50%) translateY(0);
+	}
+}
+
+.custom-alert {
+	animation: slideDown 0.3s ease-out;
 }
 
 .must-be-login {
@@ -276,17 +319,30 @@ body {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		box-shadow: 0px 0px 2px #000000;
-		padding: 7px;
+		background: #00800047;
+		box-shadow: rgba(0, 0, 0, 0.1) 0px 2px 8px;
+		// color: #fff;
+		padding: 10px 15px;
 		cursor: pointer;
-		transition: all 0.4s;
+		transition: all 0.2s ease;
 		text-decoration: none;
+		border-radius: 10px;
+		border: none;
+		border-left: 5px solid green;
 		.sport-name {
 			display: flex;
 			align-items: center;
+			justify-content: center;
 			.icon-sport {
 				width: 27px;
 				margin-right: 5px;
+				// filter: brightness(0) invert(1);
+			}
+			p {
+				color: black;
+				margin: 0;
+				font-weight: 400;
+				font-size: 16px;
 			}
 		}
 		.country-league {
@@ -301,14 +357,14 @@ body {
 				}
 				p {
 					text-decoration: none;
-					color: black;
+					color: #fff;
 				}
 			}
 		}
 	}
 
 	.sport-category:hover {
-		background-color: #dadada;
+		transform: scale(1.05);
 	}
 }
 
@@ -371,22 +427,20 @@ body {
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			padding: 11px;
-			border: 2px solid #000000;
+			padding: 10px 20px;
+			border: none;
 			cursor: pointer;
-			-webkit-box-shadow: 5px 5px 0px 1px #000000;
-			-moz-box-shadow: 5px 5px 0px 1px #000000;
-			box-shadow: 5px 5px 0px 1px #000000;
-			font-weight: 700;
-			color: black !important;
+			background-color: #173b45;
+			color: #fff;
+			border-radius: 4px;
+			transition: all 0.2s ease;
+			font-weight: 400;
+			font-size: 16px;
+			margin-top: 10px;
 		}
 		button:hover {
-			background-color: #000000;
-			color: #f1f1f1 !important;
-			border: 2px solid #000000;
-			-webkit-box-shadow: 5px 5px 0px 1px transparent;
-			-moz-box-shadow: 5px 5px 0px 1px transparent;
-			box-shadow: 5px 5px 0px 1px transparent;
+			background-color: #1e4a56;
+			transform: scale(1.05);
 		}
 	}
 }
@@ -397,14 +451,13 @@ body {
 		justify-content: center;
 		align-items: center;
 		text-decoration: none;
-		color: black;
+		color: #fff;
 	}
 }
 
 .search-input {
-	margin-top: 20px;
 	margin-left: -4px;
-	min-width: 250px;
+	max-width: 350px;
 }
 
 .languageswitchers {
@@ -436,6 +489,7 @@ body {
 		position: fixed;
 		max-width: 1100px;
 		width: 100%;
+		background: #f1f1f1;
 		.logo {
 			img {
 				width: 130px;
@@ -511,36 +565,85 @@ body {
 	letter-spacing: 2px;
 
 	.real-links {
-	box-shadow: 0px 0px 2px #000000;
-	display: flex;
-	flex-direction: column;
-	gap: 25px;
-	padding: 40px;
-	align-items: center;
-	border-radius: 7px;
+		box-shadow: rgba(0, 0, 0, 0.1) 0px 2px 8px;
+		display: flex;
+		flex-direction: column;
+		gap: 15px;
+		padding: 40px;
+		align-items: center;
+		border-radius: 7px;
 	}
 
-	a {
+	a.mobile-item {
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		text-decoration: none;
-		color: black;
+		color: #fff;
+		background-color: #173b45;
+		padding: 10px 20px;
+		border-radius: 4px;
 		letter-spacing: 2px;
+		font-size: 16px;
+		font-weight: 400;
+		transition: all 0.2s ease;
+		width: 100%;
+		max-width: 250px;
 	}
 
-	button {
-		background: transparent;
+	a.mobile-item:hover {
+		background-color: #1e4a56;
+		transform: scale(1.05);
+	}
+
+	button.mobile-item {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background-color: #173b45;
+		color: #fff;
 		border: none;
+		padding: 10px 20px;
+		border-radius: 4px;
 		font-size: 16px;
 		font-family: 'Roboto Condensed', sans-serif;
+		font-weight: 400;
 		letter-spacing: 2px;
 		cursor: pointer;
-		color: black !important;
+		transition: all 0.2s ease;
+		width: 100%;
+		max-width: 250px;
+	}
+
+	button.mobile-item:hover {
+		background-color: #1e4a56;
+		transform: scale(1.05);
 	}
 
 	.mobile-subitem {
 		display: flex;
 		align-items: center;
+		justify-content: center;
 		gap: 10px;
-		font-style: italic;
+		font-style: normal;
+		color: black;
+		background: #00800047;
+		padding: 8px 16px;
+		border-radius: 4px;
+		text-decoration: none;
+		transition: all 0.2s ease;
+		width: 100%;
+		max-width: 250px;
+		border-left: 5px solid green;
+		border-radius: 10px;
+
+		// img {
+		// 	filter: brightness(0) invert(1);
+		// }
+	}
+
+	.mobile-subitem:hover {
+		transform: scale(1.05);
 	}
 
 	.chev {
@@ -655,4 +758,53 @@ input {
 
 .logo-and-menubutton.active-bg {
   background-color: #f1f1f1 !important;
+}
+
+/* Widget buttons - smaller on mobile */
+.widget-button {
+  @media (max-width: 768px) {
+    // padding: 4px !important;
+    
+    svg {
+      width: 14px !important;
+      height: 14px !important;
+    }
+    
+    font-size: 10px !important;
+  }
+}
+
+.language-switch {
+  position: fixed;
+  top: 6px;
+  right: 0;
+  left: 0;
+  max-width: 1100px;
+  margin: 0 auto;
+  z-index: 100001;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding-right: 20px;
+  pointer-events: auto;
+
+  button {
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease;
+
+    &:hover {
+      transform: scale(1.15);
+    }
+
+    img {
+      transition: transform 0.2s ease;
+    }
+  }
 }

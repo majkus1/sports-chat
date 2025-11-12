@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>API Sports Widget</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            width: 100%;
+            height: 100vh;
+            overflow: auto;
+            background-color: #f1f1f1;
+            font-family: 'Roboto Condensed', sans-serif;
+        }
+        .widget-wrapper {
+            max-width: 1100px;
+            margin: 60px auto 0 auto;
+            padding: 20px;
+            width: 100%;
+        }
+        .games-container {
+            background: #fff;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        /* Custom theme for API-Sports widgets */
+        api-sports-widget[data-theme="CzatSportowy"] {
+            --primary-color: #173b45;
+            --success-color: #2ecc58;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --light-color: #898989;
+            --home-color: var(--primary-color);
+            --away-color: #ffc107;
+            --text-color: #333;
+            --text-color-info: #333;
+            --background-color: #fff;
+            --primary-font-size: 0.72rem;
+            --secondary-font-size: 0.75rem;
+            --button-font-size: 0.8rem;
+            --title-font-size: 0.9rem;
+            --header-text-transform: uppercase;
+            --button-text-transform: uppercase;
+            --title-text-transform: uppercase;
+            --border: 1px solid #95959530;
+            --game-height: 2.3rem;
+            --league-height: 2.35rem;
+            --score-size: 2.25rem;
+            --flag-size: 22px;
+            --teams-logo-size: 18px;
+            --teams-logo-size-xl: 5rem;
+            --hover: rgba(23, 59, 69, 0.15);
+        }
+        /* Apply Roboto Condensed font to all widget elements */
+        api-sports-widget[data-theme="CzatSportowy"] * {
+            font-family: 'Roboto Condensed', sans-serif !important;
+        }
+        @media (max-width: 768px) {
+            .widget-wrapper {
+                padding: 10px;
+            }
+        }
+    </style>
+    <script type="module" crossorigin src="https://widgets.api-sports.io/3.1.0/widgets.js"></script>
+</head>
+<body>
+    <div class="widget-wrapper">
+        <div class="games-container">
+            <div id="games-list">
+                <api-sports-widget data-type="games"></api-sports-widget>
+            </div>
+        </div>
+    </div>
+
+    <!-- Config widget - MUST BE LAST and ONLY ONCE per page -->
+    <api-sports-widget 
+        id="config-widget"
+        data-type="config" 
+        data-sport="football" 
+        data-key=""
+        data-lang="custom" 
+        data-theme="CzatSportowy" 
+        data-show-error="true" 
+        data-show-logos="true" 
+        data-refresh="20"
+        data-favorite="true" 
+        data-player-trophies="true" 
+        data-standings="true" 
+        data-player-injuries="true"
+        data-team-squad="true" 
+        data-team-statistics="true" 
+        data-player-statistics="true" 
+        data-tab="games"
+        data-game-tab="statistics"
+    ></api-sports-widget>
+
+    <script>
+        // Fetch API key from server
+        async function setApiKey() {
+            try {
+                const response = await fetch('/api/football/api-key');
+                if (response.ok) {
+                    const data = await response.json();
+                    const configWidget = document.getElementById('config-widget');
+                    if (configWidget && data.key) {
+                        configWidget.setAttribute('data-key', data.key);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch API key:', error);
+            }
+        }
+        
+        // Detect locale from URL params or parent window
+        function detectLocale() {
+            // Try to get locale from URL params
+            const urlParams = new URLSearchParams(window.location.search);
+            let locale = urlParams.get('locale');
+            
+            // If not in URL, try to get from parent window (if in iframe)
+            if (!locale && window.parent && window.parent !== window) {
+                try {
+                    const parentUrl = window.parent.location.href;
+                    const match = parentUrl.match(/\/(pl|en)\//);
+                    if (match) {
+                        locale = match[1];
+                    }
+                } catch (e) {
+                    // Cross-origin restriction, ignore
+                }
+            }
+            
+            // Default to 'en' if not found
+            return locale || 'en';
+        }
+        
+        // Set API key and locale on page load
+        (async function() {
+            await setApiKey();
+            
+            // Set custom language file based on locale
+            const locale = detectLocale();
+            const baseUrl = window.location.origin;
+            const customLangFile = locale === 'pl' 
+                ? `${baseUrl}/pl-football-widget.json`
+                : `${baseUrl}/en-football-widget.json`;
+            
+            // Set the custom language file on the config widget
+            const configWidget = document.getElementById('config-widget');
+            if (configWidget) {
+                configWidget.setAttribute('data-custom-lang', customLangFile);
+            }
+        })();
+    </script>
+
+    <script>
+        function findGameId(element) {
+            // Try various attributes and patterns
+            let gameId = element.getAttribute('data-game-id') ||
+                        element.getAttribute('data-id') ||
+                        element.getAttribute('data-fixture-id') ||
+                        element.getAttribute('id')?.match(/\d+/)?.[0];
+            
+            // Check parent elements
+            if (!gameId) {
+                const parent = element.closest('[data-game-id], [data-id], [data-fixture-id]');
+                if (parent) {
+                    gameId = parent.getAttribute('data-game-id') ||
+                            parent.getAttribute('data-id') ||
+                            parent.getAttribute('data-fixture-id');
+                }
+            }
+            
+            // Check href for game ID
+            if (!gameId) {
+                const link = element.closest('a[href]');
+                if (link) {
+                    const href = link.getAttribute('href');
+                    const match = href.match(/[\/=](\d+)/);
+                    if (match) gameId = match[1];
+                }
+            }
+            
+            return gameId;
+        }
+
+        function findTeamIds(element) {
+            // Try to find team IDs from various attributes
+            let teamIds = element.getAttribute('data-team-ids') ||
+                         element.getAttribute('data-teams') ||
+                         element.closest('[data-team-ids]')?.getAttribute('data-team-ids') ||
+                         element.closest('[data-teams]')?.getAttribute('data-teams');
+            
+            // Try to find home and away team IDs separately
+            if (!teamIds) {
+                const homeTeamId = element.getAttribute('data-home-team-id') ||
+                                 element.closest('[data-home-team-id]')?.getAttribute('data-home-team-id');
+                const awayTeamId = element.getAttribute('data-away-team-id') ||
+                                 element.closest('[data-away-team-id]')?.getAttribute('data-away-team-id');
+                
+                if (homeTeamId && awayTeamId) {
+                    teamIds = `${homeTeamId}-${awayTeamId}`;
+                }
+            }
+            
+            // Try to extract from text content or data attributes in widget structure
+            if (!teamIds) {
+                const gameElement = element.closest('[data-game-id], [data-id], [data-fixture-id]');
+                if (gameElement) {
+                    // Look for team IDs in child elements
+                    const homeTeam = gameElement.querySelector('[data-home-team-id], [data-team-id="home"], .home-team[data-team-id]');
+                    const awayTeam = gameElement.querySelector('[data-away-team-id], [data-team-id="away"], .away-team[data-team-id]');
+                    
+                    if (homeTeam && awayTeam) {
+                        const homeId = homeTeam.getAttribute('data-home-team-id') || 
+                                     homeTeam.getAttribute('data-team-id') ||
+                                     homeTeam.getAttribute('data-id');
+                        const awayId = awayTeam.getAttribute('data-away-team-id') || 
+                                     awayTeam.getAttribute('data-team-id') ||
+                                     awayTeam.getAttribute('data-id');
+                        
+                        if (homeId && awayId) {
+                            teamIds = `${homeId}-${awayId}`;
+                        }
+                    }
+                }
+            }
+            
+            return teamIds;
+        }
+
+        function handleGameClick(event) {
+            const gameId = findGameId(event.target);
+            const teamIds = findTeamIds(event.target);
+            
+            if (gameId) {
+                event.preventDefault();
+                event.stopPropagation();
+                window.parent.postMessage({
+                    type: 'OPEN_GAME_DETAILS',
+                    gameId: gameId,
+                    teamIds: teamIds || null
+                }, '*');
+                return true;
+            }
+            return false;
+        }
+
+        // Global click handler
+        document.addEventListener('click', function(event) {
+            // Don't intercept if it's not a game-related element
+            const clickable = event.target.closest('[data-game-id], [data-id], [data-fixture-id], a[href*="game"], .game-item, .match-item, .fixture-item');
+            if (clickable) {
+                handleGameClick(event);
+            }
+        }, true); // Use capture phase
+
+        // MutationObserver to add listeners to dynamically added elements
+        const observer = new MutationObserver(function(mutations) {
+            // Add click listeners to new game elements
+            const gameElements = document.querySelectorAll('[data-game-id], [data-id], [data-fixture-id], .game-item, .match-item, .fixture-item');
+            gameElements.forEach(function(element) {
+                if (!element.hasAttribute('data-click-handler')) {
+                    element.setAttribute('data-click-handler', 'true');
+                    element.style.cursor = 'pointer';
+                }
+            });
+        });
+
+        // Start observing after DOM loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+            });
+        } else {
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        }
+    </script>
+</body>
+</html>
+
