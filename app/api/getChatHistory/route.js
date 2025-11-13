@@ -32,7 +32,9 @@ export async function GET(request) {
 
     return Response.json(chatHistory, { status: 200 });
   } catch (error) {
-    console.error('Error fetching chat history:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error fetching chat history:', error);
+    }
     return Response.json({ error: 'Błąd podczas pobierania historii czatów.' }, { status: 500 });
   }
 }

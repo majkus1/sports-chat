@@ -122,7 +122,9 @@ export async function POST(request) {
       failedtoscoreaway,
     }, { status: 200 });
   } catch (error) {
-    console.error('Error fetching team statistics:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error fetching team statistics:', error);
+    }
     return Response.json({ error: 'Failed to fetch team statistics' }, { status: 500 });
   }
 }

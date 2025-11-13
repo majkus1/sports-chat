@@ -33,14 +33,18 @@ export function SocketProvider({ children }) {
 
 		// Connection event handlers
 		newSocket.on('connect', () => {
-			console.log('Socket.IO connected:', newSocket.id)
+			if (process.env.NODE_ENV === 'development') {
+				console.log('Socket.IO connected:', newSocket.id)
+			}
 			setIsConnected(true)
 			setConnectionError(null)
 			reconnectAttempts.current = 0
 		})
 
 		newSocket.on('disconnect', (reason) => {
-			console.log('Socket.IO disconnected:', reason)
+			if (process.env.NODE_ENV === 'development') {
+				console.log('Socket.IO disconnected:', reason)
+			}
 			setIsConnected(false)
 			
 			// If it's a manual disconnect or server closed, don't try to reconnect
@@ -50,7 +54,9 @@ export function SocketProvider({ children }) {
 		})
 
 		newSocket.on('connect_error', (error) => {
-			console.error('Socket.IO connection error:', error)
+			if (process.env.NODE_ENV === 'development') {
+				console.error('Socket.IO connection error:', error)
+			}
 			setIsConnected(false)
 			
 			// Handle ERR_BLOCKED_BY_CLIENT specifically
@@ -71,22 +77,30 @@ export function SocketProvider({ children }) {
 		})
 
 		newSocket.on('reconnect', (attemptNumber) => {
-			console.log('Socket.IO reconnected after', attemptNumber, 'attempts')
+			if (process.env.NODE_ENV === 'development') {
+				console.log('Socket.IO reconnected after', attemptNumber, 'attempts')
+			}
 			setIsConnected(true)
 			setConnectionError(null)
 			reconnectAttempts.current = 0
 		})
 
 		newSocket.on('reconnect_attempt', (attemptNumber) => {
-			console.log('Socket.IO reconnection attempt:', attemptNumber)
+			if (process.env.NODE_ENV === 'development') {
+				console.log('Socket.IO reconnection attempt:', attemptNumber)
+			}
 		})
 
 		newSocket.on('reconnect_error', (error) => {
-			console.error('Socket.IO reconnection error:', error)
+			if (process.env.NODE_ENV === 'development') {
+				console.error('Socket.IO reconnection error:', error)
+			}
 		})
 
 		newSocket.on('reconnect_failed', () => {
-			console.error('Socket.IO reconnection failed after max attempts')
+			if (process.env.NODE_ENV === 'development') {
+				console.error('Socket.IO reconnection failed after max attempts')
+			}
 			setConnectionError('Nie można ponownie połączyć z serwerem czatu. Odśwież stronę.')
 		})
 

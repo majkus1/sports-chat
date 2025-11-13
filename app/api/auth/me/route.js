@@ -30,7 +30,9 @@ export async function GET(request) {
       image: user.image,
     }, { status: 200 });
   } catch (err) {
-    console.error('me error:', err);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('me error:', err);
+    }
     return Response.json({ error: 'server_error' }, { status: 500 });
   }
 }

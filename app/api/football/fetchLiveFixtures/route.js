@@ -15,7 +15,9 @@ export async function GET(request) {
     const response = await axios.request(options);
     return Response.json({ fixtures: response.data.response }, { status: 200 });
   } catch (error) {
-    console.error('Error fetching live fixtures:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error fetching live fixtures:', error);
+    }
     return Response.json({ error: 'Failed to fetch live fixtures' }, { status: 500 });
   }
 }

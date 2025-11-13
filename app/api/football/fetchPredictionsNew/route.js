@@ -27,7 +27,9 @@ export async function GET(request) {
 
     return Response.json({ matches: simplified }, { status: 200 });
   } catch (error) {
-    console.error('Prediction API error:', error.response?.data || error.message);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Prediction API error:', error.response?.data || error.message);
+    }
     return Response.json({ error: 'Failed to fetch predictions' }, { status: 500 });
   }
 }

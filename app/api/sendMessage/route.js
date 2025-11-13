@@ -17,7 +17,9 @@ export async function POST(request) {
 
     return Response.json({ success: true, message: 'Wiadomość zapisana pomyślnie.' }, { status: 200 });
   } catch (error) {
-    console.error('Error saving message:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error saving message:', error);
+    }
     return Response.json({ success: false, message: 'Błąd podczas zapisywania wiadomości.' }, { status: 500 });
   }
 }

@@ -34,7 +34,9 @@ export async function POST(request) {
 
     return Response.json({ ok: true }, { status: 200 });
   } catch (e) {
-    console.error('reset-password error:', e);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('reset-password error:', e);
+    }
     return Response.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }

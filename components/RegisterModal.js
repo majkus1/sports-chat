@@ -46,7 +46,9 @@ export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 				showAlert(t('profile_fetch_failed'), 'error')
 			}
 		} catch (err) {
-			console.error('Registration error:', err)
+			if (process.env.NODE_ENV === 'development') {
+				console.error('Registration error:', err)
+			}
 			showAlert(t('server_error'), 'error')
 		} finally {
 			setIsRegistering(false)

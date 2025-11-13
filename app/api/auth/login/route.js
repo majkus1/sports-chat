@@ -40,7 +40,9 @@ export async function POST(request) {
 
     return Response.json({ ok: true, username: user.username }, { status: 200 });
   } catch (err) {
-    console.error('login error:', err);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('login error:', err);
+    }
     return Response.json({ error: 'server_error' }, { status: 500 });
   }
 }

@@ -58,14 +58,17 @@ export async function POST(request) {
     try {
       await setAuthCookiesRouteHandler({ accessToken, refreshToken });
     } catch (cookieErr) {
-      console.error('Error setting cookies:', cookieErr);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error setting cookies:', cookieErr);
+      }
       // Continue anyway - user is created, cookies can be set on next request
     }
 
     return NextResponse.json({ ok: true, username: user.username }, { status: 201 });
   } catch (err) {
-    console.error('register error:', err);
-    console.error('Error details:', {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('register error:', err);
+      console.error('Error details:', {
       message: err.message,
       stack: err.stack,
       name: err.name,

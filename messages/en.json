@@ -59,6 +59,7 @@
 		"profile_fetch_failed": "Failed to register, please try again.",
 		"registering": "Registering...",
 		"loading": "Loading...",
-		"results": "Results"
+		"results": "Results",
+		"no_matches": "No matches for selected date"
 	}
 }

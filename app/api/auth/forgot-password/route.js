@@ -32,7 +32,11 @@ export async function POST(request) {
     user.resetPasswordTokenExp = exp;
     await user.save();
 
-    const base = process.env.APP_URL || 'http://localhost:3001';
+    // Determine base URL from request headers (production-safe)
+    const host = request.headers.get('host') || request.headers.get('x-forwarded-host');
+    const protocol = request.headers.get('x-forwarded-proto') || 
+                     (host && host.includes('localhost') ? 'http' : 'https');
+    const base = process.env.APP_URL || (host ? `${protocol}://${host}` : 'https://czatsportowy.pl');
     const resetLink = `${base}/${validLocale}/reset-password?token=${tokenPlain}`;
 
     // Email content based on locale
@@ -117,7 +121,9 @@ export async function POST(request) {
 
     return Response.json({ ok: true }, { status: 200 });
   } catch (e) {
-    console.error('forgot-password error:', e);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('forgot-password error:', e);
+    }
     return Response.json({ ok: true }, { status: 200 });
   }
 }

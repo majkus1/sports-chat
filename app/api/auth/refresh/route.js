@@ -59,7 +59,9 @@ export async function POST(request) {
 
     return Response.json({ ok: true }, { status: 200 });
   } catch (err) {
-    console.error('refresh error:', err);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('refresh error:', err);
+    }
     return Response.json({ error: 'Nie udało się odświeżyć' }, { status: 401 });
   }
 }

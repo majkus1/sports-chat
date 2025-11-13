@@ -72,7 +72,9 @@ export async function POST(request) {
 
     return Response.json({ ok: true, username: user.username }, { status: 200 });
   } catch (err) {
-    console.error('google auth error:', err);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('google auth error:', err);
+    }
     return Response.json({ error: 'Authentication failed' }, { status: 500 });
   }
 }

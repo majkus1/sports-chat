@@ -18,7 +18,9 @@ export async function POST(request) {
 
     return Response.json({ success: true, chatId: chat.chatId }, { status: 200 });
   } catch (error) {
-    console.error('Error creating private chat:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error creating private chat:', error);
+    }
     return Response.json({ success: false, message: 'Błąd podczas tworzenia czatu.' }, { status: 500 });
   }
 }

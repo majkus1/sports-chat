@@ -61,7 +61,9 @@ const ChatComponent = ({
 				const data = await response.json()
 				setMessages(data)
 			} catch (error) {
-				console.error('Błąd pobierania wiadomości:', error)
+				if (process.env.NODE_ENV === 'development') {
+					console.error('Błąd pobierania wiadomości:', error)
+				}
 			}
 		}
 		fetchMessages()
@@ -93,8 +95,6 @@ const ChatComponent = ({
 		) {
 			const fetchMatchAnalysis = async () => {
 				try {
-					console.log('Starting fetchMatchAnalysis for fixtureId:', chatId);
-					
 					// Create AbortController for timeout
 					const controller = new AbortController();
 					const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds timeout
@@ -205,8 +205,6 @@ const ChatComponent = ({
 						},
 					};
 					
-					console.log('Sending request to /api/football/getOrCreateAnalysis');
-					
 					const response = await fetch('/api/football/getOrCreateAnalysis', {
 						method: 'POST',
 						headers: { 
@@ -221,7 +219,9 @@ const ChatComponent = ({
 					
 					if (!response.ok) {
 						const errorData = await response.json().catch(() => ({}));
-						console.error('API error:', response.status, errorData);
+						if (process.env.NODE_ENV === 'development') {
+							console.error('API error:', response.status, errorData);
+						}
 						setAnalysis({ text: t('analysis_unavailable'), pred: '' });
 						return;
 					}
@@ -229,7 +229,9 @@ const ChatComponent = ({
 					const data = await response.json();
 					
 					if (!data.analysis) {
-						console.error('No analysis in response:', data);
+						if (process.env.NODE_ENV === 'development') {
+							console.error('No analysis in response:', data);
+						}
 						setAnalysis({ text: t('analysis_unavailable'), pred: '' });
 						return;
 					}
@@ -237,16 +239,16 @@ const ChatComponent = ({
 					const { text, prediction: pred } = parseAnalysis(data.analysis);
 					setAnalysis({ text: text || t('analysis_unavailable'), pred });
 				} catch (error) {
-					if (error.name === 'AbortError') {
-						console.error('Request timeout - analiza trwa zbyt długo');
-						setAnalysis({ text: t('analysis_unavailable'), pred: '' });
-					} else if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
-						console.error('Network error - sprawdź połączenie lub limit OpenAI:', error);
-						setAnalysis({ text: t('analysis_unavailable'), pred: '' });
-					} else {
-						console.error('Błąd podczas pobierania analizy:', error);
-						setAnalysis({ text: t('analysis_unavailable'), pred: '' });
+					if (process.env.NODE_ENV === 'development') {
+						if (error.name === 'AbortError') {
+							console.error('Request timeout - analiza trwa zbyt długo');
+						} else if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+							console.error('Network error - sprawdź połączenie lub limit OpenAI:', error);
+						} else {
+							console.error('Błąd podczas pobierania analizy:', error);
+						}
 					}
+					setAnalysis({ text: t('analysis_unavailable'), pred: '' });
 				}
 			}
 			fetchMatchAnalysis()
@@ -267,7 +269,9 @@ const ChatComponent = ({
 
 	const handleSendMessage = async () => {
 		if (!isAuthed) {
-			console.error('Użytkownik niezalogowany')
+			if (process.env.NODE_ENV === 'development') {
+				console.error('Użytkownik niezalogowany')
+			}
 			return
 		}
 		if (currentMessage.trim()) {
@@ -293,17 +297,23 @@ const ChatComponent = ({
 					}
 					setCurrentMessage('')
 				} else {
-					console.error('Błąd wysyłania wiadomości:', data.message)
+					if (process.env.NODE_ENV === 'development') {
+						console.error('Błąd wysyłania wiadomości:', data.message)
+					}
 				}
 			} catch (error) {
-				console.error('Błąd podczas wysyłania wiadomości:', error)
+				if (process.env.NODE_ENV === 'development') {
+					console.error('Błąd podczas wysyłania wiadomości:', error)
+				}
 			}
 		}
 	}
 
 	const openPrivateChat = chatUsername => {
 		if (chatUsername === username) {
-			console.warn('Nie możesz otworzyć czatu z samym sobą.')
+			if (process.env.NODE_ENV === 'development') {
+				console.warn('Nie możesz otworzyć czatu z samym sobą.')
+			}
 			return
 		}
 		setSelectedUser(chatUsername)

@@ -122,6 +122,9 @@ A real-time sports discussion platform built with Next.js, featuring live chat f
    
    # Socket.IO
    NEXT_PUBLIC_SOCKET_URL=http://localhost:3000
+   
+   # Redis (Cache)
+   REDIS_URL=redis://localhost:6379
    ```
 
 4. **Start the development servers**

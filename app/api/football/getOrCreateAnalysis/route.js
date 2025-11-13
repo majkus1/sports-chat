@@ -3,13 +3,17 @@ import connectToDb from '@/lib/db';
 import MatchAnalysis from '@/models/MatchAnalysis';
 
 export async function POST(request) {
-  console.log('=== getOrCreateAnalysis endpoint called ===');
-  console.log('Request method:', request.method);
-  console.log('Request URL:', request.url);
+  if (process.env.NODE_ENV === 'development') {
+    console.log('=== getOrCreateAnalysis endpoint called ===');
+    console.log('Request method:', request.method);
+    console.log('Request URL:', request.url);
+  }
   
   try {
     const body = await request.json();
-    console.log('Request body received, fixtureId:', body?.fixtureId);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Request body received, fixtureId:', body?.fixtureId);
+    }
     
     const {
       fixtureId,
@@ -484,7 +488,9 @@ Proszę abyś na końcu zawsze podawał swoje przewidywanie biorąc pod uwagę p
 
     const prompt = prompts[lang2] || prompts['pl'];
     
-    console.log('Requesting OpenAI analysis for fixture:', fixtureId, 'Language:', lang2);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Requesting OpenAI analysis for fixture:', fixtureId, 'Language:', lang2);
+    }
     
     // Create a promise with timeout
     const completionPromise = openai.chat.completions.create({
@@ -511,43 +517,57 @@ Proszę abyś na końcu zawsze podawał swoje przewidywanie biorąc pod uwagę p
     if (!isLive) {
       await MatchAnalysis.updateOne({ fixtureId, language: lang2 }, { $set: { analysis } }, { upsert: true });
     }
-    console.log('Resolved language:', lang2);
-    console.log('=== Analysis generated successfully ===');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Resolved language:', lang2);
+      console.log('=== Analysis generated successfully ===');
+    }
 
     return Response.json({ analysis }, { status: 200 });
   } catch (error) {
     // Check if error occurred before body parsing
     if (error instanceof SyntaxError && error.message.includes('JSON')) {
-      console.error('Invalid JSON in request body');
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Invalid JSON in request body');
+      }
       return Response.json({ error: 'Invalid request body' }, { status: 400 });
     }
-    console.error('Error generating or saving match analysis:', error);
-    console.error('Error type:', error.constructor.name);
-    console.error('Error message:', error.message);
-    console.error('Error code:', error.code);
-    console.error('Error status:', error.status);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error generating or saving match analysis:', error);
+      console.error('Error type:', error.constructor.name);
+      console.error('Error message:', error.message);
+      console.error('Error code:', error.code);
+      console.error('Error status:', error.status);
+    }
     
     // Check for specific OpenAI errors
     const errorMessage = error.message?.toLowerCase() || '';
     const errorStatus = error.status || error.response?.status;
     
     if (errorMessage.includes('rate limit') || errorMessage.includes('ratelimiterror') || errorStatus === 429) {
-      console.error('OpenAI rate limit exceeded');
+      if (process.env.NODE_ENV === 'development') {
+        console.error('OpenAI rate limit exceeded');
+      }
       return Response.json({ error: 'Rate limit exceeded. Please try again later.' }, { status: 429 });
     }
     
     if (errorMessage.includes('insufficient_quota') || errorMessage.includes('quota') || errorStatus === 402) {
-      console.error('OpenAI quota exceeded');
+      if (process.env.NODE_ENV === 'development') {
+        console.error('OpenAI quota exceeded');
+      }
       return Response.json({ error: 'OpenAI quota exceeded. Please check your account and billing.' }, { status: 402 });
     }
     
     if (errorMessage.includes('timeout') || error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
-      console.error('Request timeout');
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Request timeout');
+      }
       return Response.json({ error: 'Request timeout. The analysis is taking too long. Please try again.' }, { status: 504 });
     }
     
     if (errorMessage.includes('invalid_api_key') || errorMessage.includes('authentication')) {
-      console.error('OpenAI API key invalid');
+      if (process.env.NODE_ENV === 'development') {
+        console.error('OpenAI API key invalid');
+      }
       return Response.json({ error: 'OpenAI API key is invalid. Please check your configuration.' }, { status: 401 });
     }
     

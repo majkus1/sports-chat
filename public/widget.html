@@ -16,7 +16,7 @@
 
     <div id="wg-api-football-games"
      data-host="v3.football.api-sports.io"
-     data-key=""
+     data-key="2e2840f792c22b93afecb2e6341e2de6"
      data-date=""
      data-league=""
      data-season=""
@@ -29,23 +29,6 @@
      data-modal-standings="true"
      data-modal-show-logos="true">
 </div>
-<script>
-    // Fetch API key from server
-    (async function() {
-        try {
-            const response = await fetch('/api/football/api-key');
-            if (response.ok) {
-                const data = await response.json();
-                const widget = document.getElementById('wg-api-football-games');
-                if (widget && data.key) {
-                    widget.setAttribute('data-key', data.key);
-                }
-            }
-        } catch (error) {
-            console.error('Failed to fetch API key:', error);
-        }
-    })();
-</script>
 <script
     type="module"
     src="https://widgets.api-sports.io/2.0.3/widgets.js">

@@ -100,7 +100,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const teamIds = urlParams.get('teamIds');
         
-        console.log('H2H: Team IDs from URL:', teamIds);
+        // Team IDs extracted from URL
         
         if (!teamIds) {
             document.getElementById('h2h-content').innerHTML = '<p style="color: red; padding: 20px;">Error: No team IDs provided. URL must contain ?teamIds=id1-id2</p>';
@@ -108,12 +108,12 @@
             // Create widget HTML with teamIds directly embedded using data-h2h attribute
             const h2hContent = document.getElementById('h2h-content');
             h2hContent.innerHTML = `<api-sports-widget data-type="h2h" id="h2h-widget" data-h2h="${teamIds}" data-target-game="modal" data-target-standings="modal"></api-sports-widget>`;
-            console.log('H2H: Widget HTML created with data-h2h:', teamIds);
+            // Widget HTML created
             
             // Verify the attribute is set
             const widget = document.getElementById('h2h-widget');
             if (widget) {
-                console.log('H2H: Widget element created, data-h2h:', widget.getAttribute('data-h2h'));
+                // Widget element created
             }
         }
     </script>
@@ -123,11 +123,11 @@
         id="config-widget"
         data-type="config" 
         data-sport="football" 
-        data-key=""
+        data-key="2e2840f792c22b93afecb2e6341e2de6"
         data-lang="custom" 
         data-theme="CzatSportowy" 
         data-show-error="true" 
-        data-show-logos="true" 
+        data-show-logos="false" 
         data-refresh="20"
         data-favorite="true" 
         data-player-trophies="true" 
@@ -141,22 +141,6 @@
     ></api-sports-widget>
 
     <script>
-        // Fetch API key from server
-        async function setApiKey() {
-            try {
-                const response = await fetch('/api/football/api-key');
-                if (response.ok) {
-                    const data = await response.json();
-                    const configWidget = document.getElementById('config-widget');
-                    if (configWidget && data.key) {
-                        configWidget.setAttribute('data-key', data.key);
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to fetch API key:', error);
-            }
-        }
-        
         // Detect locale from URL params or parent window
         function detectLocale() {
             // Try to get locale from URL params
@@ -180,11 +164,8 @@
             return locale || 'en';
         }
         
-        // Set API key and locale on page load
-        (async function() {
-            await setApiKey();
-            
-            // Set custom language file based on locale
+        // Set custom language file on page load
+        (function() {
             const locale = detectLocale();
             const baseUrl = window.location.origin;
             const customLangFile = locale === 'pl' 
@@ -196,13 +177,13 @@
             if (configWidget) {
                 configWidget.setAttribute('data-custom-lang', customLangFile);
             }
+            
+            // Update header text based on locale
+            const h2hTitle = document.getElementById('h2h-title');
+            if (h2hTitle) {
+                h2hTitle.textContent = locale === 'pl' ? 'Statystyki bezpośrednie' : 'Head to Head';
+            }
         })();
-        
-        // Update header text based on locale
-        const h2hTitle = document.getElementById('h2h-title');
-        if (h2hTitle) {
-            h2hTitle.textContent = locale === 'pl' ? 'Statystyki bezpośrednie' : 'Head to Head';
-        }
     </script>
     
     <!-- Load widget script AFTER widget element is created with teamIds -->

@@ -45,18 +45,24 @@ const PrivateChatComponent = ({ receiver }) => {
 				if (Array.isArray(data)) {
 					setMessages(data)
 				} else {
-					console.error('Oczekiwano tablicy wiadomości, ale otrzymano:', data)
+					if (process.env.NODE_ENV === 'development') {
+						console.error('Oczekiwano tablicy wiadomości, ale otrzymano:', data)
+					}
 					setMessages([])
 				}
 			} catch (error) {
-				console.error('Błąd podczas pobierania wiadomości:', error)
+				if (process.env.NODE_ENV === 'development') {
+					console.error('Błąd podczas pobierania wiadomości:', error)
+				}
 			}
 		}
 
 		fetchMessages()
 
 		const handleReceivePrivateMessage = (message) => {
-			console.log('Otrzymano prywatną wiadomość:', message)
+			if (process.env.NODE_ENV === 'development') {
+				console.log('Otrzymano prywatną wiadomość:', message)
+			}
 			if (message.chatId === chatId) {
 				setMessages(prevMessages => [...prevMessages, message])
 			}
@@ -71,7 +77,9 @@ const PrivateChatComponent = ({ receiver }) => {
 
 	const handleSendMessage = async () => {
 		if (!receiver) {
-			console.error('Receiver is not defined!')
+			if (process.env.NODE_ENV === 'development') {
+				console.error('Receiver is not defined!')
+			}
 			return
 		}
 		const sender = username || 'Anonim'
@@ -99,10 +107,14 @@ const PrivateChatComponent = ({ receiver }) => {
 					}
 					setCurrentMessage('')
 				} else {
-					console.error(data.message)
+					if (process.env.NODE_ENV === 'development') {
+						console.error(data.message)
+					}
 				}
 			} catch (error) {
-				console.error('Błąd podczas wysyłania wiadomości:', error)
+				if (process.env.NODE_ENV === 'development') {
+					console.error('Błąd podczas wysyłania wiadomości:', error)
+				}
 			}
 		}
 	}

@@ -59,6 +59,7 @@
 		"profile_fetch_failed": "Nie udało się zarejstrować, spróbuj ponownie.",
 		"registering": "Rejestrowanie...",
 		"loading": "Ładowanie...",
-		"results": "Wyniki"
+		"results": "Wyniki",
+		"no_matches": "Brak meczy dla wybranej daty"
 	}
 }

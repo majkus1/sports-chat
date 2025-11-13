@@ -23,7 +23,9 @@ export async function POST(request) {
     const prediction = response.data.response[0]?.predictions?.advice || null;
     return Response.json({ prediction }, { status: 200 });
   } catch (error) {
-    console.error('Error fetching predictions:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error fetching predictions:', error);
+    }
     return Response.json({ error: 'Failed to fetch predictions' }, { status: 500 });
   }
 }

@@ -63,7 +63,9 @@ export default function LivePage() {
         const response = await axios.get('/api/football/fetchLiveFixtures');
         setFixtures(response.data.fixtures);
       } catch (error) {
-        console.error('Error loading live fixtures:', error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error loading live fixtures:', error);
+        }
       }
     };
 
@@ -75,7 +77,9 @@ export default function LivePage() {
       const response = await axios.post('/api/football/fetchTeamStatistics', { teamId, leagueId });
       return response.data;
     } catch (error) {
-      console.error('Error fetching team statistics:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error fetching team statistics:', error);
+      }
       return null;
     }
   };
@@ -98,7 +102,9 @@ export default function LivePage() {
             [id]: { homeStats, awayStats },
           }));
         } catch (error) {
-          console.error('Error fetching team statistics:', error);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Error fetching team statistics:', error);
+          }
         }
       }
     }
@@ -177,7 +183,6 @@ export default function LivePage() {
                   {leagueId && (
                     <button
                       onClick={() => {
-                        console.log('Standings: Opening modal with leagueId:', leagueId, 'season:', season);
                         setSelectedStandings({ leagueId, season });
                         setIsStandingsModalOpen(true);
                       }}
@@ -229,11 +234,12 @@ export default function LivePage() {
                             const awayId = fixture.teams?.away?.id;
                             if (homeId && awayId) {
                               const teamIds = `${homeId}-${awayId}`;
-                              console.log('H2H: Opening modal with teamIds:', teamIds);
                               setSelectedH2HTeamIds(teamIds);
                               setIsH2HModalOpen(true);
                             } else {
-                              console.error('H2H: Missing team IDs', { homeId, awayId, fixture });
+                              if (process.env.NODE_ENV === 'development') {
+                                console.error('H2H: Missing team IDs', { homeId, awayId, fixture });
+                              }
                             }
                           }}
                           style={{
@@ -269,7 +275,6 @@ export default function LivePage() {
                             const homeName = fixture.teams?.home?.name || 'Home Team';
                             const awayName = fixture.teams?.away?.name || 'Away Team';
                             if (homeId && awayId) {
-                              console.log('Team Stats: Opening modal with team IDs:', { homeId, awayId });
                               setSelectedTeamStats({ 
                                 homeTeamId: homeId, 
                                 awayTeamId: awayId,
@@ -278,7 +283,9 @@ export default function LivePage() {
                               });
                               setIsTeamStatsModalOpen(true);
                             } else {
-                              console.error('Team Stats: Missing team IDs', { homeId, awayId, fixture });
+                              if (process.env.NODE_ENV === 'development') {
+                                console.error('Team Stats: Missing team IDs', { homeId, awayId, fixture });
+                              }
                             }
                           }}
                           style={{

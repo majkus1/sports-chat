@@ -15,7 +15,9 @@ export async function GET(request) {
     const users = await User.find({ username: new RegExp(query, 'i') }).select('username -_id');
     return Response.json({ success: true, users }, { status: 200 });
   } catch (error) {
-    console.error('Error searching users:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error searching users:', error);
+    }
     return Response.json({ success: false, message: 'Internal Server Error.' }, { status: 500 });
   }
 }

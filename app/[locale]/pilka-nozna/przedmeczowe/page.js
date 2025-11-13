@@ -12,6 +12,7 @@ import { FaSearch } from 'react-icons/fa';
 import { useTranslations, useLocale } from 'next-intl';
 import { Link } from '@/i18n/routing';
 import FullScreenModal from '@/components/FullScreenModal';
+import BeatLoader from 'react-spinners/BeatLoader';
 
 export default function PrzedmeczowePage() {
   const locale = useLocale();
@@ -38,6 +39,55 @@ export default function PrzedmeczowePage() {
   const { user } = useContext(UserContext);
   const username = user?.username;
 
+  // Date selection state
+  const getDateOptions = () => {
+    const today = new Date();
+    const dates = [];
+    for (let i = 0; i < 3; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      dates.push({
+        date: date,
+        formatted: `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`,
+        display: i === 0 ? t('today') || 'Dziś' : `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}`,
+        isToday: i === 0
+      });
+    }
+    return dates;
+  };
+
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    return `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+  });
+  const [isLoadingFixtures, setIsLoadingFixtures] = useState(false);
+
+  // Auto-update selected date at midnight
+  useEffect(() => {
+    const updateDateAtMidnight = () => {
+      const now = new Date();
+      const tomorrow = new Date(now);
+      tomorrow.setDate(now.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+      
+      const msUntilMidnight = tomorrow.getTime() - now.getTime();
+      
+      const timeoutId = setTimeout(() => {
+        const today = new Date();
+        const newDate = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+        setSelectedDate(newDate);
+        
+        // Set up next midnight update
+        updateDateAtMidnight();
+      }, msUntilMidnight);
+      
+      return () => clearTimeout(timeoutId);
+    };
+    
+    const cleanup = updateDateAtMidnight();
+    return cleanup;
+  }, []);
+
   const handleLanguageChange = () => {
     setActiveChats([]);
   };
@@ -58,22 +108,30 @@ export default function PrzedmeczowePage() {
 
   useEffect(() => {
     const loadFixtures = async () => {
+      setIsLoadingFixtures(true);
       try {
-        const response = await axios.get('/api/football/fixtures');
-        setFixtures(response.data.response);
+        const response = await axios.get(`/api/football/fixtures?date=${selectedDate}`);
+        setFixtures(response.data.response || []);
       } catch (e) {
-        console.error('Fixtures load error:', e);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Fixtures load error:', e);
+        }
+        setFixtures([]);
+      } finally {
+        setIsLoadingFixtures(false);
       }
     };
     loadFixtures();
-  }, []);
+  }, [selectedDate]);
 
   const fetchPredictions = async (id) => {
     try {
       const response = await axios.post('/api/football/fetchPredictions', { fixtureId: id });
       return response.data.prediction;
     } catch (error) {
-      console.error('Błąd pobierania predykcji:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Błąd pobierania predykcji:', error);
+      }
       return null;
     }
   };
@@ -83,7 +141,9 @@ export default function PrzedmeczowePage() {
       const response = await axios.post('/api/football/fetchTeamStatistics', { teamId, leagueId });
       return response.data;
     } catch (error) {
-      console.error('Error fetching team statistics:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error fetching team statistics:', error);
+      }
       return null;
     }
   };
@@ -106,7 +166,9 @@ export default function PrzedmeczowePage() {
             [id]: { homeStats, awayStats, prediction },
           }));
         } catch (error) {
-          console.error('Error fetching team statistics:', error);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Error fetching team statistics:', error);
+          }
         }
       }
     }
@@ -157,6 +219,53 @@ export default function PrzedmeczowePage() {
           </button>
         </div>
 
+        {/* Date selector bar */}
+        <div style={{
+          display: 'flex',
+          gap: '10px',
+          marginBottom: '20px',
+          padding: '10px',
+          background: '#fff',
+          borderRadius: '8px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          justifyContent: 'center',
+          flexWrap: 'wrap',
+          maxWidth: '300px'
+        }}>
+          {getDateOptions().map((dateOption, index) => (
+            <button
+              key={dateOption.formatted}
+              onClick={() => setSelectedDate(dateOption.formatted)}
+              style={{
+                padding: '10px 20px',
+                border: selectedDate === dateOption.formatted ? '2px solid #173b45' : '2px solid transparent',
+                background: selectedDate === dateOption.formatted ? '#173b45' : '#f1f1f1',
+                color: selectedDate === dateOption.formatted ? '#fff' : '#333',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontFamily: 'Roboto Condensed, sans-serif',
+                fontSize: '14px',
+                fontWeight: selectedDate === dateOption.formatted ? '700' : '400',
+                transition: 'all 0.2s ease',
+                textTransform: 'uppercase',
+                minWidth: '80px'
+              }}
+              onMouseEnter={(e) => {
+                if (selectedDate !== dateOption.formatted) {
+                  e.currentTarget.style.background = '#e0e0e0';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (selectedDate !== dateOption.formatted) {
+                  e.currentTarget.style.background = '#f1f1f1';
+                }
+              }}
+            >
+              {dateOption.display}
+            </button>
+          ))}
+        </div>
+
         <div className="search-container" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <FaSearch size={20} style={{ color: '#000', flexShrink: 0 }} />
           <input
@@ -169,7 +278,48 @@ export default function PrzedmeczowePage() {
           />
         </div>
 
-        {Object.keys(groupedFixtures).length > 0 &&
+        {isLoadingFixtures && (
+          <div style={{ 
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '20px',
+            padding: '60px 20px',
+            marginTop: '20px'
+          }}>
+            <BeatLoader 
+              color="#173b45" 
+              size={15}
+              margin={5}
+              speedMultiplier={0.8}
+            />
+            <p style={{ 
+              fontFamily: 'Roboto Condensed, sans-serif',
+              color: '#173b45',
+              fontSize: '16px',
+              fontWeight: 400
+            }}>{t('loading')}</p>
+          </div>
+        )}
+
+        {!isLoadingFixtures && Object.keys(groupedFixtures).length === 0 && (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '40px', 
+            color: '#666',
+            fontFamily: 'Roboto Condensed, sans-serif',
+            fontSize: '16px',
+            background: '#fff',
+            borderRadius: '8px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            marginTop: '20px'
+          }}>
+            {t('no_matches')}
+          </div>
+        )}
+
+        {!isLoadingFixtures && Object.keys(groupedFixtures).length > 0 &&
           Object.keys(groupedFixtures).map((leagueKey, leagueIndex) => {
             // Get league info from first fixture in the group
             const firstFixture = groupedFixtures[leagueKey][0];
@@ -183,7 +333,6 @@ export default function PrzedmeczowePage() {
                 {leagueId && (
                   <button
                     onClick={() => {
-                      console.log('Standings: Opening modal with leagueId:', leagueId, 'season:', season);
                       setSelectedStandings({ leagueId, season });
                       setIsStandingsModalOpen(true);
                     }}
@@ -231,11 +380,12 @@ export default function PrzedmeczowePage() {
                           const awayId = fixture.teams?.away?.id;
                           if (homeId && awayId) {
                             const teamIds = `${homeId}-${awayId}`;
-                            console.log('H2H: Opening modal with teamIds:', teamIds);
                             setSelectedH2HTeamIds(teamIds);
                             setIsH2HModalOpen(true);
                           } else {
-                            console.error('H2H: Missing team IDs', { homeId, awayId, fixture });
+                            if (process.env.NODE_ENV === 'development') {
+                              console.error('H2H: Missing team IDs', { homeId, awayId, fixture });
+                            }
                           }
                         }}
                         style={{
@@ -271,7 +421,6 @@ export default function PrzedmeczowePage() {
                           const homeName = fixture.teams?.home?.name || 'Home Team';
                           const awayName = fixture.teams?.away?.name || 'Away Team';
                           if (homeId && awayId) {
-                            console.log('Team Stats: Opening modal with team IDs:', { homeId, awayId });
                             setSelectedTeamStats({ 
                               homeTeamId: homeId, 
                               awayTeamId: awayId,
@@ -280,7 +429,9 @@ export default function PrzedmeczowePage() {
                             });
                             setIsTeamStatsModalOpen(true);
                           } else {
-                            console.error('Team Stats: Missing team IDs', { homeId, awayId, fixture });
+                            if (process.env.NODE_ENV === 'development') {
+                              console.error('Team Stats: Missing team IDs', { homeId, awayId, fixture });
+                            }
                           }
                         }}
                         style={{

@@ -15,7 +15,9 @@ export async function GET(request) {
 
     return Response.json(chat.messages, { status: 200 });
   } catch (error) {
-    console.error('Error fetching private messages:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error fetching private messages:', error);
+    }
     return Response.json({ success: false, message: 'Błąd podczas pobierania wiadomości.' }, { status: 500 });
   }
 }

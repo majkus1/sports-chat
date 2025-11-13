@@ -83,11 +83,11 @@
         id="config-widget"
         data-type="config" 
         data-sport="football" 
-        data-key=""
+        data-key="2e2840f792c22b93afecb2e6341e2de6"
         data-lang="custom" 
         data-theme="CzatSportowy" 
         data-show-error="true" 
-        data-show-logos="true" 
+        data-show-logos="false" 
         data-refresh="20"
         data-favorite="true" 
         data-player-trophies="true" 
@@ -101,22 +101,6 @@
     ></api-sports-widget>
 
     <script>
-        // Fetch API key from server
-        async function setApiKey() {
-            try {
-                const response = await fetch('/api/football/api-key');
-                if (response.ok) {
-                    const data = await response.json();
-                    const configWidget = document.getElementById('config-widget');
-                    if (configWidget && data.key) {
-                        configWidget.setAttribute('data-key', data.key);
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to fetch API key:', error);
-            }
-        }
-        
         // Detect locale from URL params or parent window
         function detectLocale() {
             // Try to get locale from URL params
@@ -140,11 +124,8 @@
             return locale || 'en';
         }
         
-        // Set API key and locale on page load
-        (async function() {
-            await setApiKey();
-            
-            // Set custom language file based on locale
+        // Set custom language file on page load
+        (function() {
             const locale = detectLocale();
             const baseUrl = window.location.origin;
             const customLangFile = locale === 'pl' 
