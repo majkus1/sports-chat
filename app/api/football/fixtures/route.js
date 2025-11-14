@@ -32,15 +32,18 @@ export async function GET(request) {
 
   // Cache key for this date
   const cacheKey = `fixtures:${formattedDate}`;
+  console.log('[Fixtures] Request for date:', formattedDate, 'cache key:', cacheKey);
 
   try {
     // Try to get from Redis cache first
     const cachedData = await getFromCache(cacheKey);
     if (cachedData) {
+      console.log('[Fixtures] Returning cached data for date:', formattedDate);
       return Response.json(cachedData, { status: 200 });
     }
 
     // Cache miss - fetch from API
+    console.log('[Fixtures] Cache miss, fetching from API for date:', formattedDate);
     const options = {
       method: 'GET',
       url: 'https://api-football-v1.p.rapidapi.com/v3/fixtures',
@@ -56,7 +59,8 @@ export async function GET(request) {
 
     // Store in Redis cache (expires at midnight for this date)
     const expirationSeconds = getExpirationSeconds(formattedDate);
-    await setInCache(cacheKey, data, expirationSeconds);
+    const cacheResult = await setInCache(cacheKey, data, expirationSeconds);
+    console.log('[Fixtures] API data fetched and cached for date:', formattedDate, 'cache result:', cacheResult);
 
     return Response.json(data, { status: 200 });
   } catch (error) {
