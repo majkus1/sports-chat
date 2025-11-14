@@ -69,10 +69,11 @@ export async function POST(request) {
     if (process.env.NODE_ENV === 'development') {
       console.error('register error:', err);
       console.error('Error details:', {
-      message: err.message,
-      stack: err.stack,
-      name: err.name,
-    });
+        message: err.message,
+        stack: err.stack,
+        name: err.name,
+      });
+    }
     return NextResponse.json({ error: 'server_error' }, { status: 500 });
   }
 }
