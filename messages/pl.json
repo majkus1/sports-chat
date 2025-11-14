@@ -60,6 +60,12 @@
 		"registering": "Rejestrowanie...",
 		"loading": "Ładowanie...",
 		"results": "Wyniki",
-		"no_matches": "Brak meczy dla wybranej daty"
+		"no_matches": "Brak meczy dla wybranej daty",
+		"prev_page": "Poprzednia",
+		"next_page": "Następna",
+		"page": "Strona",
+		"of": "z",
+		"showing": "Wyświetlanie",
+		"matches": "meczów"
 	}
 }

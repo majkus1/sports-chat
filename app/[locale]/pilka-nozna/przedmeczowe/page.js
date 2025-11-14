@@ -61,6 +61,15 @@ export default function PrzedmeczowePage() {
     return `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
   });
   const [isLoadingFixtures, setIsLoadingFixtures] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+
+  // Reset page when date or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedDate, searchTerm]);
 
   // Auto-update selected date at midnight
   useEffect(() => {
@@ -174,6 +183,7 @@ export default function PrzedmeczowePage() {
     }
   };
 
+  // Filter fixtures by search term (works on all fixtures, not just current page)
   const filteredFixtures = fixtures.filter((fixture) => {
     const leagueName = fixture.league.name.toLowerCase();
     const homeTeam = fixture.teams.home.name.toLowerCase();
@@ -182,7 +192,15 @@ export default function PrzedmeczowePage() {
     return leagueName.includes(term) || homeTeam.includes(term) || awayTeam.includes(term);
   });
 
-  const groupedFixtures = filteredFixtures.reduce((acc, fixture) => {
+  // Pagination calculations
+  const totalFilteredItems = filteredFixtures.length;
+  const totalPages = Math.ceil(totalFilteredItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedFixtures = filteredFixtures.slice(startIndex, endIndex);
+
+  // Group paginated fixtures by league
+  const groupedFixtures = paginatedFixtures.reduce((acc, fixture) => {
     const leagueKey = `${fixture.league.name} (${fixture.league.country})`;
     if (!acc[leagueKey]) acc[leagueKey] = [];
     acc[leagueKey].push(fixture);
@@ -479,6 +497,153 @@ export default function PrzedmeczowePage() {
             </div>
             );
           })}
+
+        {/* Pagination Info */}
+        {!isLoadingFixtures && totalFilteredItems > 0 && (
+          <div style={{
+            textAlign: 'center',
+            marginTop: '20px',
+            marginBottom: '10px',
+            color: '#666',
+            fontFamily: 'Roboto Condensed, sans-serif',
+            fontSize: '14px'
+          }}>
+            {t('showing')} {startIndex + 1}-{Math.min(endIndex, totalFilteredItems)} {t('of')} {totalFilteredItems} {t('matches')}
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {!isLoadingFixtures && totalFilteredItems > itemsPerPage && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '15px',
+            marginTop: '20px',
+            marginBottom: '30px',
+            flexWrap: 'wrap'
+          }}>
+            {/* Previous Button */}
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              style={{
+                padding: '10px 20px',
+                border: '2px solid #173b45',
+                background: currentPage === 1 ? '#f1f1f1' : '#173b45',
+                color: currentPage === 1 ? '#999' : '#fff',
+                borderRadius: '6px',
+                cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                fontFamily: 'Roboto Condensed, sans-serif',
+                fontSize: '14px',
+                fontWeight: '600',
+                transition: 'all 0.2s ease',
+                textTransform: 'uppercase',
+                opacity: currentPage === 1 ? 0.5 : 1
+              }}
+              onMouseEnter={(e) => {
+                if (currentPage !== 1) {
+                  e.currentTarget.style.background = '#0f2a30';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (currentPage !== 1) {
+                  e.currentTarget.style.background = '#173b45';
+                }
+              }}
+            >
+              {t('prev_page')}
+            </button>
+
+            {/* Page Numbers */}
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              justifyContent: 'center'
+            }}>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    style={{
+                      padding: '10px 16px',
+                      border: currentPage === pageNum ? '2px solid #173b45' : '2px solid #e0e0e0',
+                      background: currentPage === pageNum ? '#173b45' : '#fff',
+                      color: currentPage === pageNum ? '#fff' : '#333',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontFamily: 'Roboto Condensed, sans-serif',
+                      fontSize: '14px',
+                      fontWeight: currentPage === pageNum ? '700' : '400',
+                      transition: 'all 0.2s ease',
+                      minWidth: '44px'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (currentPage !== pageNum) {
+                        e.currentTarget.style.background = '#f1f1f1';
+                        e.currentTarget.style.borderColor = '#173b45';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (currentPage !== pageNum) {
+                        e.currentTarget.style.background = '#fff';
+                        e.currentTarget.style.borderColor = '#e0e0e0';
+                      }
+                    }}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Next Button */}
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              style={{
+                padding: '10px 20px',
+                border: '2px solid #173b45',
+                background: currentPage === totalPages ? '#f1f1f1' : '#173b45',
+                color: currentPage === totalPages ? '#999' : '#fff',
+                borderRadius: '6px',
+                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                fontFamily: 'Roboto Condensed, sans-serif',
+                fontSize: '14px',
+                fontWeight: '600',
+                transition: 'all 0.2s ease',
+                textTransform: 'uppercase',
+                opacity: currentPage === totalPages ? 0.5 : 1
+              }}
+              onMouseEnter={(e) => {
+                if (currentPage !== totalPages) {
+                  e.currentTarget.style.background = '#0f2a30';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (currentPage !== totalPages) {
+                  e.currentTarget.style.background = '#173b45';
+                }
+              }}
+            >
+              {t('next_page')}
+            </button>
+          </div>
+        )}
       </div>
       {isResultsModalOpen && (
         <FullScreenModal

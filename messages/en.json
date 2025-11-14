@@ -60,6 +60,12 @@
 		"registering": "Registering...",
 		"loading": "Loading...",
 		"results": "Results",
-		"no_matches": "No matches for selected date"
+		"no_matches": "No matches for selected date",
+		"prev_page": "Previous",
+		"next_page": "Next",
+		"page": "Page",
+		"of": "of",
+		"showing": "Showing",
+		"matches": "matches"
 	}
 }
