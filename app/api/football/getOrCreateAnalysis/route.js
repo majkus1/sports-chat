@@ -48,16 +48,35 @@ export async function POST(request) {
     // Get user IP address first (needed for lock identifier and rate limiting)
     // Always use real IP address - this ensures limit is per IP, not per browser/cookie
     // Priority: x-forwarded-for (first IP) > x-real-ip > x-client-ip
+    // BUT: if forwarded is localhost, prefer realIp if available
     const forwarded = request.headers.get('x-forwarded-for');
     const realIp = request.headers.get('x-real-ip');
     const clientIp = request.headers.get('x-client-ip');
-    let ip = forwarded?.split(',')[0]?.trim() || realIp || clientIp || null;
     
-    // If IP is not available or is localhost, use a fixed identifier
-    // This ensures that in development, all localhost requests share the same limit
-    // In production, this should never happen as real IP should be available
-    if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('::ffff:127.0.0.1') || ip === 'unknown') {
-      ip = 'localhost'; // Fixed identifier for localhost/development
+    // Helper to check if IP is localhost
+    const isLocalhostIP = (ipAddr) => {
+      if (!ipAddr) return false;
+      return ipAddr === '127.0.0.1' || 
+             ipAddr === '::1' || 
+             ipAddr.startsWith('::ffff:127.0.0.1') || 
+             ipAddr === 'localhost' ||
+             ipAddr === 'unknown';
+    };
+    
+    // Get first IP from forwarded-for (if multiple IPs, take the first one)
+    let forwardedIp = forwarded?.split(',')[0]?.trim() || null;
+    
+    // If forwarded is localhost but realIp is available, use realIp instead
+    // This handles cases where reverse proxy sets forwarded to localhost but realIp has the actual client IP
+    let ip = null;
+    if (forwardedIp && !isLocalhostIP(forwardedIp)) {
+      ip = forwardedIp; // Use forwarded if it's not localhost
+    } else if (realIp && !isLocalhostIP(realIp)) {
+      ip = realIp; // Use realIp if forwarded is localhost but realIp is valid
+    } else if (clientIp && !isLocalhostIP(clientIp)) {
+      ip = clientIp; // Use clientIp as fallback
+    } else {
+      ip = 'localhost'; // Only use localhost if all IPs are localhost/unknown
     }
     
     // Log IP for debugging (only in production to diagnose rate limiting issues)

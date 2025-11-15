@@ -101,6 +101,8 @@ const ChatComponent = ({
 			awayStats?.form !== undefined &&
 			!analysisRequestedRef.current // Prevent multiple simultaneous requests
 		) {
+			// Show loading message when starting to fetch (including retries)
+			setAnalysis({ text: t('ai'), pred: '' });
 			analysisRequestedRef.current = true; // Mark as requested
 			const fetchMatchAnalysis = async () => {
 				try {
@@ -300,9 +302,10 @@ const ChatComponent = ({
 			fetchMatchAnalysis()
 		}
 		
-		// Reset flag when chatId changes (user opens different match)
+		// Reset flag and clear analysis message when chatId changes (user opens/closes different match)
 		return () => {
 			analysisRequestedRef.current = false;
+			setAnalysis({ text: '', pred: '' }); // Clear analysis message when chat is closed/changed
 		}
 	}, [
 		isAnalysisEnabled,
