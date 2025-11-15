@@ -19,6 +19,12 @@ A modern real-time sports discussion platform built with **Next.js 15 App Router
 - **Comprehensive Statistics**: Team performance metrics, form, goals data
 - **Live Match Analysis**: Real-time analysis during ongoing matches
 - **Predictions**: AI-generated match predictions with double chance format
+- **Smart Rate Limiting**: Redis-based daily limits with IP/user tracking
+  - **IP-based Limiting**: Unauthenticated users limited by IP address
+  - **User-based Limiting**: Authenticated users have separate limits per user ID
+  - **Shared State**: Redis ensures consistent limits across multiple server instances
+  - **Automatic Reset**: Daily limits reset automatically
+  - **Limit Enforcement**: Generate button hidden when limit reached, with user-friendly messages
 
 ### ⚽ Football Data Integration
 - **Live Fixtures**: Real-time match data from API-Football with Redis caching
@@ -156,6 +162,12 @@ Routes are automatically prefixed with locale: `/pl/...` or `/en/...`
 - **JWT Authentication** with access and refresh tokens
 - **Password Hashing** using bcrypt
 - **Rate Limiting** on Socket.IO connections
+- **AI Analysis Rate Limiting**: Redis-based daily limits to prevent abuse and control API costs
+  - **IP Detection**: Smart IP detection handling reverse proxies and load balancers
+  - **Per-IP Limits**: Daily limits for unauthenticated users based on IP address
+  - **Per-User Limits**: Separate daily limits for authenticated users
+  - **Concurrent Generation Lock**: Redis locks prevent multiple simultaneous analysis generations per user/IP
+  - **Fail-Safe Design**: Graceful degradation if Redis unavailable
 - **Input Validation** and sanitization
 - **CORS Protection** with allowed origins
 - **Security Headers** via Helmet
@@ -205,6 +217,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - ✅ **Server-Side Rendering** - Fast initial page loads
 - ✅ **Code Splitting** - Optimized bundle sizes
 - ✅ **Image Optimization** - Next.js Image component
+
+**Advanced Rate Limiting & Resource Management:**
+- ✅ **Redis-based Rate Limiting** - IP and user-based daily limits for AI analysis generation
+- ✅ **Smart IP Detection** - Handles reverse proxies, load balancers, and various network configurations
+- ✅ **Distributed Locking** - Redis locks prevent concurrent analysis generation across multiple server instances
+- ✅ **Cost Control** - Limits prevent excessive OpenAI API usage while maintaining good user experience
+- ✅ **Automatic Limit Reset** - Daily limits automatically reset via Redis TTL
 
 **Developer Experience:**
 - ✅ **Clean Code Structure** - Well-organized App Router architecture
