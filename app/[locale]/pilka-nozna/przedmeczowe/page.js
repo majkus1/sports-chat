@@ -136,22 +136,10 @@ export default function PrzedmeczowePage() {
   const fetchPredictions = async (id) => {
     try {
       const response = await axios.post('/api/football/fetchPredictions', { fixtureId: id });
-      return response.data.prediction;
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Błąd pobierania predykcji:', error);
-      }
-      return null;
-    }
-  };
-
-  const fetchTeamStatistics = async (teamId, leagueId) => {
-    try {
-      const response = await axios.post('/api/football/fetchTeamStatistics', { teamId, leagueId });
       return response.data;
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('Error fetching team statistics:', error);
+        console.error('Błąd pobierania predykcji:', error);
       }
       return null;
     }
@@ -166,25 +154,39 @@ export default function PrzedmeczowePage() {
       const fixture = fixtures.find((f) => f.fixture.id === id);
       if (fixture) {
         try {
-          const homeStats = await fetchTeamStatistics(fixture.teams.home.id, fixture.league.id);
-          const awayStats = await fetchTeamStatistics(fixture.teams.away.id, fixture.league.id);
-          const prediction = await fetchPredictions(id);
-
-          setTeamStats((prev) => ({
-            ...prev,
-            [id]: { homeStats, awayStats, prediction },
-          }));
+          const predictionsData = await fetchPredictions(id);
+          
+          if (predictionsData) {
+            setTeamStats((prev) => ({
+              ...prev,
+              [id]: {
+                homeStats: predictionsData.homeStats,
+                awayStats: predictionsData.awayStats,
+                prediction: predictionsData.prediction,
+                comparison: predictionsData.comparison,
+                h2h: predictionsData.h2h,
+              },
+            }));
+          }
         } catch (error) {
           if (process.env.NODE_ENV === 'development') {
-            console.error('Error fetching team statistics:', error);
+            console.error('Error fetching predictions:', error);
           }
         }
       }
     }
   };
 
-  // Filter fixtures by search term (works on all fixtures, not just current page)
+  // Filter fixtures by search term and exclude matches that have already started
   const filteredFixtures = fixtures.filter((fixture) => {
+    // Exclude matches that have already started (match time is in the past)
+    const matchDate = new Date(fixture.fixture.date);
+    const now = new Date();
+    if (matchDate <= now) {
+      return false; // Match has already started or finished
+    }
+    
+    // Filter by search term
     const leagueName = fixture.league.name.toLowerCase();
     const homeTeam = fixture.teams.home.name.toLowerCase();
     const awayTeam = fixture.teams.away.name.toLowerCase();
@@ -489,6 +491,12 @@ export default function PrzedmeczowePage() {
                         isAnalysisEnabled={true}
                         isLive={false}
                         prediction={teamStats[fixture.fixture.id]?.prediction || 'Brak przewidywań'}
+                        predictionPercent={teamStats[fixture.fixture.id]?.predictionPercent || null}
+                        predictionWinner={teamStats[fixture.fixture.id]?.predictionWinner || null}
+                        predictionGoals={teamStats[fixture.fixture.id]?.predictionGoals || null}
+                        winOrDraw={teamStats[fixture.fixture.id]?.winOrDraw || null}
+                        comparison={teamStats[fixture.fixture.id]?.comparison || null}
+                        h2h={teamStats[fixture.fixture.id]?.h2h || []}
                       />
                     </div>
                   )}

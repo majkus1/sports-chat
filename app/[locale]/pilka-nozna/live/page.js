@@ -72,13 +72,13 @@ export default function LivePage() {
     loadFixtures();
   }, []);
 
-  const fetchTeamStatistics = async (teamId, leagueId) => {
+  const fetchPredictions = async (id) => {
     try {
-      const response = await axios.post('/api/football/fetchTeamStatistics', { teamId, leagueId });
+      const response = await axios.post('/api/football/fetchPredictions', { fixtureId: id });
       return response.data;
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('Error fetching team statistics:', error);
+        console.error('Błąd pobierania predykcji:', error);
       }
       return null;
     }
@@ -94,16 +94,23 @@ export default function LivePage() {
 
       if (fixture) {
         try {
-          const homeStats = await fetchTeamStatistics(fixture.teams.home.id, fixture.league.id);
-          const awayStats = await fetchTeamStatistics(fixture.teams.away.id, fixture.league.id);
-
-          setTeamStats((prevStats) => ({
-            ...prevStats,
-            [id]: { homeStats, awayStats },
-          }));
+          const predictionsData = await fetchPredictions(id);
+          
+          if (predictionsData) {
+            setTeamStats((prevStats) => ({
+              ...prevStats,
+              [id]: {
+                homeStats: predictionsData.homeStats,
+                awayStats: predictionsData.awayStats,
+                prediction: predictionsData.prediction,
+                comparison: predictionsData.comparison,
+                h2h: predictionsData.h2h,
+              },
+            }));
+          }
         } catch (error) {
           if (process.env.NODE_ENV === 'development') {
-            console.error('Error fetching team statistics:', error);
+            console.error('Error fetching predictions:', error);
           }
         }
       }
@@ -328,6 +335,13 @@ export default function LivePage() {
                           }}
                           isAnalysisEnabled={true}
                           isLive={true}
+                          prediction={teamStats[fixture.fixture.id]?.prediction || null}
+                          predictionPercent={teamStats[fixture.fixture.id]?.predictionPercent || null}
+                          predictionWinner={teamStats[fixture.fixture.id]?.predictionWinner || null}
+                          predictionGoals={teamStats[fixture.fixture.id]?.predictionGoals || null}
+                          winOrDraw={teamStats[fixture.fixture.id]?.winOrDraw || null}
+                          comparison={teamStats[fixture.fixture.id]?.comparison || null}
+                          h2h={teamStats[fixture.fixture.id]?.h2h || []}
                         />
                       </div>
                     )}

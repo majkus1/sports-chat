@@ -11,11 +11,17 @@ const ChatComponent = ({
 	homeTeam,
 	awayTeam,
 	prediction,
+	predictionPercent,
+	predictionWinner,
+	predictionGoals,
+	winOrDraw,
 	homeStats,
 	awayStats,
 	isAnalysisEnabled,
 	isLive,
 	currentGoals,
+	comparison,
+	h2h,
 }) => {
 	const [messages, setMessages] = useState([])
 	const [currentMessage, setCurrentMessage] = useState('')
@@ -99,14 +105,23 @@ const ChatComponent = ({
 					const controller = new AbortController();
 					const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds timeout
 
+					// Extract fixture ID from chatId (format: "Liga-{id}")
+					const fixtureId = chatId.startsWith('Liga-') ? chatId.replace('Liga-', '') : chatId;
+					
 					const requestBody = {
-						fixtureId: chatId,
+						fixtureId: fixtureId,
 						homeTeam,
 						awayTeam,
 						isLive,
 						currentGoals,
 						language: locale === 'pl' ? 'pl' : 'en',
 						prediction,
+						predictionPercent: predictionPercent || null,
+						predictionWinner: predictionWinner || null,
+						predictionGoals: predictionGoals || null,
+						winOrDraw: winOrDraw || null,
+						comparison: comparison || null,
+						h2h: h2h || [],
 						homeStats: {
 							playedTotal: homeStats?.playedTotal || 0,
 							form: homeStats?.form || 'N/A',
@@ -222,6 +237,31 @@ const ChatComponent = ({
 						if (process.env.NODE_ENV === 'development') {
 							console.error('API error:', response.status, errorData);
 						}
+						
+						// Handle specific error cases
+						if (errorData.error === 'limit_exceeded') {
+							if (errorData.isLoggedIn) {
+								setAnalysis({ 
+									text: errorData.message || 'Osiągnąłeś dzienny limit 3 analiz. Wróć jutro lub wkrótce wykup dostęp do nieskończonej liczby analiz.', 
+									pred: '' 
+								});
+							} else {
+								setAnalysis({ 
+									text: errorData.message || 'Osiągnąłeś dzienny limit 3 analiz. Zaloguj się lub zarejestruj, aby wygenerować więcej analiz.', 
+									pred: '' 
+								});
+							}
+							return;
+						}
+						
+						if (errorData.error === 'vpn_blocked') {
+							setAnalysis({ 
+								text: errorData.message || 'VPN nie jest dozwolony. Wyłącz VPN i spróbuj ponownie.', 
+								pred: '' 
+							});
+							return;
+						}
+						
 						setAnalysis({ text: t('analysis_unavailable'), pred: '' });
 						return;
 					}
