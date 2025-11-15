@@ -24,6 +24,7 @@
 		"ai": "Generating a detailed text analysis of the match using AI... Please wait a moment.",
 		"usersea": "Look for user...",
 		"analysis_unavailable": "The analysis is currently unavailable.",
+		"generate_analysis": "Generate match analysis by AI",
 		"login_success": "Successfully logged in",
 		"registernow": "Sign up",
 		"or": "Or",

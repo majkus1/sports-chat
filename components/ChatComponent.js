@@ -1,6 +1,7 @@
 import { useState, useEffect, useContext, useRef, useCallback } from 'react'
 import { UserContext } from '../context/UserContext'
 import { useSocket } from '../context/SocketContext'
+import { useAnalysis } from '../context/AnalysisContext'
 import Modal from './Modal'
 import PrivateChatComponent from './PrivateChatComponent'
 import { GiPlayButton } from 'react-icons/gi'
@@ -31,10 +32,14 @@ const ChatComponent = ({
 	const locale = useLocale()
 	const t = useTranslations('common')
 	const [analysis, setAnalysis] = useState({ text: '', pred: '' })
+	const [showGenerateButton, setShowGenerateButton] = useState(false)
+	const [limitExceeded, setLimitExceeded] = useState(false)
+	const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false)
 	const analysisRequestedRef = useRef(false) // Prevent multiple simultaneous requests
 
 	const { user, isAuthed } = useContext(UserContext)
 	const { socket, isConnected, connectionError } = useSocket()
+	const { isGenerating, setIsGenerating } = useAnalysis()
 	const username = user?.username
 
 	const fetchWithRefresh = useCallback(async (url, opts = {}) => {
@@ -47,9 +52,124 @@ const ChatComponent = ({
 		return fetch(url, { credentials: 'include', ...opts })
 	}, [])
 
+	// Check if analysis exists in database (only for pre-match)
 	useEffect(() => {
-		setAnalysis({ text: t('ai'), pred: '' })
-	}, [t])
+		if (!isAnalysisEnabled || !homeStats?.playedTotal || !awayStats?.playedTotal) {
+			return
+		}
+
+		const checkExistingAnalysis = async () => {
+			try {
+				const fixtureId = chatId.startsWith('Liga-') ? chatId.replace('Liga-', '') : chatId
+				
+				// For live matches, always check limit (don't check database)
+				if (isLive) {
+					const response = await fetch('/api/football/checkAnalysis', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						credentials: 'include',
+						body: JSON.stringify({
+							fixtureId,
+							language: locale === 'pl' ? 'pl' : 'en',
+							isLive: true, // Explicitly mark as live match to skip database check
+						}),
+					})
+					
+					const data = await response.json()
+					if (data.canGenerate) {
+						// User can generate - show button
+						setShowGenerateButton(true)
+						setLimitExceeded(false)
+					} else {
+						// User has reached limit - hide button and show message
+						setShowGenerateButton(false)
+						setLimitExceeded(true)
+						if (data.isLoggedIn) {
+							setAnalysis({ 
+								text: locale === 'pl' 
+									? 'Osiągnąłeś dzienny limit 3 analiz. Wróć jutro lub wkrótce wykup dostęp do nieskończonej liczby analiz.'
+									: 'You have reached the daily limit of 3 analyses. Come back tomorrow or purchase unlimited access soon.',
+								pred: '' 
+							})
+						} else {
+							setAnalysis({ 
+								text: locale === 'pl'
+									? 'Osiągnąłeś dzienny limit 3 analiz. Zaloguj się lub zarejestruj, aby wygenerować więcej analiz.'
+									: 'You have reached the daily limit of 3 analyses. Log in or register to generate more analyses.',
+								pred: '' 
+							})
+						}
+					}
+					return
+				}
+
+				// For pre-match, check database first, then limit
+				const response = await fetch('/api/football/checkAnalysis', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'include',
+					body: JSON.stringify({
+						fixtureId,
+						language: locale === 'pl' ? 'pl' : 'en',
+						isLive: false, // Explicitly mark as pre-match to check database
+					}),
+				})
+
+				const data = await response.json()
+				if (data.exists && data.analysis) {
+					// Analysis exists in database - show it
+					const { text, prediction: pred } = parseAnalysis(data.analysis)
+					setAnalysis({ text: text || '', pred })
+					setShowGenerateButton(false)
+					setLimitExceeded(false)
+				} else {
+					// Analysis doesn't exist - check if user can generate
+					if (data.canGenerate) {
+						// User can generate - show button
+						setShowGenerateButton(true)
+						setLimitExceeded(false)
+					} else {
+						// User has reached limit - hide button and show message
+						setShowGenerateButton(false)
+						setLimitExceeded(true)
+						if (data.isLoggedIn) {
+							setAnalysis({ 
+								text: locale === 'pl' 
+									? 'Osiągnąłeś dzienny limit 3 analiz. Wróć jutro lub wkrótce wykup dostęp do nieskończonej liczby analiz.'
+									: 'You have reached the daily limit of 3 analyses. Come back tomorrow or purchase unlimited access soon.',
+								pred: '' 
+							})
+						} else {
+							setAnalysis({ 
+								text: locale === 'pl'
+									? 'Osiągnąłeś dzienny limit 3 analiz. Zaloguj się lub zarejestruj, aby wygenerować więcej analiz.'
+									: 'You have reached the daily limit of 3 analyses. Log in or register to generate more analyses.',
+								pred: '' 
+							})
+						}
+					}
+				}
+			} catch (error) {
+				if (process.env.NODE_ENV === 'development') {
+					console.error('Error checking analysis:', error)
+				}
+				// On error, allow generation (fail open)
+				setShowGenerateButton(true)
+				setLimitExceeded(false)
+			}
+		}
+
+		checkExistingAnalysis()
+		
+		// Reset states when chatId changes
+		return () => {
+			setAnalysis({ text: '', pred: '' })
+			setShowGenerateButton(false)
+			setLimitExceeded(false)
+			setIsLoadingAnalysis(false)
+			analysisRequestedRef.current = false
+		}
+	}, [isAnalysisEnabled, homeStats, awayStats, isLive, chatId, locale])
 
 	useEffect(() => {
 		if (messagesContainerRef.current) {
@@ -92,28 +212,32 @@ const ChatComponent = ({
 		}
 	}, [chatId, socket, isConnected])
 
-	useEffect(() => {
+	const handleGenerateAnalysis = async () => {
 		if (
-			isAnalysisEnabled &&
-			homeStats?.playedTotal !== undefined &&
-			awayStats?.playedTotal !== undefined &&
-			homeStats?.form !== undefined &&
-			awayStats?.form !== undefined &&
-			!analysisRequestedRef.current // Prevent multiple simultaneous requests
+			!isAnalysisEnabled ||
+			!homeStats?.playedTotal ||
+			!awayStats?.playedTotal ||
+			analysisRequestedRef.current ||
+			isGenerating
 		) {
-			// Show loading message when starting to fetch (including retries)
-			setAnalysis({ text: t('ai'), pred: '' });
-			analysisRequestedRef.current = true; // Mark as requested
-			const fetchMatchAnalysis = async () => {
-				try {
-					// Create AbortController for timeout
-					const controller = new AbortController();
-					const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds timeout
+			return
+		}
 
-					// Extract fixture ID from chatId (format: "Liga-{id}")
-					const fixtureId = chatId.startsWith('Liga-') ? chatId.replace('Liga-', '') : chatId;
-					
-					const requestBody = {
+		setIsLoadingAnalysis(true)
+		setAnalysis({ text: t('ai'), pred: '' })
+		setShowGenerateButton(false)
+		analysisRequestedRef.current = true
+		setIsGenerating(true)
+
+		try {
+			// Create AbortController for timeout
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds timeout
+
+			// Extract fixture ID from chatId (format: "Liga-{id}")
+			const fixtureId = chatId.startsWith('Liga-') ? chatId.replace('Liga-', '') : chatId;
+			
+			const requestBody = {
 						fixtureId: fixtureId,
 						homeTeam,
 						awayTeam,
@@ -130,6 +254,19 @@ const ChatComponent = ({
 						homeStats: {
 							playedTotal: homeStats?.playedTotal || 0,
 							form: homeStats?.form || 'N/A',
+							last5Form: homeStats?.last5Form || 'N/A',
+							last5Att: homeStats?.last5Att || 'N/A',
+							last5Def: homeStats?.last5Def || 'N/A',
+							last5GoalsFor: homeStats?.last5GoalsFor || 0,
+							last5GoalsAgainst: homeStats?.last5GoalsAgainst || 0,
+							last5GoalsForAvg: homeStats?.last5GoalsForAvg || '0',
+							last5GoalsAgainstAvg: homeStats?.last5GoalsAgainstAvg || '0',
+							goalsForAvgTotal: homeStats?.goalsForAvgTotal || '0',
+							goalsForAvgHome: homeStats?.goalsForAvgHome || '0',
+							goalsForAvgAway: homeStats?.goalsForAvgAway || '0',
+							goalsAgainstAvgTotal: homeStats?.goalsAgainstAvgTotal || '0',
+							goalsAgainstAvgHome: homeStats?.goalsAgainstAvgHome || '0',
+							goalsAgainstAvgAway: homeStats?.goalsAgainstAvgAway || '0',
 							goalsOver05: homeStats?.goalsOver05 || 0,
 							goalsUnder05: homeStats?.goalsUnder05 || 0,
 							goalsOver15: homeStats?.goalsOver15 || 0,
@@ -174,10 +311,32 @@ const ChatComponent = ({
 							failedtoscoretotal: homeStats?.failedtoscoretotal || 0,
 							failedtoscorehome: homeStats?.failedtoscorehome || 0,
 							failedtoscoreaway: homeStats?.failedtoscoreaway || 0,
+							biggestWin: homeStats?.biggestWin || null,
+							biggestLoss: homeStats?.biggestLoss || null,
+							biggestStreakWins: homeStats?.biggestStreakWins || 0,
+							biggestStreakDraws: homeStats?.biggestStreakDraws || 0,
+							biggestStreakLoses: homeStats?.biggestStreakLoses || 0,
+							penaltyScored: homeStats?.penaltyScored || 0,
+							penaltyMissed: homeStats?.penaltyMissed || 0,
+							penaltyTotal: homeStats?.penaltyTotal || 0,
+							mostUsedFormation: homeStats?.mostUsedFormation || 'N/A',
 						},
 						awayStats: {
 							playedTotal: awayStats?.playedTotal || 0,
 							form: awayStats?.form || 'N/A',
+							last5Form: awayStats?.last5Form || 'N/A',
+							last5Att: awayStats?.last5Att || 'N/A',
+							last5Def: awayStats?.last5Def || 'N/A',
+							last5GoalsFor: awayStats?.last5GoalsFor || 0,
+							last5GoalsAgainst: awayStats?.last5GoalsAgainst || 0,
+							last5GoalsForAvg: awayStats?.last5GoalsForAvg || '0',
+							last5GoalsAgainstAvg: awayStats?.last5GoalsAgainstAvg || '0',
+							goalsForAvgTotal: awayStats?.goalsForAvgTotal || '0',
+							goalsForAvgHome: awayStats?.goalsForAvgHome || '0',
+							goalsForAvgAway: awayStats?.goalsForAvgAway || '0',
+							goalsAgainstAvgTotal: awayStats?.goalsAgainstAvgTotal || '0',
+							goalsAgainstAvgHome: awayStats?.goalsAgainstAvgHome || '0',
+							goalsAgainstAvgAway: awayStats?.goalsAgainstAvgAway || '0',
 							goalsOver05: awayStats?.goalsOver05 || 0,
 							goalsUnder05: awayStats?.goalsUnder05 || 0,
 							goalsOver15: awayStats?.goalsOver15 || 0,
@@ -222,6 +381,15 @@ const ChatComponent = ({
 							failedtoscoretotal: awayStats?.failedtoscoretotal || 0,
 							failedtoscorehome: awayStats?.failedtoscorehome || 0,
 							failedtoscoreaway: awayStats?.failedtoscoreaway || 0,
+							biggestWin: awayStats?.biggestWin || null,
+							biggestLoss: awayStats?.biggestLoss || null,
+							biggestStreakWins: awayStats?.biggestStreakWins || 0,
+							biggestStreakDraws: awayStats?.biggestStreakDraws || 0,
+							biggestStreakLoses: awayStats?.biggestStreakLoses || 0,
+							penaltyScored: awayStats?.penaltyScored || 0,
+							penaltyMissed: awayStats?.penaltyMissed || 0,
+							penaltyTotal: awayStats?.penaltyTotal || 0,
+							mostUsedFormation: awayStats?.mostUsedFormation || 'N/A',
 						},
 					};
 					
@@ -249,11 +417,16 @@ const ChatComponent = ({
 								text: errorData.message || (locale === 'pl' ? 'Analiza jest już generowana w innym meczu. Spróbuj ponownie po zakończeniu generowania.' : 'Analysis is already being generated for another match. Please try again after the current generation is complete.'), 
 								pred: '' 
 							});
-							// Don't reset analysisRequestedRef - user needs to close and reopen chat to retry
+							setShowGenerateButton(true)
+							setIsGenerating(false)
+							setIsLoadingAnalysis(false)
+							analysisRequestedRef.current = false
 							return;
 						}
 						
 						if (errorData.error === 'limit_exceeded') {
+							setLimitExceeded(true)
+							setShowGenerateButton(false)
 							if (errorData.isLoggedIn) {
 								setAnalysis({ 
 									text: errorData.message || 'Osiągnąłeś dzienny limit 3 analiz. Wróć jutro lub wkrótce wykup dostęp do nieskończonej liczby analiz.', 
@@ -265,6 +438,9 @@ const ChatComponent = ({
 									pred: '' 
 								});
 							}
+							setIsGenerating(false)
+							setIsLoadingAnalysis(false)
+							analysisRequestedRef.current = false
 							return;
 						}
 						
@@ -284,42 +460,27 @@ const ChatComponent = ({
 					
 					const { text, prediction: pred } = parseAnalysis(data.analysis);
 					setAnalysis({ text: text || t('analysis_unavailable'), pred });
-				} catch (error) {
-					// Reset flag on error so user can retry
-					analysisRequestedRef.current = false;
-					if (process.env.NODE_ENV === 'development') {
-						if (error.name === 'AbortError') {
-							console.error('Request timeout - analiza trwa zbyt długo');
-						} else if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
-							console.error('Network error - sprawdź połączenie lub limit OpenAI:', error);
-						} else {
-							console.error('Błąd podczas pobierania analizy:', error);
-						}
-					}
-					setAnalysis({ text: t('analysis_unavailable'), pred: '' });
+					setIsGenerating(false)
+					setIsLoadingAnalysis(false)
+					analysisRequestedRef.current = false
+		} catch (error) {
+			// Reset flag on error so user can retry
+			analysisRequestedRef.current = false
+			setIsGenerating(false)
+			setIsLoadingAnalysis(false)
+			setShowGenerateButton(true)
+			if (process.env.NODE_ENV === 'development') {
+				if (error.name === 'AbortError') {
+					console.error('Request timeout - analiza trwa zbyt długo');
+				} else if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+					console.error('Network error - sprawdź połączenie lub limit OpenAI:', error);
+				} else {
+					console.error('Błąd podczas pobierania analizy:', error);
 				}
 			}
-			fetchMatchAnalysis()
+			setAnalysis({ text: t('analysis_unavailable'), pred: '' });
 		}
-		
-		// Reset flag and clear analysis message when chatId changes (user opens/closes different match)
-		return () => {
-			analysisRequestedRef.current = false;
-			setAnalysis({ text: '', pred: '' }); // Clear analysis message when chat is closed/changed
-		}
-	}, [
-		isAnalysisEnabled,
-		prediction,
-		homeTeam,
-		awayTeam,
-		homeStats,
-		awayStats,
-		isLive,
-		currentGoals,
-		locale,
-		t,
-		chatId,
-	])
+	}
 
 	const handleSendMessage = async () => {
 		if (!isAuthed) {
@@ -398,21 +559,57 @@ const ChatComponent = ({
 			<div className="messages-container" ref={messagesContainerRef}>
 				{isAnalysisEnabled && (
 					<div className="match-analysis">
-						{analysis.text === t('ai') ? (
+						{isLoadingAnalysis || analysis.text === t('ai') ? (
 							<>
 								<div className="simple-spinner"></div>
 								<p>{t('ai')}</p>
 							</>
-						) : (
+						) : analysis.text ? (
 							<>
 								<p style={{ whiteSpace: 'pre-line' }}>{analysis.text}</p>
 								{analysis.pred && (
 									<p style={{ marginTop: '10px' }}>
-										<strong>Przewidywanie:</strong> {analysis.pred}
+										<strong>{locale === 'pl' ? 'Przewidywanie:' : 'Prediction:'}</strong> {analysis.pred}
 									</p>
 								)}
 							</>
-						)}
+						) : showGenerateButton && !limitExceeded ? (
+							<button
+								onClick={handleGenerateAnalysis}
+								disabled={isGenerating}
+								style={{
+									padding: '12px 24px',
+									background: isGenerating ? '#ccc' : 'green',
+									color: '#fff',
+									border: 'none',
+									borderRadius: '6px',
+									cursor: isGenerating ? 'not-allowed' : 'pointer',
+									fontSize: '16px',
+									fontWeight: '600',
+									fontFamily: 'Roboto Condensed, sans-serif',
+									textTransform: 'uppercase',
+									transition: 'all 0.2s ease',
+									pointerEvents: isGenerating ? 'none' : 'auto',
+									opacity: isGenerating ? 0.6 : 1,
+									width: '100%',
+									maxWidth: '400px',
+									margin: '0 auto',
+									display: 'block',
+								}}
+								onMouseEnter={(e) => {
+									if (!isGenerating) {
+										e.currentTarget.style.background = '#1a4a56';
+									}
+								}}
+								onMouseLeave={(e) => {
+									if (!isGenerating) {
+										e.currentTarget.style.background = '#173b45';
+									}
+								}}
+							>
+								{t('generate_analysis')}
+							</button>
+						) : null}
 					</div>
 				)}
 

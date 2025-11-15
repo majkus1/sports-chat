@@ -123,7 +123,7 @@ export default function PrzedmeczowePage() {
         setFixtures(response.data.response || []);
       } catch (e) {
         if (process.env.NODE_ENV === 'development') {
-          console.error('Fixtures load error:', e);
+        console.error('Fixtures load error:', e);
         }
         setFixtures([]);
       } finally {
@@ -155,10 +155,10 @@ export default function PrzedmeczowePage() {
       if (fixture) {
         try {
           const predictionsData = await fetchPredictions(id);
-          
+
           if (predictionsData) {
-            setTeamStats((prev) => ({
-              ...prev,
+          setTeamStats((prev) => ({
+            ...prev,
               [id]: {
                 homeStats: predictionsData.homeStats,
                 awayStats: predictionsData.awayStats,
@@ -166,7 +166,7 @@ export default function PrzedmeczowePage() {
                 comparison: predictionsData.comparison,
                 h2h: predictionsData.h2h,
               },
-            }));
+          }));
           }
         } catch (error) {
           if (process.env.NODE_ENV === 'development') {
@@ -404,7 +404,7 @@ export default function PrzedmeczowePage() {
                             setIsH2HModalOpen(true);
                           } else {
                             if (process.env.NODE_ENV === 'development') {
-                              console.error('H2H: Missing team IDs', { homeId, awayId, fixture });
+                            console.error('H2H: Missing team IDs', { homeId, awayId, fixture });
                             }
                           }
                         }}
@@ -450,7 +450,7 @@ export default function PrzedmeczowePage() {
                             setIsTeamStatsModalOpen(true);
                           } else {
                             if (process.env.NODE_ENV === 'development') {
-                              console.error('Team Stats: Missing team IDs', { homeId, awayId, fixture });
+                            console.error('Team Stats: Missing team IDs', { homeId, awayId, fixture });
                             }
                           }
                         }}

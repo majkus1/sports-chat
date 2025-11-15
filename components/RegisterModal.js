@@ -47,7 +47,7 @@ export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 			}
 		} catch (err) {
 			if (process.env.NODE_ENV === 'development') {
-				console.error('Registration error:', err)
+			console.error('Registration error:', err)
 			}
 			showAlert(t('server_error'), 'error')
 		} finally {

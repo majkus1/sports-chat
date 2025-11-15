@@ -36,7 +36,7 @@ export default function UserPanel() {
       if (data.success) setSearchResults(data.users || []);
     } catch (e) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('Error during user search:', e);
+      console.error('Error during user search:', e);
       }
     }
   }, [fetchWithRefresh]);
@@ -57,7 +57,7 @@ export default function UserPanel() {
       setChatHistory(Array.isArray(data) ? data : []);
     } catch (e) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('Błąd podczas pobierania historii czatów:', e);
+      console.error('Błąd podczas pobierania historii czatów:', e);
       }
     }
   }, [username, fetchWithRefresh]);

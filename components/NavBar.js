@@ -53,12 +53,12 @@ export default function NavBar({ onLanguageChange }) {
         setMobileMenuOpen(false);
       } else {
         if (process.env.NODE_ENV === 'development') {
-          console.error('Nie udało się wylogować');
+        console.error('Nie udało się wylogować');
         }
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('Błąd podczas wylogowywania:', error);
+      console.error('Błąd podczas wylogowywania:', error);
       }
     }
   };

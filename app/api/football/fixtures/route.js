@@ -26,7 +26,7 @@ export async function GET(request) {
   if (dateParam) {
     formattedDate = dateParam;
   } else {
-    const today = new Date();
+  const today = new Date();
     formattedDate = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
   }
 
@@ -44,15 +44,15 @@ export async function GET(request) {
 
     // Cache miss - fetch from API
     console.log('[Fixtures] Cache miss, fetching from API for date:', formattedDate);
-    const options = {
-      method: 'GET',
-      url: 'https://api-football-v1.p.rapidapi.com/v3/fixtures',
-      params: { date: formattedDate },
-      headers: {
-        'x-rapidapi-key': process.env.RAPIDAPI_KEY,
-        'x-rapidapi-host': 'api-football-v1.p.rapidapi.com',
-      },
-    };
+  const options = {
+    method: 'GET',
+    url: 'https://api-football-v1.p.rapidapi.com/v3/fixtures',
+    params: { date: formattedDate },
+    headers: {
+      'x-rapidapi-key': process.env.RAPIDAPI_KEY,
+      'x-rapidapi-host': 'api-football-v1.p.rapidapi.com',
+    },
+  };
 
     const response = await axios.request(options);
     const data = response.data;
@@ -65,7 +65,7 @@ export async function GET(request) {
     return Response.json(data, { status: 200 });
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error fetching fixtures:', error);
+    console.error('Error fetching fixtures:', error);
     }
     return Response.json({ message: 'Error fetching fixtures' }, { status: 500 });
   }

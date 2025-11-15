@@ -37,7 +37,7 @@ export function UserProvider({ children }) {
       return false;
     } catch (e) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('refreshUser error:', e);
+      console.error('refreshUser error:', e);
       }
       setUser(null);
       setIsAuthed(false);

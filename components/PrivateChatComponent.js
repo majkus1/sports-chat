@@ -35,7 +35,7 @@ const PrivateChatComponent = ({ receiver }) => {
 		const chatId = [sender, receiver].sort().join('_')
 
 		if (isConnected) {
-			socket.emit('join_chat', chatId)
+		socket.emit('join_chat', chatId)
 		}
 
 		const fetchMessages = async () => {
@@ -46,13 +46,13 @@ const PrivateChatComponent = ({ receiver }) => {
 					setMessages(data)
 				} else {
 					if (process.env.NODE_ENV === 'development') {
-						console.error('Oczekiwano tablicy wiadomości, ale otrzymano:', data)
+					console.error('Oczekiwano tablicy wiadomości, ale otrzymano:', data)
 					}
 					setMessages([])
 				}
 			} catch (error) {
 				if (process.env.NODE_ENV === 'development') {
-					console.error('Błąd podczas pobierania wiadomości:', error)
+				console.error('Błąd podczas pobierania wiadomości:', error)
 				}
 			}
 		}
@@ -61,7 +61,7 @@ const PrivateChatComponent = ({ receiver }) => {
 
 		const handleReceivePrivateMessage = (message) => {
 			if (process.env.NODE_ENV === 'development') {
-				console.log('Otrzymano prywatną wiadomość:', message)
+			console.log('Otrzymano prywatną wiadomość:', message)
 			}
 			if (message.chatId === chatId) {
 				setMessages(prevMessages => [...prevMessages, message])
@@ -78,7 +78,7 @@ const PrivateChatComponent = ({ receiver }) => {
 	const handleSendMessage = async () => {
 		if (!receiver) {
 			if (process.env.NODE_ENV === 'development') {
-				console.error('Receiver is not defined!')
+			console.error('Receiver is not defined!')
 			}
 			return
 		}
@@ -98,22 +98,22 @@ const PrivateChatComponent = ({ receiver }) => {
 				const data = await response.json()
 				if (data.success) {
 					if (socket && isConnected) {
-						const messageObject = {
-							username: sender,
-							content: currentMessage,
-							chatId,
-						}
-						socket.emit('send_private_message', messageObject)
+					const messageObject = {
+						username: sender,
+						content: currentMessage,
+						chatId,
+					}
+					socket.emit('send_private_message', messageObject)
 					}
 					setCurrentMessage('')
 				} else {
 					if (process.env.NODE_ENV === 'development') {
-						console.error(data.message)
+					console.error(data.message)
 					}
 				}
 			} catch (error) {
 				if (process.env.NODE_ENV === 'development') {
-					console.error('Błąd podczas wysyłania wiadomości:', error)
+				console.error('Błąd podczas wysyłania wiadomości:', error)
 				}
 			}
 		}

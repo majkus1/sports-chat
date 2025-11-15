@@ -24,6 +24,7 @@
 		"ai": "Generowanie szczegółowej analizy tekstowej meczu przez AI... Proszę chwilę poczekać",
 		"usersea": "Szukaj użytkownika...",
 		"analysis_unavailable": "Analiza jest obecnie niedostępna.",
+		"generate_analysis": "Wygeneruj analizę meczu przez AI",
 		"login_success": "Pomyślnie zalogowano",
 		"registernow": "Rejestracja",
 		"or": "Lub",

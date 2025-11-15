@@ -93,14 +93,14 @@ io.use((socket, next) => {
 
 io.on('connection', (socket) => {
   if (process.env.NODE_ENV === 'development') {
-    const who = socket.user?.id ? `user:${socket.user.id}` : 'anon';
-    console.log(`Socket connected: ${socket.id} (${who})`);
+  const who = socket.user?.id ? `user:${socket.user.id}` : 'anon';
+  console.log(`Socket connected: ${socket.id} (${who})`);
   }
 
   socket.on('join_chat', (chatId) => {
     if (typeof chatId !== 'string' || !ROOM_RE.test(chatId)) {
       if (process.env.NODE_ENV === 'development') {
-        console.warn('[join_chat] invalid chatId:', chatId);
+      console.warn('[join_chat] invalid chatId:', chatId);
       }
       return;
     }
@@ -115,7 +115,7 @@ io.on('connection', (socket) => {
 
     if (typeof chatId !== 'string' || !ROOM_RE.test(chatId)) {
       if (process.env.NODE_ENV === 'development') {
-        console.warn('[send_message] invalid chatId:', chatId);
+      console.warn('[send_message] invalid chatId:', chatId);
       }
       return;
     }
@@ -146,7 +146,7 @@ io.on('connection', (socket) => {
 
     if (typeof chatId !== 'string' || !ROOM_RE.test(chatId)) {
       if (process.env.NODE_ENV === 'development') {
-        console.warn('[send_private_message] invalid chatId:', chatId);
+      console.warn('[send_private_message] invalid chatId:', chatId);
       }
       return;
     }
@@ -177,6 +177,6 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   if (process.env.NODE_ENV === 'development') {
-    console.log(`Socket server listening on :${PORT}`);
+  console.log(`Socket server listening on :${PORT}`);
   }
 });
