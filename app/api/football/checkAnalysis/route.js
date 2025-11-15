@@ -95,11 +95,15 @@ export async function POST(request) {
     if (process.env.NODE_ENV === 'development') {
       console.error('Error checking analysis:', error);
     }
-    // On error, allow generation (fail open)
+    // On error, deny generation (fail closed for security)
     return Response.json({ 
       error: 'Failed to check analysis', 
       exists: false,
-      canGenerate: true 
+      canGenerate: false,
+      limitExceeded: true,
+      currentLimit: 999, // Set high to indicate error
+      maxLimit: 3,
+      isLoggedIn: false
     }, { status: 500 });
   }
 }

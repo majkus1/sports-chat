@@ -54,13 +54,28 @@ const ChatComponent = ({
 
 	// Check if analysis exists in database (only for pre-match)
 	useEffect(() => {
-		if (!isAnalysisEnabled || !homeStats?.playedTotal || !awayStats?.playedTotal) {
-			return
+		// Always check analysis if analysis is enabled
+		// This ensures limit checking happens immediately when chat opens
+		if (!isAnalysisEnabled) {
+			if (process.env.NODE_ENV === 'development') {
+				console.log('[ChatComponent] checkAnalysis skipped: isAnalysisEnabled is false');
+			}
+			return;
 		}
 
 		const checkExistingAnalysis = async () => {
 			try {
 				const fixtureId = chatId.startsWith('Liga-') ? chatId.replace('Liga-', '') : chatId
+				
+				if (process.env.NODE_ENV === 'development') {
+					console.log('[ChatComponent] Calling checkAnalysis', {
+						fixtureId,
+						isLive,
+						isAnalysisEnabled,
+						hasHomeStats: !!homeStats?.playedTotal,
+						hasAwayStats: !!awayStats?.playedTotal
+					});
+				}
 				
 				// For live matches, always check limit (don't check database)
 				if (isLive) {
@@ -151,11 +166,17 @@ const ChatComponent = ({
 				}
 			} catch (error) {
 				if (process.env.NODE_ENV === 'development') {
-					console.error('Error checking analysis:', error)
+					console.error('[ChatComponent] Error checking analysis:', error)
 				}
-				// On error, allow generation (fail open)
-				setShowGenerateButton(true)
-				setLimitExceeded(false)
+				// On error, hide button and show error message (fail closed for security)
+				setShowGenerateButton(false)
+				setLimitExceeded(true)
+				setAnalysis({ 
+					text: locale === 'pl'
+						? 'Błąd sprawdzania limitu. Spróbuj odświeżyć stronę.'
+						: 'Error checking limit. Please refresh the page.',
+					pred: '' 
+				})
 			}
 		}
 
@@ -170,6 +191,72 @@ const ChatComponent = ({
 			analysisRequestedRef.current = false
 		}
 	}, [isAnalysisEnabled, homeStats, awayStats, isLive, chatId, locale])
+	
+	// Additional effect to check analysis when stats become available (for pre-match)
+	// This ensures checkAnalysis is called even if stats load after component mount
+	useEffect(() => {
+		if (!isAnalysisEnabled || isLive) {
+			return;
+		}
+		
+		// Only trigger if stats just became available
+		if (homeStats?.playedTotal && awayStats?.playedTotal) {
+			if (process.env.NODE_ENV === 'development') {
+				console.log('[ChatComponent] Stats loaded, ensuring checkAnalysis was called');
+			}
+			// The main useEffect should handle this, but we can add a safety check here
+			// by checking if we already have analysis state
+			if (!analysis.text && !showGenerateButton && !limitExceeded) {
+				// Analysis state is empty - trigger check again
+				const fixtureId = chatId.startsWith('Liga-') ? chatId.replace('Liga-', '') : chatId;
+				fetch('/api/football/checkAnalysis', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'include',
+					body: JSON.stringify({
+						fixtureId,
+						language: locale === 'pl' ? 'pl' : 'en',
+						isLive: false,
+					}),
+				})
+				.then(res => res.json())
+				.then(data => {
+					if (data.exists && data.analysis) {
+						const { text, prediction: pred } = parseAnalysis(data.analysis);
+						setAnalysis({ text: text || '', pred });
+						setShowGenerateButton(false);
+						setLimitExceeded(false);
+					} else if (data.canGenerate) {
+						setShowGenerateButton(true);
+						setLimitExceeded(false);
+					} else {
+						setShowGenerateButton(false);
+						setLimitExceeded(true);
+						if (data.isLoggedIn) {
+							setAnalysis({ 
+								text: locale === 'pl' 
+									? 'Osiągnąłeś dzienny limit 3 analiz. Wróć jutro lub wkrótce wykup dostęp do nieskończonej liczby analiz.'
+									: 'You have reached the daily limit of 3 analyses. Come back tomorrow or purchase unlimited access soon.',
+								pred: '' 
+							});
+						} else {
+							setAnalysis({ 
+								text: locale === 'pl'
+									? 'Osiągnąłeś dzienny limit 3 analiz. Zaloguj się lub zarejestruj, aby wygenerować więcej analiz.'
+									: 'You have reached the daily limit of 3 analyses. Log in or register to generate more analyses.',
+								pred: '' 
+							});
+						}
+					}
+				})
+				.catch(error => {
+					if (process.env.NODE_ENV === 'development') {
+						console.error('[ChatComponent] Error in secondary checkAnalysis:', error);
+					}
+				});
+			}
+		}
+	}, [isAnalysisEnabled, isLive, homeStats?.playedTotal, awayStats?.playedTotal, chatId, locale, analysis.text, showGenerateButton, limitExceeded])
 
 	useEffect(() => {
 		if (messagesContainerRef.current) {
