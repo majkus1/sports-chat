@@ -1,7 +1,7 @@
 import { OpenAI } from 'openai';
 import connectToDb from '@/lib/db';
 import MatchAnalysis from '@/models/MatchAnalysis';
-import { getAnalysisLimit, incrementAnalysisLimit, checkVPN } from '@/lib/redis';
+import { getAnalysisLimit, incrementAnalysisLimit, acquireAnalysisLock, releaseAnalysisLock } from '@/lib/redis';
 import { getCookieRouteHandler, verifyJwt } from '@/lib/auth';
 
 export async function POST(request) {
@@ -14,11 +14,11 @@ export async function POST(request) {
   try {
     const body = await request.json();
     if (process.env.NODE_ENV === 'development') {
-      console.log('Request body received, fixtureId:', body?.fixtureId);
+      console.log('Request body received, fixtureId:', body?.fixtureId, 'isLive:', body?.isLive);
     }
     
     const {
-      fixtureId,
+      fixtureId: rawFixtureId,
       prediction,
       predictionPercent,
       predictionWinner,
@@ -35,62 +35,34 @@ export async function POST(request) {
       h2h,
     } = body || {};
 
+    // Ensure fixtureId is always a string for consistent lock keys
+    const fixtureId = String(rawFixtureId || '').trim();
+    if (!fixtureId) {
+      return Response.json({ error: 'Missing fixtureId in request body' }, { status: 400 });
+    }
+
     const headerLang = request.headers.get('x-lang') || request.headers.get('accept-language') || '';
     const detected = (bodyLang || String(headerLang)).toLowerCase();
     const lang2 = detected.startsWith('pl') ? 'pl' : detected.startsWith('en') ? 'en' : 'pl';
 
-    // Check if analysis already exists (for both live and pre-match)
-    await connectToDb();
-    const existingAnalysis = await MatchAnalysis.findOne({ fixtureId, language: lang2 });
-
-    if (existingAnalysis) {
-      // If analysis exists, return it without checking limits
-      return Response.json({ analysis: existingAnalysis.analysis }, { status: 200 });
-    }
-
-    // Get user IP address
+    // Get user IP address first (needed for lock identifier and rate limiting)
+    // Always use real IP address - this ensures limit is per IP, not per browser/cookie
+    // Priority: x-forwarded-for (first IP) > x-real-ip > x-client-ip
     const forwarded = request.headers.get('x-forwarded-for');
     const realIp = request.headers.get('x-real-ip');
     const clientIp = request.headers.get('x-client-ip');
     let ip = forwarded?.split(',')[0]?.trim() || realIp || clientIp || null;
     
-    // For localhost/development, use a combination of IP + session ID to make it consistent
-    // In production, this will use real IP (which is unique per user/network)
-    const isLocalhost = !ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('::ffff:127.0.0.1') || ip === 'unknown';
-    
-    if (isLocalhost) {
-      // In development, get or create a session ID from cookie
-      const cookieStore = await import('next/headers').then(m => m.cookies());
-      let sessionId = cookieStore.get('analysis_session_id')?.value;
-      
-      if (!sessionId) {
-        // Generate a new session ID
-        sessionId = Buffer.from(`${Date.now()}-${Math.random()}`).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 16);
-        // Set cookie (expires in 24 hours)
-        cookieStore.set('analysis_session_id', sessionId, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          maxAge: 24 * 60 * 60, // 24 hours
-          path: '/',
-        });
-      }
-      
-      ip = `dev-${sessionId}`;
+    // If IP is not available or is localhost, use a fixed identifier
+    // This ensures that in development, all localhost requests share the same limit
+    // In production, this should never happen as real IP should be available
+    if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('::ffff:127.0.0.1') || ip === 'unknown') {
+      ip = 'localhost'; // Fixed identifier for localhost/development
     }
-
-    // Check VPN (only if IP is not localhost/unknown)
-    if (!isLocalhost) {
-      const isVPN = await checkVPN(ip);
-      if (isVPN) {
-        return Response.json(
-          { 
-            error: 'vpn_blocked',
-            message: 'VPN nie jest dozwolony. Wyłącz VPN i spróbuj ponownie.'
-          },
-          { status: 403 }
-        );
-      }
+    
+    // Log IP for debugging (only in production to diagnose rate limiting issues)
+    if (process.env.NODE_ENV === 'production') {
+      console.log(`[IP Detection] Detected IP: ${ip}, forwarded: ${forwarded}, realIp: ${realIp}, clientIp: ${clientIp}`);
     }
 
     // Check if user is authenticated
@@ -109,39 +81,103 @@ export async function POST(request) {
       isAuthenticated = false;
     }
 
-    // Check analysis limit
-    const limitIdentifier = isAuthenticated ? userId : ip;
-    const currentLimit = await getAnalysisLimit(limitIdentifier, isAuthenticated);
-    const MAX_ANALYSES_PER_DAY = 3;
+    // Determine user identifier for lock (user ID if authenticated, IP if not)
+    const userIdentifier = isAuthenticated ? `user:${userId}` : `ip:${ip}`;
 
-    if (currentLimit >= MAX_ANALYSES_PER_DAY) {
-      // Limit exceeded
-      if (isAuthenticated) {
-        return Response.json(
-          {
-            error: 'limit_exceeded',
-            message: 'Osiągnąłeś dzienny limit 3 analiz. Wróć jutro lub wkrótce wykup dostęp do nieskończonej liczby analiz.',
-            limit: MAX_ANALYSES_PER_DAY,
-            used: currentLimit,
-            isLoggedIn: true
-          },
-          { status: 429 }
-        );
-      } else {
-        return Response.json(
-          {
-            error: 'limit_exceeded',
-            message: 'Osiągnąłeś dzienny limit 3 analiz. Zaloguj się lub zarejestruj, aby wygenerować więcej analiz.',
-            limit: MAX_ANALYSES_PER_DAY,
-            used: currentLimit,
-            isLoggedIn: false
-          },
-          { status: 429 }
-        );
+    // Acquire lock FIRST to prevent concurrent analysis generation for the same user/IP
+    // This lock is per user/IP, not per fixture - prevents user from generating multiple analyses simultaneously
+    // This must be done BEFORE checking the database to prevent race conditions
+    // Works for both live and pre-match matches
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Analysis Lock] Attempting to acquire lock for user/IP ${userIdentifier}, fixture ${fixtureId}, isLive: ${isLive}`);
+    }
+    
+    const lockAcquired = await acquireAnalysisLock(userIdentifier);
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Analysis Lock] Lock acquisition result for user/IP ${userIdentifier}: ${lockAcquired}`);
+    }
+    
+    if (!lockAcquired) {
+      // User is already generating another analysis (for any match)
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[Analysis Lock] Lock denied - user/IP ${userIdentifier} is already generating an analysis`);
       }
+      const messages = {
+        pl: 'Analiza jest już generowana w innym meczu. Spróbuj ponownie po zakończeniu generowania.',
+        en: 'Analysis is already being generated for another match. Please try again after the current generation is complete.'
+      };
+      return Response.json(
+        {
+          error: 'generation_in_progress',
+          message: messages[lang2] || messages.pl
+        },
+        { status: 429 }
+      );
     }
 
-    const openai = new OpenAI({
+    try {
+      // Check if analysis already exists FIRST (only for pre-match, not for live)
+      // If analysis exists in database, return it without checking limits
+      await connectToDb();
+      
+      // For live matches, always generate new analysis (don't use cached pre-match analysis)
+      if (!isLive) {
+        const existingAnalysis = await MatchAnalysis.findOne({ fixtureId, language: lang2 });
+        if (existingAnalysis) {
+          // If analysis exists for pre-match, return it without checking limits
+          // Release lock before returning
+          await releaseAnalysisLock(userIdentifier);
+          return Response.json({ analysis: existingAnalysis.analysis }, { status: 200 });
+        }
+      }
+
+      // Check analysis limit ONLY if analysis doesn't exist in database
+      // This applies to both live matches and pre-match matches without cached analysis
+      const limitIdentifier = isAuthenticated ? userId : ip;
+      const currentLimit = await getAnalysisLimit(limitIdentifier, isAuthenticated);
+      const MAX_ANALYSES_PER_DAY = 3;
+
+      if (currentLimit >= MAX_ANALYSES_PER_DAY) {
+        // Limit exceeded - release lock before returning
+        await releaseAnalysisLock(userIdentifier);
+        const limitMessages = {
+          pl: {
+            loggedIn: 'Osiągnąłeś dzienny limit 3 analiz. Wróć jutro lub wkrótce wykup dostęp do nieskończonej liczby analiz.',
+            notLoggedIn: 'Osiągnąłeś dzienny limit 3 analiz. Zaloguj się lub zarejestruj, aby wygenerować więcej analiz.'
+          },
+          en: {
+            loggedIn: 'You have reached the daily limit of 3 analyses. Come back tomorrow or purchase unlimited access soon.',
+            notLoggedIn: 'You have reached the daily limit of 3 analyses. Log in or register to generate more analyses.'
+          }
+        };
+        const messages = limitMessages[lang2] || limitMessages.pl;
+        if (isAuthenticated) {
+          return Response.json(
+            {
+              error: 'limit_exceeded',
+              message: messages.loggedIn,
+              limit: MAX_ANALYSES_PER_DAY,
+              used: currentLimit,
+              isLoggedIn: true
+            },
+            { status: 429 }
+          );
+        } else {
+          return Response.json(
+            {
+              error: 'limit_exceeded',
+              message: messages.notLoggedIn,
+              limit: MAX_ANALYSES_PER_DAY,
+              used: currentLimit,
+              isLoggedIn: false
+            },
+            { status: 429 }
+          );
+        }
+      }
+
+      const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
       maxRetries: 2,
     });
@@ -508,19 +544,30 @@ Proszę abyś na końcu zawsze podawał swoje przewidywanie na ten mecz i niech 
       throw new Error('AI did not generate analysis');
     }
 
-    // Save analysis to database (for both live and pre-match to avoid regenerating)
-    await MatchAnalysis.updateOne({ fixtureId, language: lang2 }, { $set: { analysis } }, { upsert: true });
-    
-    // Increment analysis limit counter after successful generation
-    await incrementAnalysisLimit(limitIdentifier, isAuthenticated);
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Resolved language:', lang2);
-      console.log('=== Analysis generated successfully ===');
-      console.log(`[Limit] Incremented for ${isAuthenticated ? 'user' : 'IP'}: ${limitIdentifier}`);
-    }
+      // Save analysis to database (only for pre-match, not for live)
+      // Live matches should always generate fresh analysis with current score
+      if (!isLive) {
+        await MatchAnalysis.updateOne({ fixtureId, language: lang2 }, { $set: { analysis } }, { upsert: true });
+      }
+      
+      // Increment analysis limit counter after successful generation
+      await incrementAnalysisLimit(limitIdentifier, isAuthenticated);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Resolved language:', lang2);
+        console.log('=== Analysis generated successfully ===');
+        console.log(`[Limit] Incremented for ${isAuthenticated ? 'user' : 'IP'}: ${limitIdentifier}`);
+      }
 
-    return Response.json({ analysis }, { status: 200 });
+      // Release lock AFTER everything is done, but BEFORE returning response
+      await releaseAnalysisLock(userIdentifier);
+      
+      return Response.json({ analysis }, { status: 200 });
+    } catch (innerError) {
+      // Release lock on any error during generation
+      await releaseAnalysisLock(userIdentifier);
+      throw innerError; // Re-throw to be caught by outer catch
+    }
   } catch (error) {
     // Check if error occurred before body parsing
     if (error instanceof SyntaxError && error.message.includes('JSON')) {

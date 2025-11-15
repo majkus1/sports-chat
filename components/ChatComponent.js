@@ -31,6 +31,7 @@ const ChatComponent = ({
 	const locale = useLocale()
 	const t = useTranslations('common')
 	const [analysis, setAnalysis] = useState({ text: '', pred: '' })
+	const analysisRequestedRef = useRef(false) // Prevent multiple simultaneous requests
 
 	const { user, isAuthed } = useContext(UserContext)
 	const { socket, isConnected, connectionError } = useSocket()
@@ -97,8 +98,10 @@ const ChatComponent = ({
 			homeStats?.playedTotal !== undefined &&
 			awayStats?.playedTotal !== undefined &&
 			homeStats?.form !== undefined &&
-			awayStats?.form !== undefined
+			awayStats?.form !== undefined &&
+			!analysisRequestedRef.current // Prevent multiple simultaneous requests
 		) {
+			analysisRequestedRef.current = true; // Mark as requested
 			const fetchMatchAnalysis = async () => {
 				try {
 					// Create AbortController for timeout
@@ -239,6 +242,15 @@ const ChatComponent = ({
 						}
 						
 						// Handle specific error cases
+						if (errorData.error === 'generation_in_progress') {
+							setAnalysis({ 
+								text: errorData.message || (locale === 'pl' ? 'Analiza jest już generowana w innym meczu. Spróbuj ponownie po zakończeniu generowania.' : 'Analysis is already being generated for another match. Please try again after the current generation is complete.'), 
+								pred: '' 
+							});
+							// Don't reset analysisRequestedRef - user needs to close and reopen chat to retry
+							return;
+						}
+						
 						if (errorData.error === 'limit_exceeded') {
 							if (errorData.isLoggedIn) {
 								setAnalysis({ 
@@ -251,14 +263,6 @@ const ChatComponent = ({
 									pred: '' 
 								});
 							}
-							return;
-						}
-						
-						if (errorData.error === 'vpn_blocked') {
-							setAnalysis({ 
-								text: errorData.message || 'VPN nie jest dozwolony. Wyłącz VPN i spróbuj ponownie.', 
-								pred: '' 
-							});
 							return;
 						}
 						
@@ -279,6 +283,8 @@ const ChatComponent = ({
 					const { text, prediction: pred } = parseAnalysis(data.analysis);
 					setAnalysis({ text: text || t('analysis_unavailable'), pred });
 				} catch (error) {
+					// Reset flag on error so user can retry
+					analysisRequestedRef.current = false;
 					if (process.env.NODE_ENV === 'development') {
 						if (error.name === 'AbortError') {
 							console.error('Request timeout - analiza trwa zbyt długo');
@@ -292,6 +298,11 @@ const ChatComponent = ({
 				}
 			}
 			fetchMatchAnalysis()
+		}
+		
+		// Reset flag when chatId changes (user opens different match)
+		return () => {
+			analysisRequestedRef.current = false;
 		}
 	}, [
 		isAnalysisEnabled,
