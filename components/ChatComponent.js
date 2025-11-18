@@ -36,11 +36,131 @@ const ChatComponent = ({
 	const [limitExceeded, setLimitExceeded] = useState(false)
 	const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false)
 	const analysisRequestedRef = useRef(false) // Prevent multiple simultaneous requests
+	const midnightTimeoutRef = useRef(null) // Store timeout ID for midnight reset
 
 	const { user, isAuthed } = useContext(UserContext)
 	const { socket, isConnected, connectionError } = useSocket()
 	const { isGenerating, setIsGenerating } = useAnalysis()
 	const username = user?.username
+
+	// Helper functions for localStorage limit tracking
+	const getTodayDateString = () => {
+		const now = new Date()
+		const year = now.getFullYear()
+		const month = String(now.getMonth() + 1).padStart(2, '0')
+		const day = String(now.getDate()).padStart(2, '0')
+		return `${year}-${month}-${day}`
+	}
+
+	const getLocalStorageLimitKey = () => {
+		return `analysis_limit_exceeded:${getTodayDateString()}`
+	}
+
+	const checkLocalStorageLimit = () => {
+		// localStorage limit only applies to unauthenticated users
+		// Authenticated users have their own limit tracked on the server
+		if (isAuthed) {
+			return false
+		}
+		
+		if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+			return false
+		}
+		
+		const key = getLocalStorageLimitKey()
+		const stored = localStorage.getItem(key)
+		
+		if (!stored) {
+			return false
+		}
+		
+		// Check if stored date matches today
+		const storedDate = stored.split(':')[1] // Format: "exceeded:YYYY-MM-DD"
+		const today = getTodayDateString()
+		
+		// If date doesn't match, clear old entry
+		if (storedDate !== today) {
+			localStorage.removeItem(key)
+			return false
+		}
+		
+		return true
+	}
+
+	const setLocalStorageLimit = () => {
+		if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+			return
+		}
+		
+		const key = getLocalStorageLimitKey()
+		const today = getTodayDateString()
+		localStorage.setItem(key, `exceeded:${today}`)
+	}
+
+	const clearLocalStorageLimit = () => {
+		if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+			return
+		}
+		
+		// Clear all analysis limit keys (only old entries, not today's)
+		const today = getTodayDateString()
+		const keysToRemove = []
+		for (let i = 0; i < localStorage.length; i++) {
+			const key = localStorage.key(i)
+			if (key && key.startsWith('analysis_limit_exceeded:')) {
+				// Extract date from key (format: "analysis_limit_exceeded:YYYY-MM-DD")
+				const keyDate = key.split(':')[1]
+				// Remove if date doesn't match today
+				if (keyDate !== today) {
+					keysToRemove.push(key)
+				}
+			}
+		}
+		keysToRemove.forEach(key => localStorage.removeItem(key))
+	}
+
+	// Check and reset localStorage limit at midnight
+	useEffect(() => {
+		const checkAndResetLimit = () => {
+			const now = new Date()
+			const tomorrow = new Date(now)
+			tomorrow.setDate(tomorrow.getDate() + 1)
+			tomorrow.setHours(0, 0, 0, 0)
+			
+			const msUntilMidnight = tomorrow.getTime() - now.getTime()
+			
+			// Clear any old entries (not from today)
+			clearLocalStorageLimit()
+			
+			// Set timeout to clear ALL entries (including today's) at midnight
+			midnightTimeoutRef.current = setTimeout(() => {
+				// At midnight, clear all analysis limit keys (including today's)
+				if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+					const keysToRemove = []
+					for (let i = 0; i < localStorage.length; i++) {
+						const key = localStorage.key(i)
+						if (key && key.startsWith('analysis_limit_exceeded:')) {
+							keysToRemove.push(key)
+						}
+					}
+					keysToRemove.forEach(key => localStorage.removeItem(key))
+				}
+				// Recursively set next midnight check
+				checkAndResetLimit()
+			}, msUntilMidnight)
+		}
+		
+		// Start the first check
+		checkAndResetLimit()
+		
+		// Cleanup: clear timeout when component unmounts
+		return () => {
+			if (midnightTimeoutRef.current) {
+				clearTimeout(midnightTimeoutRef.current)
+				midnightTimeoutRef.current = null
+			}
+		}
+	}, [])
 
 	const fetchWithRefresh = useCallback(async (url, opts = {}) => {
 		const res = await fetch(url, { credentials: 'include', ...opts })
@@ -64,6 +184,28 @@ const ChatComponent = ({
 		}
 
 		const checkExistingAnalysis = async () => {
+			// Check localStorage limit first (client-side check)
+			if (checkLocalStorageLimit()) {
+				setLimitExceeded(true)
+				setShowGenerateButton(false)
+				if (isAuthed) {
+					setAnalysis({ 
+						text: locale === 'pl' 
+							? 'Osiągnąłeś dzienny limit 3 analiz. Wróć jutro lub wkrótce wykup dostęp do nieskończonej liczby analiz.'
+							: 'You have reached the daily limit of 3 analyses. Come back tomorrow or purchase unlimited access soon.',
+						pred: '' 
+					})
+				} else {
+					setAnalysis({ 
+						text: locale === 'pl'
+							? 'Osiągnąłeś dzienny limit 3 analiz. Zaloguj się lub zarejestruj, aby wygenerować więcej analiz.'
+							: 'You have reached the daily limit of 3 analyses. Log in or register to generate more analyses.',
+						pred: '' 
+					})
+				}
+				return
+			}
+
 			try {
 				const fixtureId = chatId.startsWith('Liga-') ? chatId.replace('Liga-', '') : chatId
 				
@@ -96,7 +238,10 @@ const ChatComponent = ({
 						setShowGenerateButton(true)
 						setLimitExceeded(false)
 					} else {
-						// User has reached limit - hide button and show message
+						// User has reached limit - save to localStorage only for unauthenticated users
+						if (!data.isLoggedIn) {
+							setLocalStorageLimit()
+						}
 						setShowGenerateButton(false)
 						setLimitExceeded(true)
 						if (data.isLoggedIn) {
@@ -144,7 +289,8 @@ const ChatComponent = ({
 						setShowGenerateButton(true)
 						setLimitExceeded(false)
 					} else {
-						// User has reached limit - hide button and show message
+						// User has reached limit - save to localStorage and hide button
+						setLocalStorageLimit()
 						setShowGenerateButton(false)
 						setLimitExceeded(true)
 						if (data.isLoggedIn) {
@@ -230,6 +376,8 @@ const ChatComponent = ({
 						setShowGenerateButton(true);
 						setLimitExceeded(false);
 					} else {
+						// User has reached limit - save to localStorage
+						setLocalStorageLimit();
 						setShowGenerateButton(false);
 						setLimitExceeded(true);
 						if (data.isLoggedIn) {
@@ -300,6 +448,28 @@ const ChatComponent = ({
 	}, [chatId, socket, isConnected])
 
 	const handleGenerateAnalysis = async () => {
+		// Check localStorage limit first (client-side check)
+		if (checkLocalStorageLimit()) {
+			setLimitExceeded(true)
+			setShowGenerateButton(false)
+			if (isAuthed) {
+				setAnalysis({ 
+					text: locale === 'pl' 
+						? 'Osiągnąłeś dzienny limit 3 analiz. Wróć jutro lub wkrótce wykup dostęp do nieskończonej liczby analiz.'
+						: 'You have reached the daily limit of 3 analyses. Come back tomorrow or purchase unlimited access soon.',
+					pred: '' 
+				})
+			} else {
+				setAnalysis({ 
+					text: locale === 'pl'
+						? 'Osiągnąłeś dzienny limit 3 analiz. Zaloguj się lub zarejestruj, aby wygenerować więcej analiz.'
+						: 'You have reached the daily limit of 3 analyses. Log in or register to generate more analyses.',
+					pred: '' 
+				})
+			}
+			return
+		}
+
 		if (
 			!isAnalysisEnabled ||
 			!homeStats?.playedTotal ||
@@ -512,6 +682,10 @@ const ChatComponent = ({
 						}
 						
 						if (errorData.error === 'limit_exceeded') {
+							// Save to localStorage only for unauthenticated users
+							if (!errorData.isLoggedIn) {
+								setLocalStorageLimit()
+							}
 							setLimitExceeded(true)
 							setShowGenerateButton(false)
 							if (errorData.isLoggedIn) {

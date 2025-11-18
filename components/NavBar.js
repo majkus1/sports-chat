@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useContext } from 'react';
+import { useRouter } from 'next/navigation';
 import LoginModal from './LoginModal';
 import RegisterModal from './RegisterModal';
 import { UserContext } from '@/context/UserContext';
@@ -22,12 +23,29 @@ export default function NavBar({ onLanguageChange }) {
 
   const t = useTranslations('common');
   const locale = useLocale();
+  const router = useRouter();
 
   const { user, isAuthed, setUser, setIsAuthed, refreshUser } = useContext(UserContext);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Check if login modal should be opened from query param (e.g., after email verification)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isClient) return;
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const shouldOpenLogin = urlParams.get('login');
+    
+    if (shouldOpenLogin === 'true' && !isAuthed) {
+      setLoginModalOpen(true);
+      // Remove query param from URL without page reload
+      urlParams.delete('login');
+      const newUrl = window.location.pathname + (urlParams.toString() ? `?${urlParams.toString()}` : '');
+      router.replace(newUrl, { scroll: false });
+    }
+  }, [isClient, isAuthed, router]);
 
   const handleLogin = async () => {
     await refreshUser();

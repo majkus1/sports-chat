@@ -52,11 +52,13 @@ export async function POST(request) {
         password: null,
         googleId: p.sub,
         image: p.picture || null,
+        isEmailVerified: true, // Google already verifies email
       });
     } else {
       const update = {};
       if (!user.googleId) update.googleId = p.sub;
       if (!user.image && p.picture) update.image = p.picture;
+      if (!user.isEmailVerified) update.isEmailVerified = true; // Ensure Google users are verified
       if (Object.keys(update).length) {
         await User.updateOne({ _id: user._id }, { $set: update });
       }

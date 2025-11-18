@@ -25,6 +25,10 @@ const UserSchema = new mongoose.Schema(
 		refreshTokenHash: { type: String, default: null },
 		tokenVersion: { type: Number, default: 0 },
 
+		isEmailVerified: { type: Boolean, default: false },
+		emailVerificationTokenHash: { type: String, default: null },
+		emailVerificationTokenExp: { type: Date, default: null },
+
 		resetPasswordTokenHash: { type: String, default: null },
 		resetPasswordTokenExp: { type: Date, default: null },
 	},

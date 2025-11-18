@@ -36,8 +36,12 @@ export default function LoginModal({ isOpen, onRequestClose, onLogin }) {
 
 		const data = await response.json().catch(() => ({}))
 		if (!response.ok) {
-			const key = data?.error || 'server_error'
-			showAlert(t(key), 'error')
+			if (data?.error === 'email_not_verified') {
+				showAlert(t('email_not_verified_desc'), 'error')
+			} else {
+				const key = data?.error || 'server_error'
+				showAlert(t(key), 'error')
+			}
 			return
 		}
 	}

@@ -67,6 +67,19 @@
 		"page": "Page",
 		"of": "of",
 		"showing": "Showing",
-		"matches": "matches"
+		"matches": "matches",
+		"register_success_verify": "Registration successful! Check your email and click the verification link to activate your account.",
+		"email_not_verified": "Email not verified",
+		"email_not_verified_desc": "You must verify your email address before logging in. Check your inbox and click the verification link.",
+		"verify_email_verifying": "Verifying email address",
+		"verify_email_please_wait": "Please wait...",
+		"verify_email_success_title": "Email verified!",
+		"verify_email_success_greeting": "Hello",
+		"verify_email_success_message": "Your email address has been successfully verified. Your account is now active.",
+		"verify_email_login_button": "Log in",
+		"verify_email_error_title": "Verification error",
+		"verify_email_error": "An error occurred while verifying your email.",
+		"verify_email_link_invalid": "Verification link is invalid.",
+		"verify_email_link_expired": "Verification link has expired. Please register again."
 	}
 }

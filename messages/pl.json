@@ -67,6 +67,19 @@
 		"page": "Strona",
 		"of": "z",
 		"showing": "Wyświetlanie",
-		"matches": "meczów"
+		"matches": "meczów",
+		"register_success_verify": "Rejestracja pomyślna! Sprawdź email i kliknij w link weryfikacyjny, aby aktywować konto.",
+		"email_not_verified": "Email nie został zweryfikowany",
+		"email_not_verified_desc": "Przed zalogowaniem musisz zweryfikować swój adres email. Sprawdź swoją skrzynkę pocztową i kliknij w link weryfikacyjny.",
+		"verify_email_verifying": "Weryfikacja adresu email",
+		"verify_email_please_wait": "Proszę czekać...",
+		"verify_email_success_title": "Email zweryfikowany!",
+		"verify_email_success_greeting": "Witaj",
+		"verify_email_success_message": "Twój adres email został pomyślnie zweryfikowany. Twoje konto jest teraz aktywne.",
+		"verify_email_login_button": "Zaloguj się",
+		"verify_email_error_title": "Błąd weryfikacji",
+		"verify_email_error": "Wystąpił błąd podczas weryfikacji emaila.",
+		"verify_email_link_invalid": "Link weryfikacyjny jest nieprawidłowy.",
+		"verify_email_link_expired": "Link weryfikacyjny wygasł. Zarejestruj się ponownie."
 	}
 }

@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react'
 import { GiPlayButton } from 'react-icons/gi'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { UserContext } from '@/context/UserContext'
 import GoogleAuthButton from '@/components/GoogleAuthButton'
 import { useAlert } from '@/context/AlertContext'
@@ -11,6 +11,7 @@ export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 	const [usernameInput, setUsernameInput] = useState('')
 	const [isRegistering, setIsRegistering] = useState(false)
 	const t = useTranslations('common')
+	const locale = useLocale()
 	const { refreshUser } = useContext(UserContext)
 	const { showAlert } = useAlert()
 
@@ -24,7 +25,7 @@ export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 			const response = await fetch('/api/auth/register', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ email, password, username: usernameInput }),
+				body: JSON.stringify({ email, password, username: usernameInput, locale }),
 				credentials: 'include',
 			})
 
@@ -37,13 +38,21 @@ export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 				return
 			}
 
-			const ok = await refreshUser()
-			if (ok) {
-				showAlert(t('register_success'), 'success')
-				onRegister?.()
-				onRequestClose?.()
+			// Registration successful - show verification message
+			if (data.emailSent) {
+				showAlert(data.message || t('register_success_verify'), 'success')
+				// Clear form
+				setEmail('')
+				setPassword('')
+				setUsernameInput('')
+				// Close modal after showing message
+				setTimeout(() => {
+					onRequestClose?.()
+				}, 2000)
 			} else {
-				showAlert(t('profile_fetch_failed'), 'error')
+				// Fallback if email wasn't sent
+				showAlert(t('register_success'), 'success')
+				onRequestClose?.()
 			}
 		} catch (err) {
 			if (process.env.NODE_ENV === 'development') {

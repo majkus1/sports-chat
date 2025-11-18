@@ -30,6 +30,14 @@ export async function POST(request) {
       return Response.json({ error: 'login_invalid' }, { status: 401 });
     }
 
+    // Check if email is verified (only for non-Google users)
+    if (!user.googleId && !user.isEmailVerified) {
+      return Response.json({ 
+        error: 'email_not_verified',
+        message: 'Please verify your email address before logging in. Check your inbox for the verification link.'
+      }, { status: 403 });
+    }
+
     const accessToken = signAccessToken({ userId: user.id, tokenVersion: user.tokenVersion || 0 });
     const refreshToken = signRefreshToken({ userId: user.id, tokenVersion: user.tokenVersion || 0 });
 
