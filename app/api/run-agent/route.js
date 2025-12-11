@@ -4,7 +4,10 @@ import { getCookieRouteHandler, verifyJwt } from '@/lib/auth';
 import connectToDb from '@/lib/db';
 import User from '@/models/User';
 
-const FASTAPI_URL = process.env.FASTAPI_URL || 'http://localhost:5000';
+// Zwiększ timeout dla API route (domyślnie 10s, zwiększamy do 300s = 5 minut)
+export const maxDuration = 300;
+
+const FASTAPI_URL = process.env.FASTAPI_URL || 'http://127.0.0.1:5000';
 const MAX_AGENT_RUNS_PER_DAY = 1;
 
 export async function POST(request) {
@@ -121,14 +124,36 @@ export async function POST(request) {
       }
     } // Koniec sprawdzania limitu (tylko jeśli nie jest unlimited user)
 
-    // Wywołanie FastAPI
-    const response = await fetch(`${FASTAPI_URL}/run`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, language: validLanguage }),
-    });
+    // Wywołanie FastAPI z zwiększonym timeoutem (5 minut)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minut
+    
+    let response;
+    try {
+      response = await fetch(`${FASTAPI_URL}/run`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, language: validLanguage }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        // Timeout - ale agent może nadal działać w tle
+        // Zwróć sukces, bo email może już być wysłany
+        return NextResponse.json(
+          { 
+            success: true, 
+            message: 'Raport jest generowany i zostanie wysłany na podany email. Proces może potrwać kilka minut.' 
+          },
+          { status: 200 }
+        );
+      }
+      throw error;
+    }
 
     const data = await response.json();
 
