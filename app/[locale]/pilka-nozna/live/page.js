@@ -3,6 +3,7 @@
 import { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import NavBar from '@/components/NavBar';
+import FootballMenu from '@/components/FootballMenu';
 import ChatComponent from '@/components/ChatComponent';
 import { UserContext } from '@/context/UserContext';
 import { GiPlayButton } from 'react-icons/gi';
@@ -143,25 +144,7 @@ export default function LivePage() {
           <img src="/img/football.png" className="icon-sport" alt="Football" />
           {t('footbal')}
         </h1>
-        <div className="choose-time" style={{ marginBottom: '20px'}}>
-          <Link href="/pilka-nozna/przedmeczowe" className="pre-match-p">
-            {t('match')}
-          </Link>
-          <Link href="/pilka-nozna/live" className="pre-match-p active-section">
-            {t('onlive')}
-          </Link>
-          <button
-            onClick={() => setIsResultsModalOpen(true)}
-            className="pre-match-p"
-            style={{
-              background: 'none',
-              border: 'none',
-              textTransform: 'uppercase'
-            }}
-          >
-            {t('results')}
-          </button>
-        </div>
+        <FootballMenu onResultsClick={() => setIsResultsModalOpen(true)} />
 
         <div className="search-container" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <FaSearch size={20} style={{ color: '#000', flexShrink: 0 }} />

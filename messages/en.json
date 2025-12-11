@@ -80,6 +80,21 @@
 		"verify_email_error_title": "Verification error",
 		"verify_email_error": "An error occurred while verifying your email.",
 		"verify_email_link_invalid": "Verification link is invalid.",
-		"verify_email_link_expired": "Verification link has expired. Please register again."
+		"verify_email_link_expired": "Verification link has expired. Please register again.",
+		"ai_agent_title": "AI AGENT",
+		"ai_agent_description": "Enter your email address to receive a detailed AI-generated analysis report of up to 15 upcoming football matches.",
+		"ai_agent_email_placeholder": "your@email.com",
+		"ai_agent_run_button": "Run agent",
+		"ai_agent_processing": "Processing...",
+		"ai_agent_status_analyzing": "Analyzing matches...",
+		"ai_agent_status_sending": "Sending report to email...",
+		"ai_agent_status_done": "Done!",
+		"ai_agent_success": "Report has been generated and sent to the provided email.",
+		"ai_agent_error": "An error occurred while generating the report. Please try again later.",
+		"ai_agent_invalid_email": "Please provide a valid email address.",
+		"ai_agent_limit_exceeded": "You have reached the daily limit of agent runs (1 per day).",
+		"ai_agent_limit_exceeded_logged": "You have reached the daily limit of agent runs (1 per day). Come back tomorrow.",
+		"ai_agent_limit_exceeded_not_logged": "You have reached the daily limit of agent runs (1 per day). Log in to get an additional run.",
+		"new": "new"
 	}
 }

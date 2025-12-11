@@ -145,95 +145,115 @@ export default function NavBar({ onLanguageChange }) {
               </div>
             </div>
 
-            {isMobileMenuOpen && (
-              <div className="mobile-dropdown">
-                {isAuthed ? (
-                  <>
-                    <UserPanel />
-                    <button onClick={handleLogout} className="log-out-btn">
-                      <GiPlayButton /> {t('out')}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <div className="elements-in-account-menu">
-                      {isForgotOpen ? (
-                        <ForgotPasswordModal
-                          isOpen={isForgotOpen}
-                          onRequestClose={() => {
-                            setForgotOpen(false);
-                            setLoginModalOpen(true);
-                          }}
-                        />
+            {(isMobileMenuOpen || isMobileLinksMenuOpen) && (
+              <>
+                {/* Overlay - przykrywa całą stronę */}
+                <div 
+                  className="mobile-dropdown-overlay"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setMobileLinksMenuOpen(false);
+                    setRegisterModalOpen(false);
+                    setLoginModalOpen(false);
+                    setForgotOpen(false);
+                  }}
+                />
+                
+                {/* Menu dropdown - zaczyna się poniżej górnego menu */}
+                <div className="mobile-dropdown">
+                  {isMobileMenuOpen && (
+                    <>
+                      {isAuthed ? (
+                        <>
+                          <UserPanel />
+                          <button onClick={handleLogout} className="log-out-btn">
+                            <GiPlayButton /> {t('out')}
+                          </button>
+                        </>
                       ) : (
                         <>
-                          <LoginModal isOpen={isLoginModalOpen} onLogin={handleLogin} />
+                          <div className="elements-in-account-menu">
+                            {isForgotOpen ? (
+                              <ForgotPasswordModal
+                                isOpen={isForgotOpen}
+                                onRequestClose={() => {
+                                  setForgotOpen(false);
+                                  setLoginModalOpen(true);
+                                }}
+                              />
+                            ) : (
+                              <>
+                                <LoginModal isOpen={isLoginModalOpen} onLogin={handleLogin} />
 
-                          <div className="to-register-now" style={{ marginTop: '15px' }}>
-                            <button
-                              onClick={() => {
-                                setForgotOpen(true);
-                                setLoginModalOpen(false);
-                                setRegisterModalOpen(false);
-                              }}
-                              className="btn-reg">
-                              <GiPlayButton /> {t('forgot_link')}
-                            </button>
+                                <div className="to-register-now" style={{ marginTop: '15px' }}>
+                                  <button
+                                    onClick={() => {
+                                      setForgotOpen(true);
+                                      setLoginModalOpen(false);
+                                      setRegisterModalOpen(false);
+                                    }}
+                                    className="btn-reg">
+                                    <GiPlayButton /> {t('forgot_link')}
+                                  </button>
+                                </div>
+
+                                <div className="to-register-now">
+                                  <button
+                                    onClick={() => {
+                                      setRegisterModalOpen(true);
+                                      setLoginModalOpen(false);
+                                      setForgotOpen(false);
+                                    }}
+                                    className="btn-reg">
+                                    <GiPlayButton /> {t('registernow')}
+                                  </button>
+                                </div>
+
+                                <RegisterModal
+                                  isOpen={isRegisterModalOpen}
+                                  onRequestClose={() => {
+                                    setRegisterModalOpen(false);
+                                    setLoginModalOpen(true);
+                                  }}
+                                  onRegister={handleRegister}
+                                />
+                              </>
+                            )}
                           </div>
-
-                          <div className="to-register-now">
-                            <button
-                              onClick={() => {
-                                setRegisterModalOpen(true);
-                                setLoginModalOpen(false);
-                                setForgotOpen(false);
-                              }}
-                              className="btn-reg">
-                              <GiPlayButton /> {t('registernow')}
-                            </button>
-                          </div>
-
-                          <RegisterModal
-                            isOpen={isRegisterModalOpen}
-                            onRequestClose={() => {
-                              setRegisterModalOpen(false);
-                              setLoginModalOpen(true);
-                            }}
-                            onRegister={handleRegister}
-                          />
                         </>
                       )}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
+                    </>
+                  )}
 
-            {isMobileLinksMenuOpen && (
-              <div className="mobile-dropdown" id="mobile-links-menu">
-                <div className="real-links">
-                  <Link href="/" className="mobile-item">
-                    {t('mainpage')}
-                  </Link>
-
-                  <button
-                    className="mobile-item collapse-trigger"
-                    onClick={() => setIsSportsOpen(v => !v)}
-                    aria-expanded={isSportsOpen}
-                    aria-controls="sports-submenu">
-                    {t('sportscategory')}
-                    <span className={`chev ${isSportsOpen ? 'open' : ''}`}>▾</span>
-                  </button>
-
-                  {isSportsOpen && (
-                    <div id="sports-submenu" className="mobile-submenu">
-                      <Link href="/pilka-nozna/przedmeczowe" className="mobile-subitem">
-                        <img src="/img/football.png" width="20" alt="Football" /> {t('footbalitemmenu')}
+                  {isMobileLinksMenuOpen && (
+                    <div className="real-links" id="mobile-links-menu">
+                      <Link href="/" className="mobile-item">
+                        {t('mainpage')}
                       </Link>
+
+                      <button
+                        className="mobile-item collapse-trigger"
+                        onClick={() => setIsSportsOpen(v => !v)}
+                        aria-expanded={isSportsOpen}
+                        aria-controls="sports-submenu">
+                        {t('sportscategory')}
+                        <span className={`chev ${isSportsOpen ? 'open' : ''}`}>▾</span>
+                      </button>
+
+                      {isSportsOpen && (
+                        <div id="sports-submenu" className="mobile-submenu">
+                          <Link href="/pilka-nozna/przedmeczowe" className="mobile-subitem">
+                            <img src="/img/football.png" width="20" alt="Football" /> {t('footbalitemmenu')}
+                          </Link>
+                          <Link href="/pilka-nozna/ai-agent" className="mobile-subitem">
+                            <img src="/img/football.png" width="20" alt="AI Agent" /> {t('ai_agent_title')}
+                          </Link>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              </div>
+              </>
             )}
           </div>
         </div>

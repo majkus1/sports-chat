@@ -7,3 +7,6 @@
 /.next
 
 .env.local
+
+# AI Agent config (zawiera wrażliwe dane - klucze API)
+ai_agent/config.py

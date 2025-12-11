@@ -864,7 +864,7 @@ const ChatComponent = ({
 								}}
 								onMouseLeave={(e) => {
 									if (!isGenerating) {
-										e.currentTarget.style.background = '#173b45';
+										e.currentTarget.style.background = 'green';
 									}
 								}}
 							>

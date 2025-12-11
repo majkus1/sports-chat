@@ -184,7 +184,8 @@ body {
 			font-family: 'Roboto Condensed', sans-serif;
 		}
 		.active-section {
-			text-decoration: underline;
+			color: #22C55E;
+    font-weight: 600;
 		}
 	}
 
@@ -490,6 +491,7 @@ body {
 		max-width: 1100px;
 		width: 100%;
 		background: #f1f1f1;
+		z-index: 10000; /* Wyższy niż overlay, aby menu było widoczne */
 		.logo {
 			img {
 				width: 130px;
@@ -544,6 +546,18 @@ body {
 	padding: 5px;
 }
 
+/* 🔹 Overlay - przykrywa całą stronę */
+.mobile-dropdown-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background-color: #f1f1f1; 
+	z-index: 9998;
+	backdrop-filter: blur(2px);
+}
+
 /* 🔹 Stylizacja rozwijanego menu */
 .mobile-dropdown {
 	display: flex;
@@ -551,27 +565,35 @@ body {
 	align-items: center;
 	justify-content: center;
 	background-color: #f1f1f1; /* Kolor tła */
-	padding: 15px;
+	padding: 20px 15px;
 	position: fixed;
 	width: 100%;
-	margin-top: -111px;
-	height: 100%;
+	top: 111px; /* Zaczyna się poniżej górnego menu */
 	left: 0;
-	z-index: 100;
+	bottom: 0;
+	overflow-y: auto;
+	z-index: 9999;
 }
 
 #mobile-links-menu {
 	font-family: 'Roboto Condensed', sans-serif;
 	letter-spacing: 2px;
+	width: 100%;
+	display: flex;
+    flex-direction: column;
+	align-items: center;
+	gap: 20px;
 
 	.real-links {
 		box-shadow: rgba(0, 0, 0, 0.1) 0px 2px 8px;
 		display: flex;
 		flex-direction: column;
+		align-items: center;
 		gap: 15px;
 		padding: 40px;
 		align-items: center;
 		border-radius: 7px;
+		background-color: transparent;
 	}
 
 	a.mobile-item {
@@ -807,4 +829,14 @@ input {
       transition: transform 0.2s ease;
     }
   }
+}
+
+#sports-submenu {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.team-logo {
+	display: none !important;
 }

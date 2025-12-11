@@ -104,6 +104,29 @@ export async function GET(request) {
                 font-size: 20px;
             }
         }
+        /* Ukryj wszystkie logo drużyn */
+        .team-logo,
+        img[src*="logo"],
+        img[src*="badge"],
+        img[src*="team"],
+        img[alt*="logo"],
+        img[alt*="badge"],
+        img[alt*="team"],
+        [class*="team-logo"],
+        [class*="badge"],
+        [class*="logo"],
+        [data-logo],
+        [data-badge],
+        [data-team-logo],
+        api-sports-widget img[src*="logo"],
+        api-sports-widget img[src*="badge"],
+        api-sports-widget img[src*="team"] {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            width: 0 !important;
+            height: 0 !important;
+        }
     </style>
 </head>
 <body>

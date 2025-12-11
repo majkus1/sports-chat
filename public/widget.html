@@ -10,6 +10,26 @@
     .wg_header>span {
         display: none !important;
     }
+    /* Ukryj wszystkie logo drużyn */
+    .team-logo,
+    img[src*="logo"],
+    img[src*="badge"],
+    img[src*="team"],
+    img[alt*="logo"],
+    img[alt*="badge"],
+    img[alt*="team"],
+    [class*="team-logo"],
+    [class*="badge"],
+    [class*="logo"],
+    [data-logo],
+    [data-badge],
+    [data-team-logo] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
 </style>
 
 <body>
@@ -24,10 +44,8 @@
      data-refresh="15"
      data-show-toolbar="true"
      data-show-errors="false"
-     data-show-logos="true"
      data-modal-game="true"
-     data-modal-standings="true"
-     data-modal-show-logos="true">
+     data-modal-standings="true">
 </div>
 <script
     type="module"
