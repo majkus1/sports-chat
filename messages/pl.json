@@ -81,7 +81,7 @@
 		"verify_email_error": "Wystąpił błąd podczas weryfikacji emaila.",
 		"verify_email_link_invalid": "Link weryfikacyjny jest nieprawidłowy.",
 		"verify_email_link_expired": "Link weryfikacyjny wygasł. Zarejestruj się ponownie.",
-		"ai_agent_title": "AGENT AI",
+		"ai_agent_title": "RAPORT AI",
 		"ai_agent_description": "Wprowadź swój adres email, a otrzymasz szczegółowy raport analizy maksymalnie 15 najbliższych meczów piłkarskich wygenerowany przez AI.",
 		"ai_agent_email_placeholder": "twoj@email.com",
 		"ai_agent_run_button": "Uruchom agenta",
