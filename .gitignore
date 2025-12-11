@@ -10,3 +10,11 @@
 
 # AI Agent config (zawiera wrażliwe dane - klucze API)
 ai_agent/config.py
+
+# Python cache files (zawierają skompilowane wersje config.py z kluczami)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+ai_agent/__pycache__/
