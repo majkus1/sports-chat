@@ -84,7 +84,7 @@
 		"ai_agent_title": "RAPORT AI",
 		"ai_agent_description": "Wprowadź swój adres email, a otrzymasz szczegółowy raport analizy maksymalnie 15 najbliższych meczów piłkarskich wygenerowany przez AI.",
 		"ai_agent_email_placeholder": "twoj@email.com",
-		"ai_agent_run_button": "Uruchom agenta",
+		"ai_agent_run_button": "Uruchom raport",
 		"ai_agent_processing": "Przetwarzanie...",
 		"ai_agent_status_analyzing": "Analizuję mecze...",
 		"ai_agent_status_sending": "Wysyłam raport na email...",
@@ -92,9 +92,9 @@
 		"ai_agent_success": "Raport został wygenerowany i wysłany na podany email.",
 		"ai_agent_error": "Wystąpił błąd podczas generowania raportu. Spróbuj ponownie później.",
 		"ai_agent_invalid_email": "Proszę podać prawidłowy adres email.",
-		"ai_agent_limit_exceeded": "Osiągnąłeś dzienny limit uruchomień agenta (1 raz dziennie).",
-		"ai_agent_limit_exceeded_logged": "Osiągnąłeś dzienny limit uruchomień agenta (1 raz dziennie). Wróć jutro.",
-		"ai_agent_limit_exceeded_not_logged": "Osiągnąłeś dzienny limit uruchomień agenta (1 raz dziennie). Zaloguj się, aby uzyskać dodatkowe uruchomienie.",
+		"ai_agent_limit_exceeded": "Osiągnąłeś dzienny limit uruchomień raportu (1 raz dziennie).",
+		"ai_agent_limit_exceeded_logged": "Osiągnąłeś dzienny limit uruchomień raportu (1 raz dziennie). Wróć jutro.",
+		"ai_agent_limit_exceeded_not_logged": "Osiągnąłeś dzienny limit uruchomień raportu (1 raz dziennie). Zaloguj się, aby uzyskać dodatkowe uruchomienie.",
 		"new": "new"
 	}
 }

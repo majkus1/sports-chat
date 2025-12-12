@@ -184,28 +184,6 @@ const ChatComponent = ({
 		}
 
 		const checkExistingAnalysis = async () => {
-			// Check localStorage limit first (client-side check)
-			if (checkLocalStorageLimit()) {
-				setLimitExceeded(true)
-				setShowGenerateButton(false)
-				if (isAuthed) {
-					setAnalysis({ 
-						text: locale === 'pl' 
-							? 'Osiągnąłeś dzienny limit 3 analiz. Wróć jutro lub wkrótce wykup dostęp do nieskończonej liczby analiz.'
-							: 'You have reached the daily limit of 3 analyses. Come back tomorrow or purchase unlimited access soon.',
-						pred: '' 
-					})
-				} else {
-					setAnalysis({ 
-						text: locale === 'pl'
-							? 'Osiągnąłeś dzienny limit 3 analiz. Zaloguj się lub zarejestruj, aby wygenerować więcej analiz.'
-							: 'You have reached the daily limit of 3 analyses. Log in or register to generate more analyses.',
-						pred: '' 
-					})
-				}
-				return
-			}
-
 			try {
 				const fixtureId = chatId.startsWith('Liga-') ? chatId.replace('Liga-', '') : chatId
 				
@@ -263,7 +241,8 @@ const ChatComponent = ({
 					return
 				}
 
-				// For pre-match, check database first, then limit
+				// For pre-match, ALWAYS check database FIRST (before checking limit)
+				// This ensures existing analyses are shown even if user reached limit
 				const response = await fetch('/api/football/checkAnalysis', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -277,13 +256,15 @@ const ChatComponent = ({
 
 				const data = await response.json()
 				if (data.exists && data.analysis) {
-					// Analysis exists in database - show it
+					// Analysis exists in database - show it IMMEDIATELY (regardless of limit)
 					const { text, prediction: pred } = parseAnalysis(data.analysis)
 					setAnalysis({ text: text || '', pred })
 					setShowGenerateButton(false)
 					setLimitExceeded(false)
+					// Clear localStorage limit flag since we're showing existing analysis
+					// This ensures user can see existing analyses even if they hit limit
 				} else {
-					// Analysis doesn't exist - check if user can generate
+					// Analysis doesn't exist - NOW check if user can generate
 					if (data.canGenerate) {
 						// User can generate - show button
 						setShowGenerateButton(true)
@@ -352,8 +333,10 @@ const ChatComponent = ({
 			}
 			// The main useEffect should handle this, but we can add a safety check here
 			// by checking if we already have analysis state
+			// IMPORTANT: Check database FIRST, regardless of limit state
 			if (!analysis.text && !showGenerateButton && !limitExceeded) {
 				// Analysis state is empty - trigger check again
+				// ALWAYS check database first (before checking limit)
 				const fixtureId = chatId.startsWith('Liga-') ? chatId.replace('Liga-', '') : chatId;
 				fetch('/api/football/checkAnalysis', {
 					method: 'POST',
@@ -367,16 +350,19 @@ const ChatComponent = ({
 				})
 				.then(res => res.json())
 				.then(data => {
+					// ALWAYS check if analysis exists FIRST (before checking limit)
 					if (data.exists && data.analysis) {
+						// Analysis exists in database - show it IMMEDIATELY (regardless of limit)
 						const { text, prediction: pred } = parseAnalysis(data.analysis);
 						setAnalysis({ text: text || '', pred });
 						setShowGenerateButton(false);
 						setLimitExceeded(false);
 					} else if (data.canGenerate) {
+						// Analysis doesn't exist and user can generate
 						setShowGenerateButton(true);
 						setLimitExceeded(false);
 					} else {
-						// User has reached limit - save to localStorage
+						// Analysis doesn't exist and user has reached limit
 						setLocalStorageLimit();
 						setShowGenerateButton(false);
 						setLimitExceeded(true);

@@ -84,7 +84,7 @@
 		"ai_agent_title": "REPORT AI",
 		"ai_agent_description": "Enter your email address to receive a detailed AI-generated analysis report of up to 15 upcoming football matches.",
 		"ai_agent_email_placeholder": "your@email.com",
-		"ai_agent_run_button": "Run agent",
+		"ai_agent_run_button": "Run report",
 		"ai_agent_processing": "Processing...",
 		"ai_agent_status_analyzing": "Analyzing matches...",
 		"ai_agent_status_sending": "Sending report to email...",
