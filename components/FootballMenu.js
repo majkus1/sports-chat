@@ -69,7 +69,8 @@ export default function FootballMenu({ onResultsClick }) {
                       fontWeight: 'normal',
                       textTransform: 'lowercase',
                       position: 'relative',
-                      top: '-8px'
+                      top: '-8px',
+                      fontWeight: 'bold'
                     }}
                   >
                     {t('new')}
