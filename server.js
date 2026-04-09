@@ -81,7 +81,11 @@ io.use((socket, next) => {
     const access = readCookie(cookie, 'accessToken');
     if (access) {
       const payload = jwt.verify(access, process.env.JWT_SECRET);
-      socket.user = { id: payload.userId, tv: payload.tv };
+      const username =
+        typeof payload.un === 'string' && payload.un.trim()
+          ? payload.un.trim().slice(0, 32)
+          : null;
+      socket.user = { id: payload.userId, tv: payload.tv, username };
     } else {
       socket.user = null;
     }
@@ -110,8 +114,9 @@ io.on('connection', (socket) => {
   socket.on('send_message', (payload) => {
     if (!allowRate(socket)) return;
     if (!payload || typeof payload !== 'object') return;
+    if (!socket.user || !socket.user.username) return;
 
-    const { chatId, content, username } = payload;
+    const { chatId, content } = payload;
 
     if (typeof chatId !== 'string' || !ROOM_RE.test(chatId)) {
       if (process.env.NODE_ENV === 'development') {
@@ -124,15 +129,12 @@ io.on('connection', (socket) => {
     const safeContent = content.slice(0, MAX_MSG_LEN).trim();
     if (!safeContent) return;
 
-    const safeUsername =
-      typeof username === 'string' ? username.slice(0, 64).trim() : 'Anonim';
-
     const message = {
       chatId,
-      username: safeUsername || 'Anonim',
+      username: socket.user.username,
       content: safeContent,
       timestamp: new Date(),
-      userId: socket.user?.id || null,
+      userId: socket.user.id || null,
     };
 
     io.to(chatId).emit('receive_message', message);
@@ -141,12 +143,21 @@ io.on('connection', (socket) => {
   socket.on('send_private_message', (payload) => {
     if (!allowRate(socket)) return;
     if (!payload || typeof payload !== 'object') return;
+    if (!socket.user || !socket.user.username) return;
 
-    const { chatId, content, username } = payload;
+    const { chatId, content, peerUsername } = payload;
 
-    if (typeof chatId !== 'string' || !ROOM_RE.test(chatId)) {
+    if (typeof peerUsername !== 'string' || !peerUsername.trim()) {
+      return;
+    }
+    const peer = peerUsername.trim().slice(0, 32);
+    const expectedChatId = [socket.user.username, peer]
+      .sort((a, b) => a.localeCompare(b, 'pl'))
+      .join('_');
+
+    if (typeof chatId !== 'string' || chatId !== expectedChatId || !ROOM_RE.test(chatId)) {
       if (process.env.NODE_ENV === 'development') {
-      console.warn('[send_private_message] invalid chatId:', chatId);
+      console.warn('[send_private_message] invalid chatId or peer mismatch');
       }
       return;
     }
@@ -155,15 +166,12 @@ io.on('connection', (socket) => {
     const safeContent = content.slice(0, MAX_MSG_LEN).trim();
     if (!safeContent) return;
 
-    const safeUsername =
-      typeof username === 'string' ? username.slice(0, 64).trim() : 'Anonim';
-
     const message = {
       chatId,
-      username: safeUsername || 'Anonim',
+      username: socket.user.username,
       content: safeContent,
       timestamp: new Date(),
-      userId: socket.user?.id || null,
+      userId: socket.user.id || null,
     };
 
     io.to(chatId).emit('receive_private_message', message);

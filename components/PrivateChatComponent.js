@@ -40,7 +40,9 @@ const PrivateChatComponent = ({ receiver }) => {
 
 		const fetchMessages = async () => {
 			try {
-				const response = await fetchWithRefresh(`/api/getPrivateMessages?chatId=${chatId}`)
+				const response = await fetchWithRefresh(
+					`/api/getPrivateMessages?peer=${encodeURIComponent(receiver)}`
+				)
 				const data = await response.json()
 				if (Array.isArray(data)) {
 					setMessages(data)
@@ -90,18 +92,17 @@ const PrivateChatComponent = ({ receiver }) => {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
-						username: sender,
 						content: currentMessage,
-						chatId,
+						peer: receiver,
 					}),
 				})
 				const data = await response.json()
 				if (data.success) {
 					if (socket && isConnected) {
 					const messageObject = {
-						username: sender,
 						content: currentMessage,
 						chatId,
+						peerUsername: receiver,
 					}
 					socket.emit('send_private_message', messageObject)
 					}

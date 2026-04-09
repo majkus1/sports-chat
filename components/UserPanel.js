@@ -51,7 +51,7 @@ export default function UserPanel() {
   const fetchChatHistory = useCallback(async () => {
     if (!username) return;
     try {
-      const res = await fetchWithRefresh(`/api/getChatHistory?username=${encodeURIComponent(username)}`);
+      const res = await fetchWithRefresh('/api/getChatHistory');
       if (!res.ok) return;
       const data = await res.json();
       setChatHistory(Array.isArray(data) ? data : []);

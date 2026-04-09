@@ -49,7 +49,11 @@ export async function POST(request) {
       return Response.json({ error: 'Wykryto nadużycie refresh tokena' }, { status: 401 });
     }
 
-    const newAccess = signAccessToken({ userId: user.id, tokenVersion: user.tokenVersion || 0 });
+    const newAccess = signAccessToken({
+      userId: user.id,
+      tokenVersion: user.tokenVersion || 0,
+      username: user.username,
+    });
     const newRefresh = signRefreshToken({ userId: user.id, tokenVersion: user.tokenVersion || 0 });
 
     user.refreshTokenHash = await hashRefreshToken(newRefresh);

@@ -1,19 +1,21 @@
 import connectToDb from '@/lib/db';
 import PrivateChat from '@/models/PrivateChat';
+import { getAuthenticatedUser } from '@/lib/auth';
+import { escapeRegExp } from '@/lib/chatConstraints';
 
 export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const username = searchParams.get('username');
-
-  if (!username) {
-    return Response.json({ error: 'Missing username parameter' }, { status: 400 });
+  const session = await getAuthenticatedUser();
+  if (!session) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const username = session.username;
 
   await connectToDb();
 
   try {
     const chats = await PrivateChat.find({
-      chatId: new RegExp(username, 'i'),
+      chatId: new RegExp(escapeRegExp(username), 'i'),
     });
 
     const chatHistory = chats.map((chat) => {
@@ -38,4 +40,3 @@ export async function GET(request) {
     return Response.json({ error: 'Błąd podczas pobierania historii czatów.' }, { status: 500 });
   }
 }
-

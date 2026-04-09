@@ -38,7 +38,11 @@ export async function POST(request) {
       }, { status: 403 });
     }
 
-    const accessToken = signAccessToken({ userId: user.id, tokenVersion: user.tokenVersion || 0 });
+    const accessToken = signAccessToken({
+      userId: user.id,
+      tokenVersion: user.tokenVersion || 0,
+      username: user.username,
+    });
     const refreshToken = signRefreshToken({ userId: user.id, tokenVersion: user.tokenVersion || 0 });
 
     user.refreshTokenHash = await hashRefreshToken(refreshToken);
