@@ -10,19 +10,17 @@ export function UserProvider({ children }) {
 
   const refreshUser = useCallback(async () => {
     try {
+      /** Najpierw refresh — przy powrocie po czasie access jest świeży, /me często bez 401 w konsoli */
+      await fetch('/api/auth/refresh', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
       let res = await fetch('/api/auth/me', { credentials: 'include' });
       if (res.status === 401) {
-        const r = await fetch('/api/auth/refresh', {
-          method: 'POST',
-          credentials: 'include',
-        });
-        if (!r.ok) {
-          setUser(null);
-          setIsAuthed(false);
-          return false;
-        }
-        
-        res = await fetch('/api/auth/me', { credentials: 'include' });
+        setUser(null);
+        setIsAuthed(false);
+        return false;
       }
 
       if (res.ok) {

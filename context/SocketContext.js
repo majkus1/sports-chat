@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { io } from 'socket.io-client'
 import { UserContext } from './UserContext'
+import { ACCESS_REFRESH_EVENT } from '@/lib/authFetch'
 
 const SocketContext = createContext(null)
 
@@ -136,6 +137,17 @@ export function SocketProvider({ children }) {
 			socket.connect()
 		}
 	}, [socket, userFromAuth?.isAuthed, userFromAuth?.user?.username])
+
+	/** Po odświeżeniu access w HTTP (ten sam refresh co przy wysyłce wiadomości) — nowy JWT z `un` na handshake */
+	useEffect(() => {
+		if (!socket) return
+		const onAccessRefresh = () => {
+			socket.disconnect()
+			socket.connect()
+		}
+		window.addEventListener(ACCESS_REFRESH_EVENT, onAccessRefresh)
+		return () => window.removeEventListener(ACCESS_REFRESH_EVENT, onAccessRefresh)
+	}, [socket])
 
 	return (
 		<SocketContext.Provider value={{ socket, isConnected, connectionError }}>

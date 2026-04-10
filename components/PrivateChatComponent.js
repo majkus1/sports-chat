@@ -2,6 +2,7 @@ import { useState, useEffect, useContext, useRef, useCallback } from 'react'
 import { UserContext } from '../context/UserContext'
 import { useSocket } from '../context/SocketContext'
 import { useTranslations } from 'next-intl'
+import { fetchWithAuthRefresh } from '@/lib/authFetch'
 
 const PrivateChatComponent = ({ receiver }) => {
 	const [messages, setMessages] = useState([])
@@ -12,15 +13,10 @@ const PrivateChatComponent = ({ receiver }) => {
 	const messagesContainerRef = useRef(null)
 	const t = useTranslations('common')
 
-	const fetchWithRefresh = useCallback(async (url, opts = {}) => {
-		const res = await fetch(url, { credentials: 'include', ...opts })
-		if (res.status !== 401) return res
-		
-		const r = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
-		if (!r.ok) return res 
-		
-		return fetch(url, { credentials: 'include', ...opts })
-	}, [])
+	const fetchWithRefresh = useCallback(
+		(url, opts) => fetchWithAuthRefresh(url, opts),
+		[]
+	)
 
 	useEffect(() => {
 		if (messagesContainerRef.current) {
@@ -105,8 +101,13 @@ const PrivateChatComponent = ({ receiver }) => {
 						peer: receiver,
 					}),
 				})
-				const data = await response.json()
-				if (data.success) {
+				let data = {}
+				try {
+					data = await response.json()
+				} catch (_) {
+					/* empty */
+				}
+				if (response.ok && data.success !== false) {
 					const trimmed = currentMessage.trim()
 					setMessages(prev => [
 						...prev,

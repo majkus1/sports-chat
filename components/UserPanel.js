@@ -4,6 +4,7 @@ import { useSocket } from '@/context/SocketContext';
 import Modal from './Modal';
 import PrivateChatComponent from './PrivateChatComponent';
 import { useTranslations } from 'next-intl'
+import { fetchWithAuthRefresh } from '@/lib/authFetch'
 
 export default function UserPanel() {
   const [isPrivateChatOpen, setPrivateChatOpen] = useState(false);
@@ -17,15 +18,10 @@ export default function UserPanel() {
   const { socket, isConnected } = useSocket();
   const username = user?.username;
 
-  const fetchWithRefresh = useCallback(async (url, opts = {}) => {
-    const res = await fetch(url, { credentials: 'include', ...opts });
-    if (res.status !== 401) return res;
-
-    const r = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
-    if (!r.ok) return res;
-
-    return fetch(url, { credentials: 'include', ...opts });
-  }, []);
+  const fetchWithRefresh = useCallback(
+    (url, opts) => fetchWithAuthRefresh(url, opts),
+    []
+  );
 
   const handleSearch = useCallback(async (query) => {
     if (!query) return;

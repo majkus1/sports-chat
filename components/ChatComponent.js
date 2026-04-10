@@ -6,6 +6,7 @@ import Modal from './Modal'
 import PrivateChatComponent from './PrivateChatComponent'
 import { GiPlayButton } from 'react-icons/gi'
 import { useTranslations, useLocale } from 'next-intl'
+import { fetchWithAuthRefresh } from '@/lib/authFetch'
 
 const ChatComponent = ({
 	chatId,
@@ -162,15 +163,10 @@ const ChatComponent = ({
 		}
 	}, [])
 
-	const fetchWithRefresh = useCallback(async (url, opts = {}) => {
-		const res = await fetch(url, { credentials: 'include', ...opts })
-		if (res.status !== 401) return res
-		// odśwież access
-		const r = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
-		if (!r.ok) return res // brak refresh -> zwracamy 401
-		// spróbuj ponownie
-		return fetch(url, { credentials: 'include', ...opts })
-	}, [])
+	const fetchWithRefresh = useCallback(
+		(url, opts) => fetchWithAuthRefresh(url, opts),
+		[]
+	)
 
 	// Check if analysis exists in database (only for pre-match)
 	useEffect(() => {
@@ -755,8 +751,13 @@ const ChatComponent = ({
 						chatId,
 					}),
 				})
-				const data = await response.json()
-				if (data.success) {
+				let data = {}
+				try {
+					data = await response.json()
+				} catch (_) {
+					/* empty */
+				}
+				if (response.ok && data.success !== false) {
 					const trimmed = currentMessage.trim()
 					setMessages(prev => [
 						...prev,
