@@ -421,9 +421,18 @@ const ChatComponent = ({
 		}
 
 		const handleReceiveMessage = (message) => {
-			if (message.chatId === chatId) {
-				setMessages(prevMessages => [...prevMessages, message])
-			}
+			if (message.chatId !== chatId) return
+			setMessages(prevMessages => {
+				const last = prevMessages[prevMessages.length - 1]
+				if (
+					last &&
+					last.username === message.username &&
+					last.content === message.content
+				) {
+					return prevMessages
+				}
+				return [...prevMessages, message]
+			})
 		}
 
 		socket.on('receive_message', handleReceiveMessage)
@@ -748,14 +757,23 @@ const ChatComponent = ({
 				})
 				const data = await response.json()
 				if (data.success) {
-					if (socket && isConnected) {
-						const messageObject = {
-							content: currentMessage,
+					const trimmed = currentMessage.trim()
+					setMessages(prev => [
+						...prev,
+						{
 							chatId,
-						}
-						socket.emit('send_message', messageObject)
-					}
+							username,
+							content: trimmed,
+							timestamp: new Date(),
+						},
+					])
 					setCurrentMessage('')
+					if (socket && isConnected) {
+						socket.emit('send_message', {
+							content: trimmed,
+							chatId,
+						})
+					}
 				} else {
 					if (process.env.NODE_ENV === 'development') {
 						console.error('Błąd wysyłania wiadomości:', data.message)

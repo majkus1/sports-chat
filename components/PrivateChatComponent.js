@@ -65,9 +65,18 @@ const PrivateChatComponent = ({ receiver }) => {
 			if (process.env.NODE_ENV === 'development') {
 			console.log('Otrzymano prywatną wiadomość:', message)
 			}
-			if (message.chatId === chatId) {
-				setMessages(prevMessages => [...prevMessages, message])
-			}
+			if (message.chatId !== chatId) return
+			setMessages(prevMessages => {
+				const last = prevMessages[prevMessages.length - 1]
+				if (
+					last &&
+					last.username === message.username &&
+					last.content === message.content
+				) {
+					return prevMessages
+				}
+				return [...prevMessages, message]
+			})
 		}
 
 		socket.on('receive_private_message', handleReceivePrivateMessage)
@@ -98,15 +107,23 @@ const PrivateChatComponent = ({ receiver }) => {
 				})
 				const data = await response.json()
 				if (data.success) {
-					if (socket && isConnected) {
-					const messageObject = {
-						content: currentMessage,
-						chatId,
-						peerUsername: receiver,
-					}
-					socket.emit('send_private_message', messageObject)
-					}
+					const trimmed = currentMessage.trim()
+					setMessages(prev => [
+						...prev,
+						{
+							username: sender,
+							content: trimmed,
+							timestamp: new Date(),
+						},
+					])
 					setCurrentMessage('')
+					if (socket && isConnected) {
+						socket.emit('send_private_message', {
+							content: trimmed,
+							chatId,
+							peerUsername: receiver,
+						})
+					}
 				} else {
 					if (process.env.NODE_ENV === 'development') {
 					console.error(data.message)

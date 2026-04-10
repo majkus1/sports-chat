@@ -2,16 +2,20 @@
 
 import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { io } from 'socket.io-client'
+import { UserContext } from './UserContext'
 
 const SocketContext = createContext(null)
 
 export function SocketProvider({ children }) {
+	const userFromAuth = useContext(UserContext)
 	const [socket, setSocket] = useState(null)
 	const [isConnected, setIsConnected] = useState(false)
 	const [connectionError, setConnectionError] = useState(null)
 	const reconnectAttempts = useRef(0)
 	const maxReconnectAttempts = 5
 	const reconnectTimeoutRef = useRef(null)
+	/** Handshake używa ciasteczek — po zalogowaniu trzeba połączyć ponownie, żeby JWT z polem `un` trafił na serwer */
+	const wasAuthedRef = useRef(false)
 
 	useEffect(() => {
 		// Socket.IO automatically appends /socket.io/ to the path
@@ -116,6 +120,22 @@ export function SocketProvider({ children }) {
 			setIsConnected(false)
 		}
 	}, [])
+
+	useEffect(() => {
+		if (!socket) return
+		const authed = !!(userFromAuth?.isAuthed && userFromAuth?.user?.username)
+		if (authed && !wasAuthedRef.current) {
+			wasAuthedRef.current = true
+			socket.disconnect()
+			socket.connect()
+			return
+		}
+		if (!authed && wasAuthedRef.current) {
+			wasAuthedRef.current = false
+			socket.disconnect()
+			socket.connect()
+		}
+	}, [socket, userFromAuth?.isAuthed, userFromAuth?.user?.username])
 
 	return (
 		<SocketContext.Provider value={{ socket, isConnected, connectionError }}>
