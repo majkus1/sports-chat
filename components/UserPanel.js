@@ -14,7 +14,7 @@ export default function UserPanel() {
   const [searchResults, setSearchResults] = useState([]);
   const t = useTranslations('common');
 
-  const { user, isAuthed, refreshUser } = useContext(UserContext);
+  const { user, isAuthed } = useContext(UserContext);
   const { socket, isConnected } = useSocket();
   const username = user?.username;
 
@@ -60,10 +60,9 @@ export default function UserPanel() {
 
   useEffect(() => {
     if (isAuthed) {
-      refreshUser?.();
       fetchChatHistory();
     }
-  }, [isAuthed, refreshUser, fetchChatHistory]);
+  }, [isAuthed, fetchChatHistory]);
 
   useEffect(() => {
     if (!isAuthed || !socket || !isConnected) return;
