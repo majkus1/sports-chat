@@ -759,21 +759,31 @@ const ChatComponent = ({
 				}
 				if (response.ok && data.success !== false) {
 					const trimmed = currentMessage.trim()
+					const displayName =
+						typeof data.username === 'string' && data.username.trim()
+							? data.username.trim()
+							: username
 					setMessages(prev => [
 						...prev,
 						{
 							chatId,
-							username,
+							username: displayName,
 							content: trimmed,
 							timestamp: new Date(),
 						},
 					])
 					setCurrentMessage('')
-					if (socket && isConnected) {
-						socket.emit('send_message', {
-							content: trimmed,
-							chatId,
-						})
+					const tryEmit = () => {
+						if (socket && socket.connected) {
+							socket.emit('send_message', {
+								content: trimmed,
+								chatId,
+							})
+						}
+					}
+					tryEmit()
+					if (socket && !socket.connected) {
+						socket.once('connect', tryEmit)
 					}
 				} else {
 					if (process.env.NODE_ENV === 'development') {

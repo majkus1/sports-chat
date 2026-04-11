@@ -34,7 +34,14 @@ export async function POST(request) {
     });
     await newMessage.save();
 
-    return Response.json({ success: true, message: 'Wiadomość zapisana pomyślnie.' }, { status: 200 });
+    return Response.json(
+      {
+        success: true,
+        message: 'Wiadomość zapisana pomyślnie.',
+        username: session.username,
+      },
+      { status: 200 }
+    );
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
       console.error('Error saving message:', error);

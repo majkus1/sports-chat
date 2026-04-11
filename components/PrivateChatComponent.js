@@ -109,21 +109,31 @@ const PrivateChatComponent = ({ receiver }) => {
 				}
 				if (response.ok && data.success !== false) {
 					const trimmed = currentMessage.trim()
+					const displayName =
+						typeof data.username === 'string' && data.username.trim()
+							? data.username.trim()
+							: sender
 					setMessages(prev => [
 						...prev,
 						{
-							username: sender,
+							username: displayName,
 							content: trimmed,
 							timestamp: new Date(),
 						},
 					])
 					setCurrentMessage('')
-					if (socket && isConnected) {
-						socket.emit('send_private_message', {
-							content: trimmed,
-							chatId,
-							peerUsername: receiver,
-						})
+					const tryEmit = () => {
+						if (socket && socket.connected) {
+							socket.emit('send_private_message', {
+								content: trimmed,
+								chatId,
+								peerUsername: receiver,
+							})
+						}
+					}
+					tryEmit()
+					if (socket && !socket.connected) {
+						socket.once('connect', tryEmit)
 					}
 				} else {
 					if (process.env.NODE_ENV === 'development') {

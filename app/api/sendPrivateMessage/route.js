@@ -59,7 +59,15 @@ export async function POST(request) {
     chat.messages.push(newMessage);
     await chat.save();
 
-    return Response.json({ success: true, message: 'Wiadomość zapisana pomyślnie.', chatId }, { status: 200 });
+    return Response.json(
+      {
+        success: true,
+        message: 'Wiadomość zapisana pomyślnie.',
+        chatId,
+        username: session.username,
+      },
+      { status: 200 }
+    );
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
       console.error('Error saving private message:', error);

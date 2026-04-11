@@ -15,8 +15,9 @@ export const UserContext = createContext(null);
 export function UserProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isAuthed, setIsAuthed] = useState(false);
-  /** Jedna sesja refresh+me naraz — podwójne mounty (Strict Mode) lub szybkie powtórzenia nie rozjeżdżają rotacji refresh tokena */
+  /** Jedna sesja „/me (+ ewentualnie refresh)” naraz */
   const refreshInflightRef = useRef(null);
+  const tabHiddenAtRef = useRef(null);
 
   const refreshUser = useCallback(async () => {
     if (refreshInflightRef.current) {
@@ -25,15 +26,30 @@ export function UserProvider({ children }) {
 
     const run = (async () => {
       try {
-        const r = await refreshAccessToken();
+        /** Najpierw /me — świeży access z logowania (np. Google) działa od razu; unikasz zbędnego POST /refresh i 401 w konsoli. */
+        let res = await fetch('/api/auth/me', { credentials: 'include' });
 
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data);
+          setIsAuthed(true);
+          return true;
+        }
+
+        if (res.status !== 401) {
+          setUser(null);
+          setIsAuthed(false);
+          return false;
+        }
+
+        const r = await refreshAccessToken();
         if (!r.ok) {
           setUser(null);
           setIsAuthed(false);
           return false;
         }
 
-        const res = await fetch('/api/auth/me', { credentials: 'include' });
+        res = await fetch('/api/auth/me', { credentials: 'include' });
         if (res.status === 401) {
           setUser(null);
           setIsAuthed(false);
@@ -79,6 +95,26 @@ export function UserProvider({ children }) {
     };
     window.addEventListener('pageshow', onPageShow);
     return () => window.removeEventListener('pageshow', onPageShow);
+  }, [refreshUser]);
+
+  /** Po >60 s w tle odśwież sesję (wygasły access bez pełnego reloadu) */
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') {
+        tabHiddenAtRef.current = Date.now();
+        return;
+      }
+      if (document.visibilityState !== 'visible' || tabHiddenAtRef.current == null) {
+        return;
+      }
+      const delta = Date.now() - tabHiddenAtRef.current;
+      tabHiddenAtRef.current = null;
+      if (delta > 60_000) {
+        refreshUser();
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
   }, [refreshUser]);
 
   const ctxValue = useMemo(
