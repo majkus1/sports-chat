@@ -31,9 +31,15 @@ export default function GoogleAuthButton({ onSuccessClose }) {
               showAlert(msg || 'Google login failed', 'error');
               return;
             }
-            await refreshUser();
-            showAlert(t('login_success'), 'success');
+            const ok = await refreshUser();
+            if (!ok) {
+              showAlert(t('login_problem'), 'error');
+              return;
+            }
             onSuccessClose?.();
+            if (typeof window !== 'undefined') {
+              window.location.reload();
+            }
           } catch (e) {
             if (process.env.NODE_ENV === 'development') {
               console.error(e);

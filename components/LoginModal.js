@@ -27,12 +27,14 @@ export default function LoginModal({ isOpen, onRequestClose, onLogin }) {
 			const ok = await refreshUser()
 			if (ok) {
 				onLogin?.()
-				showAlert(t('login_success'), 'success')
-				onRequestClose?.()
-			} else {
-				showAlert(t('login_problem'), 'error')
+				if (typeof window !== 'undefined') {
+					window.location.reload()
+				}
+				return
 			}
-		} 
+			showAlert(t('login_problem'), 'error')
+			return
+		}
 
 		const data = await response.json().catch(() => ({}))
 		if (!response.ok) {

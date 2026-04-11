@@ -8,7 +8,7 @@ import {
   useMemo,
   useRef,
 } from 'react';
-import { refreshAccessToken } from '@/lib/authFetch';
+import { refreshAccessToken, reloadPageAfterAuth } from '@/lib/authFetch';
 
 export const UserContext = createContext(null);
 
@@ -60,6 +60,7 @@ export function UserProvider({ children }) {
           const data = await res.json();
           setUser(data);
           setIsAuthed(true);
+          reloadPageAfterAuth();
           return true;
         }
 
