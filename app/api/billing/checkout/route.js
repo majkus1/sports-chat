@@ -21,9 +21,9 @@ import { getStripe, getStripeConfig } from '@/lib/stripe/config';
  * deweloperskich, żeby kupić plan VIP za złotówkę.
  *
  * Odpowiedź to adres hostowanej strony Stripe'a. Tam wyświetlą się metody płatności włączone
- * na koncie dla waluty PLN — karta, BLIK i Przelewy24. Nie wypisujemy ich w kodzie:
- * `automatic_payment_methods` dobiera je do waluty i kraju kupującego, a sztywna lista
- * rozjeżdża się z ustawieniami panelu przy pierwszej zmianie.
+ * na koncie dla waluty PLN — karta, BLIK i Przelewy24. Nie wypisujemy ich w kodzie: Checkout
+ * dobiera je sam do waluty i kraju kupującego, a sztywna lista rozjeżdża się z ustawieniami
+ * panelu przy pierwszej zmianie.
  *
  * OŚWIADCZENIE KONSUMENTA. Bez niego sesja w ogóle nie powstaje. Kupowane treści cyfrowe
  * udostępniamy natychmiast, a prawo odstąpienia wygasa dopiero wtedy, gdy konsument wyraźnie
@@ -136,7 +136,15 @@ export async function POST(request) {
 			// Jednorazowa, nie subskrypcja — BLIK i P24 nie obsługują płatności cyklicznych.
 			mode: 'payment',
 			currency: 'pln',
-			automatic_payment_methods: { enabled: true },
+			/*
+			 * Metod płatności NIE wypisujemy i nie włączamy osobnym parametrem.
+			 *
+			 * `automatic_payment_methods` należy do PaymentIntents — Checkout Session odrzuca je
+			 * błędem „Received unknown parameter" i nie powstaje żadna sesja. W Checkoucie dobór
+			 * metod jest domyślny: Stripe pokazuje to, co włączone w panelu dla waluty i kraju
+			 * kupującego. Sztywna lista `payment_method_types` też jest zła — rozjeżdża się
+			 * z ustawieniami panelu przy pierwszej zmianie.
+			 */
 			customer_email: user.email || undefined,
 			client_reference_id: String(session.userId),
 			line_items: [
