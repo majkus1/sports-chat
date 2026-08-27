@@ -1,10 +1,271 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap');
 
+/*
+ * Tailwind v4 — celowo BEZ warstwy `preflight`.
+ *
+ * Aplikacja ma jeszcze ~840 linii globalnego SCSS (styles/All.scss) i mnóstwo inline
+ * style={{}}. Preflight zresetowałby nagłówki, listy, przyciski i pola formularzy na
+ * wszystkich starych ekranach naraz. Utility działają bez niego; preflight włączymy,
+ * gdy ostatnia strona przejdzie na Tailwinda (Etap 3).
+ */
+@layer theme, base, components;
+@import 'tailwindcss/theme.css' layer(theme);
+
+/*
+ * Utility celowo POZA warstwą kaskadową.
+ *
+ * Reguły spoza warstw wygrywają z regułami w warstwach niezależnie od specyficzności.
+ * Stary `styles/LoginModal.scss` ma `* { margin: 0; padding: 0 }` bez warstwy, więc
+ * `@layer utilities` przegrywało z gwiazdką — każdy `mt-*`, `p-*` czy `gap-*` był ignorowany.
+ * Bez warstwy decyduje specyficzność: klasa (0,1,0) bije `*` (0,0,0) i selektor elementowy (0,0,1).
+ *
+ * Kolejność importów w app/[locale]/layout.js jest częścią tego rozwiązania: stary SCSS
+ * ładuje się PRZED tym plikiem, żeby przy równej specyficzności wygrywało utility.
+ */
+@import 'tailwindcss/utilities.css';
+
+/* Animacje wejścia/wyjścia dla komponentów Radix (data-[state=open]:animate-in itd.). */
+@import 'tw-animate-css';
+
+/* Motyw sterowany klasą na <html>, nie preferencją systemu — użytkownik ma przełącznik. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Tokeny semantyczne. Komponenty odwołują się do znaczenia (`surface`, `border`, `muted`),
+ * nigdy do konkretnego koloru — dzięki temu wariant ciemny to podmiana kilkunastu zmiennych,
+ * a nie przeszukiwanie kodu za `#173b45`.
+ */
+:root {
+	--bg: #f4f6f7;
+	--surface: #ffffff;
+	--surface-2: #eef1f3;
+	--surface-3: #e4e9ec;
+	--border: #dde3e6;
+	--border-strong: #c3cdd2;
+	--text: #0f1c20;
+	--muted: #5c6b70;
+
+	--brand: #173b45;
+	--brand-hover: #1e4a56;
+	--brand-fg: #ffffff;
+
+	--accent: #16a34a;
+	--accent-hover: #15803d;
+	--accent-fg: #ffffff;
+	/* Półprzezroczysta zieleń kart „sport / mecz” z dotychczasowego layoutu. */
+	--accent-soft: #00800047;
+	/* Plakietka „jesteś zalogowany” — ciemna zieleń z beżowym tekstem. */
+	--success-solid: #004225;
+	--success-solid-fg: #f5f5dc;
+
+	--shadow-soft: rgba(0, 0, 0, 0.1) 0px 2px 8px;
+	/* Przyciemnienie tła pod modalami logowania/rejestracji. */
+	--overlay: #f1f1f1ae;
+	/* Tło komunikatu o błędzie (odpowiednik --accent-soft dla stanu negatywnego). */
+	--danger-soft: rgba(220, 38, 38, 0.12);
+
+	--live: #e11d48;
+	--win: #16a34a;
+	--draw: #ca8a04;
+	--loss: #dc2626;
+
+	--ring: #173b45;
+	--radius: 0.625rem;
+}
+
+.dark {
+	--bg: #0b1114;
+	--surface: #111a1e;
+	--surface-2: #16232a;
+	--surface-3: #1d2f37;
+	--border: #24343b;
+	--border-strong: #33474f;
+	--text: #e8eef0;
+	--muted: #93a4ab;
+
+	--brand: #2a6a7c;
+	--brand-hover: #35808f;
+	--brand-fg: #f2fafc;
+
+	/*
+	 * Napis na zielonym przycisku biały także w motywie ciemnym.
+	 *
+	 * Wcześniej był prawie czarny (#04140a), bo na jasnej zieleni daje wyraźnie wyższy
+	 * kontrast. Zieleń jest więc odrobinę przyciemniona względem jasnego motywu, żeby biel
+	 * miała się od czego odbić — przyciski akcji są pogrubione i większe niż tekst
+	 * akapitowy, więc czytają się dobrze.
+	 */
+	--accent: #1aa64b;
+	--accent-hover: #15803d;
+	--accent-fg: #ffffff;
+	--accent-soft: rgba(34, 197, 94, 0.16);
+	--success-solid: #14532d;
+	--success-solid-fg: #dcfce7;
+
+	--shadow-soft: rgba(0, 0, 0, 0.55) 0px 2px 10px;
+	--overlay: rgba(4, 10, 12, 0.72);
+	--danger-soft: rgba(248, 113, 113, 0.16);
+
+	--live: #fb7185;
+	--win: #22c55e;
+	--draw: #eab308;
+	--loss: #f87171;
+
+	--ring: #35808f;
+}
+
+/* `inline` sprawia, że utility (bg-surface, text-muted…) czytają zmienne w czasie działania,
+   więc przełączenie motywu nie wymaga przebudowy CSS. */
+@theme inline {
+	--color-bg: var(--bg);
+	--color-surface: var(--surface);
+	--color-surface-2: var(--surface-2);
+	--color-surface-3: var(--surface-3);
+	--color-border: var(--border);
+	--color-border-strong: var(--border-strong);
+	--color-text: var(--text);
+	--color-muted: var(--muted);
+
+	--color-brand: var(--brand);
+	--color-brand-hover: var(--brand-hover);
+	--color-brand-fg: var(--brand-fg);
+
+	--color-accent: var(--accent);
+	--color-accent-hover: var(--accent-hover);
+	--color-accent-fg: var(--accent-fg);
+
+	/* Bez tych wpisów `bg-accent-soft` czy `bg-danger-soft` nie generowały żadnej reguły,
+	   a element z takim tłem zostawał domyślnie szary (`buttonface`) albo przezroczysty. */
+	--color-accent-soft: var(--accent-soft);
+	--color-danger-soft: var(--danger-soft);
+	--color-success-solid: var(--success-solid);
+	--color-success-solid-fg: var(--success-solid-fg);
+	--color-overlay: var(--overlay);
+
+	--color-live: var(--live);
+	--color-win: var(--win);
+	--color-draw: var(--draw);
+	--color-loss: var(--loss);
+
+	--color-ring: var(--ring);
+
+	--radius-ui: var(--radius);
+
+	--font-display: 'Barlow Condensed', 'Roboto Condensed', sans-serif;
+	--font-sans: 'Roboto Condensed', system-ui, sans-serif;
+}
+
+/*
+ * Jedyny fragment preflightu, którego brak realnie boli.
+ *
+ * Zrezygnowaliśmy z pełnego preflightu ze względu na stary SCSS (patrz komentarz na górze
+ * pliku), ale bez niego każdy `<button>` bez jawnego tła i ramki dostaje od przeglądarki
+ * `background: buttonface` i `border: outset` — w trybie ciemnym wychodzi z tego szary
+ * kafelek z jasną obwódką dookoła zielonego przycisku.
+ *
+ * Reguła leży w warstwie `base`, więc przegrywa zarówno z utility Tailwinda, jak i ze starym
+ * SCSS-em (jedne i drugie są poza warstwami). Zmienia więc wyłącznie te przyciski,
+ * których nikt nie ostylował — czyli dokładnie te zepsute.
+ */
+@layer base {
+	button {
+		background-color: transparent;
+		border-style: none;
+	}
+
+	/* Przeglądarka daje przyciskom zwykłą strzałkę — kursor „rączki" dokłada dopiero
+	   preflight. Bez tego połowa interfejsu nie wygląda na klikalną. */
+	button,
+	[role='button'],
+	summary {
+		cursor: pointer;
+	}
+
+	button:disabled,
+	[aria-disabled='true'] {
+		cursor: not-allowed;
+	}
+
+	/*
+	 * Ten sam problem co z przyciskami: bez preflightu listy zachowują przeglądarkowe
+	 * kropki/numerację i wcięcie ~40px. W komponentach na Tailwindzie (chipy faktów
+	 * w raporcie, limity na cenniku, składy) kropki lądowały obok flexowych elementów
+	 * i nachodziły na treść. Warstwa `base` przegrywa z każdym jawnym ostylowaniem,
+	 * więc lista, która chce kropek, nadal może je sobie włączyć.
+	 */
+	ul,
+	ol {
+		list-style: none;
+		padding-left: 0;
+	}
+}
+
+/**
+ * Plakietka nieprzeczytanych na ikonie konta.
+ *
+ * Poza warstwami, bo siada na przycisku ze starego SCSS-a (`.menu-icon`) i musi wygrać
+ * z jego regułami pozycjonowania.
+ */
+.unread-dot {
+	position: absolute;
+	top: -2px;
+	right: -2px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 17px;
+	height: 17px;
+	padding: 0 4px;
+	border-radius: 999px;
+	background: var(--live);
+	color: #fff;
+	font-size: 10px;
+	font-weight: 700;
+	line-height: 1;
+	/* Obwódka w kolorze tła oddziela plakietkę od ikony pod spodem. */
+	box-shadow: 0 0 0 2px var(--bg);
+	pointer-events: none;
+}
+
 body {
 	position: relative;
 	margin: 0 auto;
-	background-color: #f1f1f1;
+	/* Tło i kolor tekstu z tokenów — dzięki temu powłoka reaguje na motyw już teraz,
+	   zanim wnętrza starych stron przejdą na Tailwinda. */
+	background-color: var(--bg);
+	color: var(--text);
 	max-width: 1100px;
 	font-family: 'Roboto Condensed', sans-serif !important;
 }
 
+/*
+ * Ikona dyscypliny nakładana jako maska, nie jako obrazek.
+ *
+ * `public/img/football-new.png` jest jednobarwny i biały, więc jako `<img>` znikałby
+ * w motywie jasnym. Maska bierze z pliku wyłącznie kształt, a kolor pochodzi z
+ * `currentColor` — jeden plik obsługuje oba motywy i dowolne miejsce użycia.
+ */
+@layer components {
+	.sport-icon-mask {
+		-webkit-mask-image: url('/img/football-new.png');
+		mask-image: url('/img/football-new.png');
+		-webkit-mask-repeat: no-repeat;
+		mask-repeat: no-repeat;
+		-webkit-mask-position: center;
+		mask-position: center;
+		-webkit-mask-size: contain;
+		mask-size: contain;
+		/* Gdyby gdzieś ustawiono samą szerokość, span bez proporcji miałby zerową wysokość. */
+		aspect-ratio: 1 / 1;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+}

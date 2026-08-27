@@ -8,11 +8,21 @@ import {
   setAuthCookiesRouteHandler,
   hashRefreshToken,
 } from '@/lib/auth';
+import { limitByIp, tooManyRequests } from '@/lib/rateLimit';
 
 export async function POST(request) {
   try {
+    // Bez tego logowanie było otwarte na bruteforce — fail-closed, bo brak Redisa
+    // nie może oznaczać nieograniczonych prób hasła.
+    const rate = await limitByIp(request, {
+      scope: 'auth-login',
+      limit: 10,
+      windowSeconds: 300,
+    });
+    if (!rate.allowed) return tooManyRequests(rate.retryAfter);
+
     await connectToDb();
-    
+
     const body = await request.json();
     const { username, password } = body || {};
     

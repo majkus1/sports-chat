@@ -1,24 +1,18 @@
-import axios from 'axios';
+import { liveFixtures } from '@/lib/football/endpoints';
 
-export async function GET(request) {
-  const options = {
-    method: 'GET',
-    url: 'https://api-football-v1.p.rapidapi.com/v3/fixtures',
-    params: { live: 'all' },
-    headers: {
-      'x-rapidapi-key': process.env.RAPIDAPI_KEY,
-      'x-rapidapi-host': 'api-football-v1.p.rapidapi.com',
-    },
-  };
-
-  try {
-    const response = await axios.request(options);
-    return Response.json({ fixtures: response.data.response }, { status: 200 });
-  } catch (error) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Error fetching live fixtures:', error);
-    }
-    return Response.json({ error: 'Failed to fetch live fixtures' }, { status: 500 });
-  }
+/**
+ * Mecze na żywo.
+ *
+ * Ta trasa nie miała żadnego cache'u — każde wejście na stronę „NA ŻYWO” i każde
+ * odświeżenie szło wprost do płatnego API. Teraz odpowiedź jest trzymana przez 30 sekund,
+ * co przy wielu użytkownikach oglądających te same mecze zmienia rachunek o rzędy wielkości.
+ */
+export async function GET() {
+	try {
+		const fixtures = await liveFixtures();
+		return Response.json({ fixtures }, { status: 200 });
+	} catch (error) {
+		console.error('[live] błąd pobierania:', error.message);
+		return Response.json({ error: 'Failed to fetch live fixtures' }, { status: 502 });
+	}
 }
-

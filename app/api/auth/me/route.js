@@ -1,24 +1,25 @@
 import connectToDb from '@/lib/db';
 import User from '@/models/User';
-import { getCookieRouteHandler, verifyJwt } from '@/lib/auth';
+import { getAuthenticatedUser } from '@/lib/auth';
 
 export async function GET(request) {
   try {
     await connectToDb();
 
-    const at = await getCookieRouteHandler('accessToken');
-    if (!at) {
+    /*
+     * `getAuthenticatedUser` zamiast samego `verifyJwt`.
+     *
+     * Ta trasa odpowiada na pytanie „czy jestem zalogowany" i zwraca adres e-mail konta.
+     * Bez sprawdzenia `tokenVersion` przeglądarka z tokenem sprzed resetu hasła wciąż
+     * pokazywała zalogowaną sesję razem z adresem — czyli reset hasła nie odcinał tego,
+     * kogo miał odciąć.
+     */
+    const session = await getAuthenticatedUser();
+    if (!session) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let decoded;
-    try {
-      decoded = verifyJwt(at, process.env.JWT_SECRET);
-    } catch (e) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await User.findById(decoded.userId).select('username email image');
+    const user = await User.findById(session.userId).select('username email image');
     if (!user) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }

@@ -1,0 +1,67 @@
+# Czat Sportowy
+
+> Serwis piłkarski łączący analizy meczów generowane przez model językowy, czat na żywo
+> w pokoju przy każdym spotkaniu oraz typy rozliczane automatycznie po meczu, z jawną
+> statystyką trafień i chybień. Dostępny po polsku i po angielsku.
+
+Operator: ML Devworks Michał Lipka, Kraków, Polska. Kontakt: office@ml-devworks.com
+
+## Czym serwis jest, a czym nie jest
+
+- NIE jest bukmacherem: nie urządza zakładów wzajemnych, nie przyjmuje stawek i nie wypłaca wygranych.
+- Typowanie służy rozrywce i porównaniu skuteczności między użytkownikami; nie ma nagród pieniężnych.
+- Treści mają charakter informacyjny i statystyczny; nie są poradą bukmacherską.
+- Serwis jest przeznaczony dla osób pełnoletnich.
+
+## Funkcje
+
+- Analiza przedmeczowa — ocena spotkania na podstawie formy, tabeli, bilansu bezpośrednich
+  meczów, składów, kontuzji i statystyk drużynowych.
+- Analiza meczu na żywo — odczyt trwającego spotkania na podstawie wyniku, wydarzeń i statystyk.
+- Raport AI — krótka lista spotkań wartych uwagi w najbliższych godzinach lub dniach.
+- Asystent w czacie — wywoływany wzmianką @AI w pokoju meczowym, zna komplet danych o meczu.
+- Typy użytkowników — wystawiane przed pierwszym gwizdkiem, rozliczane automatycznie
+  na podstawie oficjalnego wyniku.
+- Kolejka tygodniowa — wspólny zestaw dwunastu meczów dla wszystkich i ranking resetowany co tydzień.
+
+## Ceny
+
+- Plan darmowy: 5 analiz i 20 pytań do asystenta miesięcznie, bez raportów. Bez karty płatniczej.
+- Pula powitalna dla nowego konta: 10 analiz, 30 pytań i 2 raporty, ważna 7 dni.
+- Pakiety kredytów bez abonamentu: 5 kredytów za 19 zł, 15 za 39 zł, 40 za 79 zł.
+  Analiza kosztuje 1 kredyt, raport 3 kredyty. Kredyty nie tracą ważności.
+- Plany miesięczne: Pro 49 zł, VIP 99 zł.
+- Płatności: karta, BLIK, Przelewy24 (Stripe).
+
+## Dyscypliny
+
+Obecnie wyłącznie piłka nożna, w najważniejszych rozgrywkach europejskich i międzynarodowych.
+Kolejne sporty są w planach.
+
+## Skąd pochodzą dane
+
+Dane sportowe od komercyjnego dostawcy (terminarze, wyniki na żywo, składy, kontuzje,
+tabele, statystyki). Treści generują modele językowe Anthropic i OpenAI. Model nie ma
+dostępu do internetu w trakcie pisania analizy.
+
+## Najważniejsze adresy
+
+- Strona główna: https://czatsportowy.pl/pl
+- Mecze przedmeczowe: https://czatsportowy.pl/pl/pilka-nozna/przedmeczowe
+- Mecze na żywo: https://czatsportowy.pl/pl/pilka-nozna/live
+- Raport AI: https://czatsportowy.pl/pl/pilka-nozna/ai-agent
+- Kolejka tygodniowa: https://czatsportowy.pl/pl/pilka-nozna/kolejka
+- Skuteczność analiz: https://czatsportowy.pl/pl/pilka-nozna/skutecznosc
+- Plany i limity: https://czatsportowy.pl/pl/cennik
+- Blog: https://czatsportowy.pl/pl/blog
+- Regulamin: https://czatsportowy.pl/pl/regulamin
+- Polityka prywatności: https://czatsportowy.pl/pl/polityka-prywatnosci
+- Kontakt: https://czatsportowy.pl/pl/kontakt
+
+Wersja angielska każdej strony pod tym samym adresem z prefiksem /en zamiast /pl.
+
+## Uwaga o skuteczności
+
+Publikujemy zarówno trafione, jak i chybione typy oraz te, których nie da się rozstrzygnąć
+samym wynikiem końcowym. Przy małej liczbie rozliczonych typów procent skuteczności nie ma
+wartości informacyjnej — zawsze podajemy, na ilu meczach jest liczony.

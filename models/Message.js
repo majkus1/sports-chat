@@ -1,20 +1,8 @@
 import mongoose from 'mongoose';
+import createMessageSchema from './messageSchema.cjs';
 
-const messageSchema = new mongoose.Schema({
-    username: String,
-    content: String,
-    chatId: String,
-    timestamp: { type: Date, default: Date.now }
-});
-
-
-let Message;
-
-try {
-    Message = mongoose.model('Message');
-} catch {
-    Message = mongoose.model('Message', messageSchema);
-}
+/** Schemat współdzielony z server.js — patrz models/messageSchema.cjs */
+const Message =
+	mongoose.models.Message || mongoose.model('Message', createMessageSchema(mongoose));
 
 export default Message;
-

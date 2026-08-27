@@ -1,17 +1,32 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import BeatLoader from 'react-spinners/BeatLoader';
 import { useTranslations } from 'next-intl';
+import { useTheme } from '@/context/ThemeContext';
 
+/**
+ * Pełnoekranowe okno z widgetem API-Sports.
+ *
+ * Motyw dokładamy tutaj, a nie w każdym miejscu wywołania: okno służy wyłącznie stronom
+ * widgetów, a wywołań jest jedenaście w trzech plikach. Bez tego widget zostawał biały
+ * w ciemnej aplikacji.
+ */
 const FullScreenModal = ({ onClose, src }) => {
   const t = useTranslations('common');
+  const { theme } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
+
+  const themedSrc = useMemo(() => {
+    if (!src) return src;
+    const separator = src.includes('?') ? '&' : '?';
+    return `${src}${separator}theme=${theme === 'dark' ? 'dark' : 'light'}`;
+  }, [src, theme]);
 
   // Reset loading state when src changes
   useEffect(() => {
     setIsLoading(true);
-  }, [src]);
+  }, [themedSrc]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -43,7 +58,7 @@ const FullScreenModal = ({ onClose, src }) => {
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: '#f1f1f1',
+        backgroundColor: 'var(--bg)',
         zIndex: 100002,
         display: 'flex',
         flexDirection: 'column',
@@ -65,7 +80,7 @@ const FullScreenModal = ({ onClose, src }) => {
             position: 'absolute',
             top: '20px',
             right: '20px',
-            background: '#fff',
+            background: 'var(--surface)',
             border: 'none',
             borderRadius: '50%',
             width: '40px',
@@ -75,8 +90,8 @@ const FullScreenModal = ({ onClose, src }) => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
-            color: '#333',
+            boxShadow: 'var(--shadow-soft)',
+            color: 'var(--text)',
             fontWeight: 'bold',
             zIndex: 100004,
           }}
@@ -102,26 +117,26 @@ const FullScreenModal = ({ onClose, src }) => {
             justifyContent: 'center',
             alignItems: 'center',
             gap: '20px',
-            backgroundColor: '#f1f1f1',
+            backgroundColor: 'var(--bg)',
             zIndex: 100003,
           }}
         >
           <BeatLoader 
-            color="#173b45" 
+            color="var(--brand)" 
             size={15}
             margin={5}
             speedMultiplier={0.8}
           />
           <p style={{ 
             fontFamily: 'Roboto Condensed, sans-serif',
-            color: '#173b45',
+            color: 'var(--brand)',
             fontSize: '16px',
             fontWeight: 400
           }}>{t('loading')}</p>
         </div>
       )}
       <iframe
-        src={src}
+        src={themedSrc}
         onLoad={handleIframeLoad}
         style={{
           width: '100%',

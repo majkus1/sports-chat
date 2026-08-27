@@ -27,20 +27,20 @@ const Alert = ({ message, type = 'info', isOpen, onClose, duration = 4000 }) => 
 
   const alertStyles = {
     success: {
-      backgroundColor: '#22c55e',
-      borderColor: '#16a34a',
+      backgroundColor: 'var(--win)',
+      borderColor: 'var(--accent-hover)',
     },
     error: {
-      backgroundColor: '#ef4444',
-      borderColor: '#dc2626',
+      backgroundColor: 'var(--loss)',
+      borderColor: 'var(--loss)',
     },
     warning: {
-      backgroundColor: '#f59e0b',
-      borderColor: '#d97706',
+      backgroundColor: 'var(--draw)',
+      borderColor: 'var(--draw)',
     },
     info: {
-      backgroundColor: '#173b45',
-      borderColor: '#1e4a56',
+      backgroundColor: 'var(--brand)',
+      borderColor: 'var(--brand-hover)',
     },
   };
 
@@ -61,7 +61,7 @@ const Alert = ({ message, type = 'info', isOpen, onClose, duration = 4000 }) => 
         color: '#fff',
         padding: '16px 20px',
         borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+        boxShadow: 'var(--shadow-soft)',
         border: `2px solid ${style.borderColor}`,
         fontFamily: 'Roboto Condensed, sans-serif',
         fontSize: '16px',

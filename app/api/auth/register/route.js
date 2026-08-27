@@ -7,15 +7,34 @@ import {
   ensureString
 } from '@/lib/auth';
 import { getTransporter } from '@/lib/mailer';
+import { limitByIp, tooManyRequests } from '@/lib/rateLimit';
+import { TERMS_VERSION } from '@/lib/legal/operator';
 
 export async function POST(request) {
   try {
+    // Rejestracja wysyła maila weryfikacyjnego — bez limitu to gotowy kanał do spamu.
+    const rate = await limitByIp(request, {
+      scope: 'auth-register',
+      limit: 5,
+      windowSeconds: 3600,
+    });
+    if (!rate.allowed) return tooManyRequests(rate.retryAfter);
+
     await connectToDb();
-    
+
     const body = await request.json();
-    const { email, password, username, locale = 'pl' } = body || {};
+    const { email, password, username, locale = 'pl', acceptedTerms } = body || {};
     
     // Validate all fields exist and are strings
+    /*
+     * Akceptację sprawdzamy po stronie serwera, nie tylko atrybutem `required` w formularzu.
+     * Pole `required` da się obejść w narzędziach deweloperskich, a wtedy zostałby ślad
+     * akceptacji, której nikt nie udzielił — czyli dowód gorszy niż jego brak.
+     */
+    if (acceptedTerms !== true) {
+      return NextResponse.json({ error: 'register_terms_required' }, { status: 400 });
+    }
+
     if (!ensureString(email) || !ensureString(password, 200) || !ensureString(username, 32)) {
       return NextResponse.json({ error: 'register_bad_data' }, { status: 400 });
     }
@@ -55,6 +74,8 @@ export async function POST(request) {
       isEmailVerified: false,
       emailVerificationTokenHash: verificationTokenHash,
       emailVerificationTokenExp: verificationTokenExp,
+      termsAcceptedAt: new Date(),
+      termsVersion: TERMS_VERSION,
     });
 
     // Send verification email

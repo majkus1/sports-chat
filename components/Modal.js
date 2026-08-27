@@ -24,26 +24,40 @@ const backdropStyle = {
   alignItems: 'center',
   justifyContent: 'center',
   zIndex: 1000,
+  // Bez tła nakładka była niewidoczna i treść pod modalem prześwitywała.
+  backgroundColor: 'var(--overlay)',
 };
 
 const modalStyle = {
-  backgroundColor: '#fff',
+  backgroundColor: 'var(--surface)',
   position: 'relative',
-  width: 'min(800px, 95vw)',
-  borderRadius: '12px',
-  padding: '25px',
-  overflowY: 'auto',
-  boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
-  marginTop: '40px'
+  // Rozmowa czyta się lepiej w węższej kolumnie niż na całej szerokości ekranu.
+  width: 'min(520px, 95vw)',
+  borderRadius: '14px',
+  // Padding zdjęty: treść (czat) sama trzyma nagłówek, listę i pole pisania
+  // w pełnej wysokości — obramowanie robi teraz `overflow: hidden`.
+  overflow: 'hidden',
+  border: '1px solid var(--border)',
+  boxShadow: 'var(--shadow-soft)',
+  marginTop: '40px',
 };
 
 const closeButtonStyle = {
   position: 'absolute',
-  top: '6px',
+  top: '10px',
   right: '10px',
-  background: 'none',
+  // Nad treścią, inaczej chowa się pod nagłówkiem rozmowy.
+  zIndex: 1,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: '30px',
+  height: '30px',
+  borderRadius: '999px',
+  background: 'var(--surface-2)',
   border: 'none',
-  fontSize: '24px',
+  fontSize: '20px',
+  color: 'var(--muted)',
   cursor: 'pointer',
   lineHeight: 1,
 };

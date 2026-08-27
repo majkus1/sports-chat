@@ -1,7 +1,8 @@
-import { useEffect, useRef, useContext } from 'react';
+import { useEffect, useRef, useState, useContext } from 'react';
 import { UserContext } from '@/context/UserContext';
 import { useTranslations } from 'next-intl';
 import { useAlert } from '@/context/AlertContext';
+import { CONSENT_EVENT, hasConsent, writeConsent } from '@/lib/consent';
 
 export default function GoogleAuthButton({ onSuccessClose }) {
   const { refreshUser } = useContext(UserContext);
@@ -9,7 +10,24 @@ export default function GoogleAuthButton({ onSuccessClose }) {
   const { showAlert } = useAlert();
   const googleDivRef = useRef(null);
 
+  /*
+   * Skrypt Google ładujemy dopiero po zgodzie na ciasteczka zewnętrzne.
+   *
+   * Wcześniej wstrzykiwał się przy samym otwarciu okna logowania, czyli zanim ktokolwiek
+   * o cokolwiek zapytał. Bez zgody pokazujemy przycisk, który tę zgodę udziela — kto woli
+   * jej nie dawać, zakłada konto mailem i skrypt nigdy się nie ładuje.
+   */
+  const [allowed, setAllowed] = useState(false);
+
   useEffect(() => {
+    const sync = () => setAllowed(hasConsent('google'));
+    sync();
+    window.addEventListener(CONSENT_EVENT, sync);
+    return () => window.removeEventListener(CONSENT_EVENT, sync);
+  }, []);
+
+  useEffect(() => {
+    if (!allowed) return;
     const scriptId = 'google-gis';
 
     const init = () => {
@@ -70,7 +88,19 @@ export default function GoogleAuthButton({ onSuccessClose }) {
     } else {
       init();
     }
-  }, [refreshUser, t, onSuccessClose]);
+  }, [allowed, refreshUser, t, onSuccessClose]);
+
+  if (!allowed) {
+    return (
+      <button
+        type="button"
+        onClick={() => writeConsent({ google: true })}
+        className="mt-2.5 w-full rounded-full border border-border-strong bg-transparent px-4 py-2 text-sm font-semibold text-text transition-colors hover:bg-surface-2"
+      >
+        {t('google_consent_enable')}
+      </button>
+    );
+  }
 
   return <div ref={googleDivRef} style={{ paddingTop: 10 }} />;
 }

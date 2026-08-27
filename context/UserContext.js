@@ -8,7 +8,8 @@ import {
   useMemo,
   useRef,
 } from 'react';
-import { refreshAccessToken, reloadPageAfterAuth } from '@/lib/authFetch';
+import { refreshAccessToken } from '@/lib/authFetch';
+import { ACCESS_REFRESH_INTERVAL_MS } from '@/lib/authConstants';
 
 export const UserContext = createContext(null);
 
@@ -60,7 +61,8 @@ export function UserProvider({ children }) {
           const data = await res.json();
           setUser(data);
           setIsAuthed(true);
-          reloadPageAfterAuth();
+          // Bez przeładowania strony: refreshAccessToken() wyemitował już ACCESS_REFRESH_EVENT,
+          // więc socket sam zrobi nowy handshake ze świeżym tokenem.
           return true;
         }
 
@@ -117,6 +119,26 @@ export function UserProvider({ children }) {
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [refreshUser]);
+
+  /**
+   * Cichy refresh zanim access token wygaśnie.
+   *
+   * Sedno zgłoszenia „jestem zalogowany, ale nie mogę pisać”: refresh token żyje 30 dni,
+   * więc UI cały czas pokazuje zalogowanego, ale ciasteczko access znikało po kilkunastu
+   * minutach. Socket czyta je wyłącznie przy handshake, więc po każdym reconnekcie
+   * (uśpiony laptop, zmiana sieci, restart nginx) łączył się jako anonim i wiadomości
+   * przepadały. Odnowienie z zapasem sprawia, że handshake zawsze ma ważny token.
+   */
+  useEffect(() => {
+    if (!isAuthed) return undefined;
+
+    const id = setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
+      refreshAccessToken().catch(() => {});
+    }, ACCESS_REFRESH_INTERVAL_MS);
+
+    return () => clearInterval(id);
+  }, [isAuthed]);
 
   const ctxValue = useMemo(
     () => ({

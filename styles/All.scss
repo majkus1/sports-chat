@@ -1,16 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap');
-
-body {
-	position: relative;
-	margin: 0 auto;
-	background-color: #f1f1f1;
-	max-width: 1100px;
-	font-family: 'Roboto Condensed', sans-serif !important;
-	// display: flex;
-	// flex-direction: column;
-	// justify-content: center;
-	// align-items: center;
-}
+// Kolory pochodzą z tokenów zdefiniowanych w app/globals.css (:root i .dark).
+// Wcześniej były tu wpisane na sztywno hexy, przez co tryb ciemny nie miał jak zadziałać.
+// Font jest ładowany raz, w globals.css — nie powtarzamy tu @import.
+//
+// Blok `body` też celowo zniknął: siedzi w globals.css. Tutaj nadpisywał tamten
+// (ten plik jest importowany później), więc tło zawsze wracało do jasnego.
 
 .head-navbar {
 	margin-top: 0px;
@@ -19,8 +12,8 @@ body {
 	font-size: 27px;
 	width: 100%;
 	padding: 20px;
-	background: #173b45;
-	color: #f1f1f1;
+	background: var(--brand);
+	color: var(--brand-fg);
 	height: 100px;
 
 	h1 {
@@ -49,8 +42,8 @@ body {
 .you-log {
 	font-family: 'Roboto Condensed', sans-serif;
 	font-size: 16px;
-	background-color: #004225;
-	color: #f5f5dc;
+	background-color: var(--success-solid);
+	color: var(--success-solid-fg);
 	padding: 10px;
 }
 
@@ -61,8 +54,8 @@ body {
 	align-items: center;
 	justify-content: center;
 	padding: 10px 20px;
-	color: #fff;
-	background-color: #173b45;
+	color: var(--brand-fg);
+	background-color: var(--brand);
 	font-family: 'Roboto Condensed', sans-serif;
 	border: none;
 	border-radius: 4px;
@@ -77,7 +70,7 @@ body {
 .btn-login:hover,
 .btn-reg:hover,
 .log-out-btn:hover {
-	background-color: #1e4a56;
+	background-color: var(--brand-hover);
 	transform: scale(1.05);
 }
 
@@ -90,7 +83,7 @@ body {
 	margin-top: 15px;
 	margin-bottom: 15px;
 	padding: 10px;
-	box-shadow: rgba(0, 0, 0, 0.1) 0px 2px 8px;
+	box-shadow: var(--shadow-soft);
 
 	ul {
 		li {
@@ -107,7 +100,7 @@ body {
 
 .box-search {
 	padding: 10px;
-	box-shadow: rgba(0, 0, 0, 0.1) 0px 2px 8px;
+	box-shadow: var(--shadow-soft);
 	min-width: 300px;
 
 	ul {
@@ -124,10 +117,10 @@ body {
 		align-items: center;
 		justify-content: center;
 		padding: 10px 20px;
-		color: #fff;
+		color: var(--brand-fg);
 		font-family: 'Roboto Condensed', sans-serif;
 		border: none;
-		background-color: #173b45;
+		background-color: var(--brand);
 		margin: 10px;
 		font-size: 16px;
 		font-weight: 400;
@@ -136,7 +129,7 @@ body {
 		border-radius: 4px;
 	}
 	.search-btn:hover {
-		background-color: #1e4a56;
+		background-color: var(--brand-hover);
 		transform: scale(1.05);
 	}
 }
@@ -151,73 +144,101 @@ body {
 	h1 {
 		display: flex;
 		align-items: center;
-		font-size: 18px;
+		font-size: 14px;
 		text-transform: uppercase;
-		letter-spacing: 2px;
+		letter-spacing: 1.5px;
 		font-weight: bold;
 		.icon-sport {
-			width: 27px;
+			width: 18px;
 			margin-right: 5px;
 		}
 	}
 
+	// Plakietka dyscypliny jest etykietą kontekstu, nie tytułem strony — stąd rozmiar
+	// bliższy plakietce niż nagłówkowi. Wcześniej konkurowała o uwagę z logo.
 	.h1-football {
-		border-left: 5px solid green;
-    padding-left: 5px;
-    background: #00800047;
-    border-radius: 10px;
-    padding: 8px 13px;
-    max-width: 250px;
-	box-shadow: rgba(0, 0, 0, 0.1) 0px 2px 8px;
-	}
+		display: inline-flex;
+		align-items: center;
+		gap: 7px;
+		border: 1px solid transparent;
+		border-radius: 999px;
+		padding: 5px 12px 5px 10px;
+		width: fit-content;
+		max-width: 100%;
 
-	.choose-time {
-		display: flex;
-		gap: 20px;
-		.pre-match-p {
-			margin-top: 15px;
-			color: black;
-			font-size: 17px;
-			font-style: italic;
-			text-decoration: none;
-			cursor: pointer;
-			font-family: 'Roboto Condensed', sans-serif;
-		}
-		.active-section {
-			color: #22C55E;
-    font-weight: 600;
-		}
-	}
+		// Jasny motyw: pełne wypełnienie z białym napisem i ikoną. Biel wymaga nasyconego
+		// tła — na dotychczasowej bladej zieleni byłaby nieczytelna.
+		background: var(--accent);
+		color: var(--accent-fg);
 
-	.chat-content {
-		box-shadow: 0px 0px 1px #000000;
-		margin-top: 12px;
-		padding: 20px;
-		cursor: pointer;
-		border-radius: 5px;
-
-		.chat-public {
-			margin-top: 20px;
-			padding: 10px;
-			background: #dadada;
-			color: #000000;
-			border-radius: 5px;
+		.icon-sport {
+			width: 16px;
+			height: 16px;
+			margin-right: 0;
+			color: var(--accent-fg);
 		}
 
-		.match-name {
-			display: flex;
-			align-items: center;
-			font-weight: 700;
+		// W ciemnym motywie pełna zieleń świeciłaby na przygaszonym tle, więc zostaje
+		// delikatne wypełnienie z jasnym tekstem.
+		.dark & {
+			background: var(--accent-soft);
+			color: var(--text);
 
-			span {
-				font-size: 12px;
+			.icon-sport {
+				color: var(--accent);
 			}
 		}
 	}
 
-	.chat-content:hover {
-		background-color: #dadada;
+	// Nawigacja sekcji: podkreślenie zamiast kursywy. Aktywna pozycja jest teraz widoczna
+	// od razu, bez porównywania odcieni tekstu.
+	.choose-time {
+		display: flex;
+		gap: 22px;
+		align-items: center;
+		margin-top: 14px;
+
+		// Pozycje muszą mieć identyczne pudełko, bo są mieszanką `<a>` i `<button>`:
+		// domyślnie pierwszy jest `inline`, drugi `inline-block`, a każdy z nich siada
+		// na innej linii bazowej. Stąd brał się rozjazd „Raport AI" względem sąsiadów.
+		.pre-match-p {
+			position: relative;
+			display: inline-flex;
+			align-items: center;
+			line-height: 1.2;
+			padding-bottom: 6px;
+			color: var(--muted);
+			font-size: 13px;
+			font-weight: 600;
+			letter-spacing: 0.06em;
+			text-transform: uppercase;
+			text-decoration: none;
+			cursor: pointer;
+			font-family: 'Roboto Condensed', sans-serif;
+			transition: color 0.15s ease;
+
+			&:hover {
+				color: var(--text);
+			}
+		}
+		.active-section {
+			color: var(--text);
+
+			&::after {
+				content: '';
+				position: absolute;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				height: 2px;
+				border-radius: 2px;
+				background: var(--accent);
+			}
+		}
 	}
+
+	// Wiersz meczu przeszedł do components/football/FixtureRow.jsx — dawne `.chat-content`,
+	// `.match-name` i `.league-header` nie mają już użytkowników.
 
 	.send-public-chat {
 		margin-top: 15px;
@@ -227,7 +248,10 @@ body {
 
 		input {
 			padding: 10px;
-			border: 2px solid #000000;
+			border: 2px solid var(--border-strong);
+			// Bez tego pole zostawało białe z czarnym tekstem w trybie ciemnym.
+			background-color: var(--surface);
+			color: var(--text);
 		}
 		button {
 			display: flex;
@@ -236,8 +260,8 @@ body {
 			padding: 10px 20px;
 			border: none;
 			cursor: pointer;
-			background-color: #173b45;
-			color: #fff;
+			background-color: var(--brand);
+			color: var(--brand-fg);
 			border-radius: 4px;
 			transition: all 0.2s ease;
 			font-weight: 400;
@@ -245,33 +269,25 @@ body {
 			margin-top: 10px;
 		}
 		button:hover {
-			background-color: #1e4a56;
+			background-color: var(--brand-hover);
 			transform: scale(1.05);
 			-webkit-box-shadow: 5px 5px 0px 1px transparent;
 			-moz-box-shadow: 5px 5px 0px 1px transparent;
 			box-shadow: 5px 5px 0px 1px transparent;
 		}
 	}
-	div {
-		.league-header {
-			font-size: 17px;
-			margin-top: 30px;
-		}
-	}
 }
 
 .match-analysis {
 	margin-bottom: 10px;
-	// position: relative;
-	// z-index: 1;
 }
 
 /* Simple CSS spinner - no complex animations that cause z-index issues */
 .simple-spinner {
 	width: 40px;
 	height: 40px;
-	border: 4px solid #e0e0e0;
-	border-top: 4px solid #173b45;
+	border: 4px solid var(--surface-3);
+	border-top: 4px solid var(--brand);
 	border-radius: 50%;
 	animation: spin 1s linear infinite;
 	display: inline-block;
@@ -310,7 +326,6 @@ body {
 	flex-direction: column;
 	align-items: center;
 	margin-top: 150px;
-	// margin-left: 20px;
 	font-family: 'Roboto Condensed', sans-serif;
 
 	.sport-category {
@@ -320,16 +335,15 @@ body {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		background: #00800047;
-		box-shadow: rgba(0, 0, 0, 0.1) 0px 2px 8px;
-		// color: #fff;
+		background: var(--accent-soft);
+		box-shadow: var(--shadow-soft);
 		padding: 10px 15px;
 		cursor: pointer;
 		transition: all 0.2s ease;
 		text-decoration: none;
 		border-radius: 10px;
 		border: none;
-		border-left: 5px solid green;
+		border-left: 5px solid var(--accent);
 		.sport-name {
 			display: flex;
 			align-items: center;
@@ -337,10 +351,9 @@ body {
 			.icon-sport {
 				width: 27px;
 				margin-right: 5px;
-				// filter: brightness(0) invert(1);
 			}
 			p {
-				color: black;
+				color: var(--text);
 				margin: 0;
 				font-weight: 400;
 				font-size: 16px;
@@ -358,7 +371,7 @@ body {
 				}
 				p {
 					text-decoration: none;
-					color: #fff;
+					color: var(--brand-fg);
 				}
 			}
 		}
@@ -369,82 +382,8 @@ body {
 	}
 }
 
-.messages-container {
-	max-height: 450px;
-	overflow-y: auto;
-	color: #000000;
-
-	.message-one {
-		padding: 2px;
-	}
-}
-
-.private-content-chat {
-  /* Firefox */
-  scrollbar-width: thin; /* thin / auto / none */
-  scrollbar-color: #888 #f1f1f1; /* thumb / track */
-
-  /* WebKit (Chrome, Edge, Safari, Opera) */
-}
-
-.private-content-chat::-webkit-scrollbar {
-  width: 8px; /* grubość paska */
-}
-
-.private-content-chat::-webkit-scrollbar-track {
-  background: #f1f1f1; /* tło toru scrolla */
-  border-radius: 10px;
-}
-
-.private-content-chat::-webkit-scrollbar-thumb {
-  background-color: #888; /* kolor "uchwytu" */
-  border-radius: 10px;
-  border: 2px solid #f1f1f1; /* odstęp między thumb a track */
-}
-
-.private-content-chat::-webkit-scrollbar-thumb:hover {
-  background-color: #555;
-}
-
-.private-content-chat {
-	padding: 20px;
-	max-height: 400px;
-	overflow: scroll;
-	font-family: 'Roboto Condensed', sans-serif;
-	background: #dadada;
-	border-radius: 6px;
-
-	.send-public-chat {
-		margin-top: 15px;
-		margin-bottom: 15px;
-		display: flex;
-		flex-direction: column;
-
-		input {
-			padding: 10px;
-			border: 2px solid #000000;
-		}
-		button {
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			padding: 10px 20px;
-			border: none;
-			cursor: pointer;
-			background-color: #173b45;
-			color: #fff;
-			border-radius: 4px;
-			transition: all 0.2s ease;
-			font-weight: 400;
-			font-size: 16px;
-			margin-top: 10px;
-		}
-		button:hover {
-			background-color: #1e4a56;
-			transform: scale(1.05);
-		}
-	}
-}
+// Czat prywatny korzysta teraz z components/chat/* (MessageList, Composer), więc dawne
+// `.private-content-chat`, `.messages-container` i `.message-one` nie mają użytkowników.
 
 .sport-name {
 	p {
@@ -452,7 +391,7 @@ body {
 		justify-content: center;
 		align-items: center;
 		text-decoration: none;
-		color: #fff;
+		color: var(--brand-fg);
 	}
 }
 
@@ -490,13 +429,14 @@ body {
 		position: fixed;
 		max-width: 1100px;
 		width: 100%;
-		background: #f1f1f1;
+		background: var(--bg);
 		z-index: 10000; /* Wyższy niż overlay, aby menu było widoczne */
+		// Wysokość logo ustala components/Logo.jsx; tutaj tylko wyrównanie w pasie.
 		.logo {
-			img {
-				width: 130px;
-				padding-top: 10px;
-			}
+			display: inline-flex;
+			align-items: center;
+			text-decoration: none;
+			color: inherit;
 		}
 
 		.elementsinmenu {
@@ -529,21 +469,32 @@ body {
 	justify-content: space-between;
 	padding: 10px 20px;
 	position: sticky;
-	// bottom: 8px;
-	// right: 8px;
 	z-index: 100000;
-	background-color: #ffffff;
+	background-color: var(--surface);
 	border-radius: 25px;
-	-webkit-box-shadow: 2px 1px 15px -7px rgba(23, 59, 69, 1);
-	-moz-box-shadow: 2px 1px 15px -7px rgba(23, 59, 69, 1);
-	box-shadow: 2px 1px 15px -7px rgba(23, 59, 69, 1);
+	-webkit-box-shadow: 2px 1px 15px -7px var(--brand);
+	-moz-box-shadow: 2px 1px 15px -7px var(--brand);
+	box-shadow: 2px 1px 15px -7px var(--brand);
 }
 
+// Ikony są teraz wektorowe i biorą `currentColor`, więc odwracanie filtrem odpadło.
 .menu-icon {
-	width: 45px;
-	cursor: pointer;
-	filter: invert(100%);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
 	padding: 5px;
+	border: none;
+	border-radius: 8px;
+	background: transparent;
+	color: var(--text);
+	cursor: pointer;
+	transition: background-color 0.15s ease;
+}
+
+.menu-icon:hover {
+	background-color: var(--surface-2);
 }
 
 /* 🔹 Overlay - przykrywa całą stronę */
@@ -553,7 +504,7 @@ body {
 	left: 0;
 	width: 100%;
 	height: 100%;
-	background-color: #f1f1f1; 
+	background-color: var(--bg);
 	z-index: 9998;
 	backdrop-filter: blur(2px);
 }
@@ -563,8 +514,10 @@ body {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center;
-	background-color: #f1f1f1; /* Kolor tła */
+	// Treść zaczyna się u góry, tuż pod nagłówkiem. Wyśrodkowanie w pionie sprawiało,
+	// że menu z kilkoma pozycjami wisiało samotnie na środku pustego ekranu.
+	justify-content: flex-start;
+	background-color: var(--bg); /* Kolor tła */
 	padding: 20px 15px;
 	position: fixed;
 	width: 100%;
@@ -580,111 +533,64 @@ body {
 	letter-spacing: 2px;
 	width: 100%;
 	display: flex;
-    flex-direction: column;
+	flex-direction: column;
 	align-items: center;
 	gap: 20px;
 
-	.real-links {
-		box-shadow: rgba(0, 0, 0, 0.1) 0px 2px 8px;
+	// Menu to lista wyborów, a nie zestaw wielkich kafli: rzędy wyrównane do lewej,
+	// czytane wzrokiem z góry na dół, jak w każdej znanej użytkownikowi nawigacji.
+	// `&` jest tu konieczne: obie nazwy siedzą na tym samym elemencie, więc zapis
+	// potomka (jak było wcześniej) nigdy nie trafiał i panel zostawał bez tła.
+	&.real-links {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		gap: 15px;
-		padding: 40px;
-		align-items: center;
-		border-radius: 7px;
-		background-color: transparent;
+		gap: 2px;
+		padding: 10px;
+		border: 1px solid var(--border);
+		border-radius: 12px;
+		background-color: var(--surface);
+		box-shadow: var(--shadow-soft);
 	}
 
-	a.mobile-item {
+	.nav-row {
 		display: flex;
 		align-items: center;
-		justify-content: center;
-		text-decoration: none;
-		color: #fff;
-		background-color: #173b45;
-		padding: 10px 20px;
-		border-radius: 4px;
-		letter-spacing: 2px;
-		font-size: 16px;
-		font-weight: 400;
-		transition: all 0.2s ease;
-		width: 100%;
-		max-width: 250px;
-	}
-
-	a.mobile-item:hover {
-		background-color: #1e4a56;
-		transform: scale(1.05);
-	}
-
-	button.mobile-item {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background-color: #173b45;
-		color: #fff;
-		border: none;
-		padding: 10px 20px;
-		border-radius: 4px;
-		font-size: 16px;
-		font-family: 'Roboto Condensed', sans-serif;
-		font-weight: 400;
-		letter-spacing: 2px;
-		cursor: pointer;
-		transition: all 0.2s ease;
-		width: 100%;
-		max-width: 250px;
-	}
-
-	button.mobile-item:hover {
-		background-color: #1e4a56;
-		transform: scale(1.05);
-	}
-
-	.mobile-subitem {
-		display: flex;
-		align-items: center;
-		justify-content: center;
 		gap: 10px;
-		font-style: normal;
-		color: black;
-		background: #00800047;
-		padding: 8px 16px;
-		border-radius: 4px;
-		text-decoration: none;
-		transition: all 0.2s ease;
 		width: 100%;
-		max-width: 250px;
-		border-left: 5px solid green;
-		border-radius: 10px;
-
-		// img {
-		// 	filter: brightness(0) invert(1);
-		// }
+		padding: 11px 12px;
+		border-radius: 8px;
+		color: var(--text);
+		background: transparent;
+		font-family: 'Roboto Condensed', sans-serif;
+		font-size: 15px;
+		font-weight: 600;
+		letter-spacing: 0.04em;
+		text-align: left;
+		text-decoration: none;
+		transition: background-color 0.15s ease;
 	}
 
-	.mobile-subitem:hover {
-		transform: scale(1.05);
+	.nav-row:hover {
+		background-color: var(--surface-2);
 	}
 
-	.chev {
-		float: right;
-		transition: transform 0.2s;
-		margin-left: 10px;
+	.nav-subrow {
+		display: block;
+		padding: 9px 12px;
+		border-radius: 8px;
+		color: var(--muted);
+		font-family: 'Roboto Condensed', sans-serif;
+		font-size: 14px;
+		letter-spacing: 0.04em;
+		text-decoration: none;
+		transition: background-color 0.15s ease, color 0.15s ease;
 	}
-	.chev.open {
-		transform: rotate(180deg);
+
+	.nav-subrow:hover {
+		background-color: var(--surface-2);
+		color: var(--text);
 	}
 }
-.chev {
-	float: right;
-	transition: transform 0.2s;
-}
-.chev.open {
-	transform: rotate(180deg);
-}
-
 .all {
 	height: 100vh;
 }
@@ -727,15 +633,15 @@ body {
 		display: flex;
 		align-items: center;
 		padding: 5px;
-		color: black;
+		color: var(--text);
 		font-family: 'Roboto Condensed', sans-serif;
-		border: 3px solid #173b45;
+		border: 3px solid var(--brand);
 		margin: 10px;
 		font-size: 16px;
 		font-weight: 100;
-		-webkit-box-shadow: 2px 2px 0px 1px #173b45;
-		-moz-box-shadow: 2px 2px 0px 1px #173b45;
-		box-shadow: 2px 2px 0px 1px #173b45;
+		-webkit-box-shadow: 2px 2px 0px 1px var(--brand);
+		-moz-box-shadow: 2px 2px 0px 1px var(--brand);
+		box-shadow: 2px 2px 0px 1px var(--brand);
 		cursor: pointer;
 	}
 	.btn-login,
@@ -755,12 +661,6 @@ body {
 	.panel {
 		align-items: end;
 	}
-	// .content {
-	//     margin-left: 325px;
-	// }
-	// .content {
-	// 	position: absolute;
-	// }
 	.content-league {
 		margin-right: 290px;
 	}
@@ -768,67 +668,53 @@ body {
 		align-items: start;
 		margin-left: 20px;
 	}
-	// .mobile-menu {
-	// 	margin-left: 0px;
-	// 	margin-right: 0px;
-	// }
 }
 
+// 16px zapobiega automatycznemu przybliżaniu pola po dotknięciu na iOS.
+// Bez `!important`: to jedyna reguła w starym arkuszu, która wygrywała z klasami
+// Tailwinda i uniemożliwiała ustawienie innego rozmiaru tekstu w nowych komponentach.
+// Selektor elementowy i tak przegrywa z klasą, więc domyślna wartość zostaje zachowana.
 input {
-	font-size: 16px !important;
+	font-size: 16px;
 }
 
 .logo-and-menubutton.active-bg {
-  background-color: #f1f1f1 !important;
-}
-
-/* Widget buttons - smaller on mobile */
-.widget-button {
-  @media (max-width: 768px) {
-    // padding: 4px !important;
-    
-    svg {
-      width: 14px !important;
-      height: 14px !important;
-    }
-    
-    font-size: 10px !important;
-  }
+	background-color: var(--bg) !important;
 }
 
 .language-switch {
-  position: fixed;
-  top: 6px;
-  right: 0;
-  left: 0;
-  max-width: 1100px;
-  margin: 0 auto;
-  z-index: 100001;
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  padding-right: 20px;
-  pointer-events: auto;
+	position: fixed;
+	top: 6px;
+	right: 0;
+	left: 0;
+	max-width: 1100px;
+	margin: 0 auto;
+	z-index: 100001;
+	display: flex;
+	gap: 10px;
+	justify-content: flex-end;
+	padding-right: 20px;
+	pointer-events: auto;
 
-  button {
-    padding: 0;
-    margin: 0;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.2s ease;
+	button {
+		padding: 0;
+		margin: 0;
+		border: none;
+		background: transparent;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: transform 0.2s ease;
 
-    &:hover {
-      transform: scale(1.15);
-    }
+		&:hover {
+			transform: scale(1.15);
+		}
 
-    img {
-      transition: transform 0.2s ease;
-    }
-  }
+		img {
+			transition: transform 0.2s ease;
+		}
+	}
 }
 
 #sports-submenu {

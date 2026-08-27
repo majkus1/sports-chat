@@ -7,6 +7,7 @@ import {
   setAuthCookiesRouteHandler,
   hashRefreshToken,
 } from '@/lib/auth';
+import { TERMS_VERSION } from '@/lib/legal/operator';
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -53,6 +54,15 @@ export async function POST(request) {
         googleId: p.sub,
         image: p.picture || null,
         isEmailVerified: true, // Google already verifies email
+        /*
+         * Akceptacja regulaminu zapisuje się także tutaj.
+         *
+         * Konto przez Google powstaje w tym samym oknie rejestracji, w którym trzeba było
+         * zaznaczyć zgodę — bez niej przycisk Google się nie renderuje. Gdyby ślad zostawał
+         * tylko przy rejestracji mailem, połowa kont nie miałaby żadnego.
+         */
+        termsAcceptedAt: new Date(),
+        termsVersion: TERMS_VERSION,
       });
     } else {
       const update = {};

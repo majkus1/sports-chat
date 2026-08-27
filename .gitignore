@@ -8,8 +8,11 @@
 
 .env.local
 
-# AI Agent config (zawiera wrażliwe dane - klucze API)
-ai_agent/config.py
+# AI Agent — sekrety trzymane w .env (config.py czyta je przez python-dotenv)
+ai_agent/.env
+
+# n8n: klucz szyfrowania poświadczeń + baza z danymi
+ai_agent/n8n_data/
 
 # Python cache files (zawierają skompilowane wersje config.py z kluczami)
 __pycache__/

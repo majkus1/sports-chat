@@ -2,11 +2,29 @@ import crypto from 'crypto';
 import connectToDb from '@/lib/db';
 import User from '@/models/User';
 import { getTransporter } from '@/lib/mailer';
+import { escapeRegExp } from '@/lib/chatConstraints';
+import { limitByIp, tooManyRequests } from '@/lib/rateLimit';
 
 export async function POST(request) {
+  /*
+   * Endpoint wysyła maila na dowolny adres — limit chroni przed zasypaniem cudzej skrzynki.
+   *
+   * `failOpen` celowo inaczej niż przy logowaniu: to jedyna droga odzyskania konta.
+   * Przy niedostępnym Redisie blokada oznaczałaby, że nikt nie odzyska hasła do czasu
+   * naprawy cache'u, a najgorsze, co grozi po przepuszczeniu, to nadmiarowy mail —
+   * i to wyłącznie na adres, który istnieje w bazie.
+   */
+  const rate = await limitByIp(request, {
+    scope: 'auth-forgot-password',
+    limit: 5,
+    windowSeconds: 3600,
+    failOpen: true,
+  });
+  if (!rate.allowed) return tooManyRequests(rate.retryAfter);
+
   const body = await request.json();
   const { email, locale = 'pl' } = body || {};
-  
+
   if (!email || typeof email !== 'string') {
     return Response.json({ ok: true }, { status: 200 });
   }
@@ -14,14 +32,33 @@ export async function POST(request) {
   // Validate locale
   const validLocale = (locale === 'en' || locale === 'pl') ? locale : 'pl';
 
+  /*
+   * Awaria infrastruktury musi być odróżnialna od „nie ma takiego konta".
+   *
+   * Wcześniej całość siedziała w jednym `try`, którego `catch` zwracał 200 — niedostępna
+   * baza wyglądała więc dokładnie tak samo jak udana wysyłka. Użytkownik widział
+   * potwierdzenie i czekał na maila, który nigdy nie powstał.
+   *
+   * Odpowiedź na tym etapie niczego nie zdradza: pada zanim wiadomo, czy konto istnieje.
+   */
+  let user;
   try {
     await connectToDb();
-    const user = await User.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
+    // Adres trafiał wprost do RegExp — znaki specjalne od użytkownika mogły zmienić zapytanie.
+    user = await User.findOne({
+      email: { $regex: new RegExp(`^${escapeRegExp(email.trim())}$`, 'i') },
+    });
+  } catch (e) {
+    console.error('[forgot-password] baza niedostępna:', e.message);
+    return Response.json({ ok: false, error: 'server_error' }, { status: 500 });
+  }
 
-    if (!user) {
-      return Response.json({ ok: true }, { status: 200 });
-    }
+  // Brak konta zwraca to samo co powodzenie — inaczej dałoby się sprawdzać, kto ma konto.
+  if (!user) {
+    return Response.json({ ok: true }, { status: 200 });
+  }
 
+  try {
     const tokenPlain = crypto.randomBytes(32).toString('hex');
     const tokenHash = crypto.createHash('sha256').update(tokenPlain).digest('hex');
 
@@ -121,10 +158,14 @@ export async function POST(request) {
 
     return Response.json({ ok: true }, { status: 200 });
   } catch (e) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error('forgot-password error:', e);
-    }
-    return Response.json({ ok: true }, { status: 200 });
+    /*
+     * Nieudana wysyłka to też awaria, o której trzeba wiedzieć — cicha „zgoda" oznaczałaby
+     * konto bez możliwości odzyskania. Świadomy kompromis: ten kod pojawia się dopiero po
+     * potwierdzeniu, że konto istnieje, więc teoretycznie zdradza jego istnienie. Uznaję
+     * to za mniejsze zło niż reset hasła znikający bez śladu.
+     */
+    console.error('[forgot-password] wysyłka nie powiodła się:', e.message);
+    return Response.json({ ok: false, error: 'server_error' }, { status: 500 });
   }
 }
 

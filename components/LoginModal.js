@@ -1,82 +1,92 @@
-import React, { useState, useContext } from 'react'
-import { UserContext } from '@/context/UserContext'
-import { GiPlayButton } from 'react-icons/gi'
-import { useTranslations } from 'next-intl'
-import GoogleAuthButton from '@/components/GoogleAuthButton'
-import { useAlert } from '@/context/AlertContext'
+import { useState, useContext } from 'react';
+import { LogIn } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { UserContext } from '@/context/UserContext';
+import GoogleAuthButton from '@/components/GoogleAuthButton';
+import AuthCard, { AuthDivider } from '@/components/auth/AuthCard';
+import AuthField from '@/components/auth/AuthField';
+import { Button } from '@/components/ui/Button';
+import { useAlert } from '@/context/AlertContext';
 
 export default function LoginModal({ isOpen, onRequestClose, onLogin }) {
-	const [usernameInput, setUsernames] = useState('')
-	const [password, setPassword] = useState('')
-	const { setUser, setIsAuthed, refreshUser } = useContext(UserContext)
-	const t = useTranslations('common')
-	const { showAlert } = useAlert()
+	const [usernameInput, setUsernames] = useState('');
+	const [password, setPassword] = useState('');
+	const [isSubmitting, setIsSubmitting] = useState(false);
+	const { refreshUser } = useContext(UserContext);
+	const t = useTranslations('common');
+	const { showAlert } = useAlert();
 
-	if (!isOpen) return null
+	if (!isOpen) return null;
 
-	const handleSubmit = async e => {
-		e.preventDefault()
-		const response = await fetch('/api/auth/login', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ username: usernameInput, password }),
-			credentials: 'include',
-		})
+	const handleSubmit = async (e) => {
+		e.preventDefault();
+		if (isSubmitting) return;
+		setIsSubmitting(true);
 
-		if (response.ok) {
-			const ok = await refreshUser()
-			if (ok) {
-				onLogin?.()
-				if (typeof window !== 'undefined') {
-					window.location.reload()
+		try {
+			const response = await fetch('/api/auth/login', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ username: usernameInput, password }),
+				credentials: 'include',
+			});
+
+			if (response.ok) {
+				const ok = await refreshUser();
+				if (ok) {
+					onLogin?.();
+					if (typeof window !== 'undefined') {
+						window.location.reload();
+					}
+					return;
 				}
-				return
+				showAlert(t('login_problem'), 'error');
+				return;
 			}
-			showAlert(t('login_problem'), 'error')
-			return
-		}
 
-		const data = await response.json().catch(() => ({}))
-		if (!response.ok) {
+			const data = await response.json().catch(() => ({}));
 			if (data?.error === 'email_not_verified') {
-				showAlert(t('email_not_verified_desc'), 'error')
+				showAlert(t('email_not_verified_desc'), 'error');
 			} else {
-				const key = data?.error || 'server_error'
-				showAlert(t(key), 'error')
+				showAlert(t(data?.error || 'server_error'), 'error');
 			}
-			return
+		} finally {
+			setIsSubmitting(false);
 		}
-	}
+	};
 
 	return (
-		<div>
-			<div className="overlay">
-				<div className="modal" onClick={e => e.stopPropagation()}>
-					<h2>{t('logging')}</h2>
+		<div className="overlay">
+			<AuthCard title={t('logging')}>
+				<GoogleAuthButton onSuccessClose={onRequestClose} onLogin={onLogin} />
 
-					<div className="mb-3">
-						<GoogleAuthButton onSuccessClose={onRequestClose} onLogin={onLogin} />
-					</div>
+				<AuthDivider label={t('or')} />
 
-					<div className="or-div">
-						<span>— {t('or')} —</span>
-					</div>
+				<form onSubmit={handleSubmit} className="flex flex-col gap-4">
+					<AuthField
+						label={t('usern')}
+						value={usernameInput}
+						onChange={(e) => setUsernames(e.target.value)}
+						autoComplete="username"
+						required
+					/>
+					<AuthField
+						label={t('passw')}
+						type="password"
+						value={password}
+						onChange={(e) => setPassword(e.target.value)}
+						autoComplete="current-password"
+						revealLabel={t('password_show')}
+						hideLabel={t('password_hide')}
+						required
+					/>
 
-					<form onSubmit={handleSubmit}>
-						<div>
-							<label>{t('usern')}</label>
-							<input type="text" value={usernameInput} onChange={e => setUsernames(e.target.value)} required />
-						</div>
-						<div>
-							<label>{t('passw')}</label>
-							<input type="password" value={password} onChange={e => setPassword(e.target.value)} required />
-						</div>
-						<button type="submit" className="btn-to-login">
-							<GiPlayButton style={{ marginRight: '5px' }} /> {t('logi')}
-						</button>
-					</form>
-				</div>
-			</div>
+					<Button type="submit" variant="accent" block disabled={isSubmitting} className="mt-1">
+						<LogIn size={17} aria-hidden="true" />
+						{isSubmitting ? t('logging_in') : t('logi')}
+					</Button>
+				</form>
+			</AuthCard>
 		</div>
-	)
+	);
 }

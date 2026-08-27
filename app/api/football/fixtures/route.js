@@ -1,73 +1,77 @@
-import axios from 'axios';
-import { getFromCache, setInCache } from '@/lib/redis';
+import { fixturesByDate } from '@/lib/football/endpoints';
 
-// Helper function to get midnight timestamp for a given date
-function getMidnightTimestamp(dateString) {
-  const [year, month, day] = dateString.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-  date.setHours(23, 59, 59, 999); // End of day
-  return date.getTime();
-}
+/**
+ * Mecze w danym dniu — stronicowane po stronie serwera.
+ *
+ * Dostawca oddaje cały dzień jednym (cache'owanym) wywołaniem, ale przeglądarka nie musi
+ * dostawać kompletu: pełna sobota to 800+ meczów i ~2 MB JSON-a, z których lista i tak
+ * pokazuje 50. Filtr wyszukiwania i odsiew meczów już rozpoczętych też muszą siedzieć
+ * tutaj — inaczej numeracja stron nie zgadzałaby się z tym, co widzi użytkownik.
+ *
+ * Kształt elementów `response` pozostaje surowy (kontrakt FixtureRow); nowe jest pole
+ * `paging` i parametry `page`, `pageSize`, `search`, `upcoming`.
+ */
 
-// Helper function to calculate expiration time in seconds (until midnight)
-function getExpirationSeconds(dateString) {
-  const expiresAt = getMidnightTimestamp(dateString);
-  const now = Date.now();
-  const secondsUntilMidnight = Math.ceil((expiresAt - now) / 1000);
-  // Minimum 60 seconds, maximum 24 hours
-  return Math.max(60, Math.min(secondsUntilMidnight, 24 * 60 * 60));
-}
+const DEFAULT_PAGE_SIZE = 50;
+const MAX_PAGE_SIZE = 100;
 
 export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const dateParam = searchParams.get('date');
-  
-  let formattedDate;
-  if (dateParam) {
-    formattedDate = dateParam;
-  } else {
-  const today = new Date();
-    formattedDate = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
-  }
+	const { searchParams } = new URL(request.url);
+	const dateParam = searchParams.get('date');
 
-  // Cache key for this date
-  const cacheKey = `fixtures:${formattedDate}`;
-  console.log('[Fixtures] Request for date:', formattedDate, 'cache key:', cacheKey);
+	const today = new Date();
+	const fallback = `${today.getFullYear()}-${(today.getMonth() + 1)
+		.toString()
+		.padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
 
-  try {
-    // Try to get from Redis cache first
-    const cachedData = await getFromCache(cacheKey);
-    if (cachedData) {
-      console.log('[Fixtures] Returning cached data for date:', formattedDate);
-      return Response.json(cachedData, { status: 200 });
-    }
+	const date = /^\d{4}-\d{2}-\d{2}$/.test(dateParam || '') ? dateParam : fallback;
 
-    // Cache miss - fetch from API
-    console.log('[Fixtures] Cache miss, fetching from API for date:', formattedDate);
-  const options = {
-    method: 'GET',
-    url: 'https://api-football-v1.p.rapidapi.com/v3/fixtures',
-    params: { date: formattedDate },
-    headers: {
-      'x-rapidapi-key': process.env.RAPIDAPI_KEY,
-      'x-rapidapi-host': 'api-football-v1.p.rapidapi.com',
-    },
-  };
+	const page = Math.max(1, Number(searchParams.get('page')) || 1);
+	const pageSize = Math.min(
+		MAX_PAGE_SIZE,
+		Math.max(1, Number(searchParams.get('pageSize')) || DEFAULT_PAGE_SIZE)
+	);
+	const search = (searchParams.get('search') || '').trim().toLowerCase();
+	// `upcoming=1` — tylko mecze, które jeszcze się nie zaczęły (widok przedmeczowy).
+	const upcomingOnly = searchParams.get('upcoming') === '1';
 
-    const response = await axios.request(options);
-    const data = response.data;
+	try {
+		const all = await fixturesByDate(date);
+		const now = Date.now();
 
-    // Store in Redis cache (expires at midnight for this date)
-    const expirationSeconds = getExpirationSeconds(formattedDate);
-    const cacheResult = await setInCache(cacheKey, data, expirationSeconds);
-    console.log('[Fixtures] API data fetched and cached for date:', formattedDate, 'cache result:', cacheResult);
+		const filtered = all.filter((fixture) => {
+			if (upcomingOnly) {
+				const kickoff = Date.parse(fixture?.fixture?.date);
+				if (!Number.isFinite(kickoff) || kickoff <= now) return false;
+			}
+			if (!search) return true;
 
-    return Response.json(data, { status: 200 });
-  } catch (error) {
-    if (process.env.NODE_ENV === 'development') {
-    console.error('Error fetching fixtures:', error);
-    }
-    return Response.json({ message: 'Error fetching fixtures' }, { status: 500 });
-  }
+			const haystack = [
+				fixture?.league?.name,
+				fixture?.league?.country,
+				fixture?.teams?.home?.name,
+				fixture?.teams?.away?.name,
+			]
+				.filter(Boolean)
+				.join(' ')
+				.toLowerCase();
+			return haystack.includes(search);
+		});
+
+		const total = filtered.length;
+		const totalPages = Math.max(1, Math.ceil(total / pageSize));
+		const safePage = Math.min(page, totalPages);
+		const slice = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+		return Response.json(
+			{
+				response: slice,
+				paging: { page: safePage, pageSize, total, totalPages },
+			},
+			{ status: 200 }
+		);
+	} catch (error) {
+		console.error('[fixtures] błąd pobierania:', error.message);
+		return Response.json({ message: 'Error fetching fixtures' }, { status: 502 });
+	}
 }
-
