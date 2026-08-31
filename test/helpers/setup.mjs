@@ -1,4 +1,5 @@
 import { register } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import dotenv from 'dotenv';
 
@@ -11,7 +12,9 @@ import dotenv from 'dotenv';
  * weryfikacja podpisu — istnieją poza naszym kodem i tylko integracja je obejmuje.
  */
 
-const ROOT = path.resolve(import.meta.dirname, '..', '..');
+// Zgodność z Node 18 — `import.meta.dirname` pojawiło się dopiero w 20.11, a produkcja
+// stoi na 18. Szczegóły przy tej samej linii w `alias.mjs`.
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 /** Sekret używany wyłącznie w testach — nie musi pochodzić ze Stripe'a. */
 export const TEST_WEBHOOK_SECRET = 'whsec_test_secret_for_local_tests';

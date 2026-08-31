@@ -1,4 +1,4 @@
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 
 /**
@@ -9,7 +9,14 @@ import path from 'node:path';
  * na produkcję, a nie jego przetworzoną kopię. Ten hak tłumaczy alias na ścieżkę pliku.
  */
 
-const ROOT = path.resolve(import.meta.dirname, '..', '..');
+/*
+ * `fileURLToPath(import.meta.url)`, nie `import.meta.dirname`.
+ *
+ * To drugie istnieje dopiero od Node 20.11. Na serwerze produkcyjnym stoi Node 18, gdzie
+ * jest po prostu `undefined` — a wtedy `path.resolve` wywraca się komunikatem o „paths[0]",
+ * który w niczym nie przypomina prawdziwej przyczyny. Wersja poniżej działa wszędzie.
+ */
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 export function resolve(specifier, context, next) {
 	if (!specifier.startsWith('@/')) return next(specifier, context);
