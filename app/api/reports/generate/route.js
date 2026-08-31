@@ -32,7 +32,7 @@ const MESSAGES = {
 		failed: 'Nie udało się wygenerować raportu. Spróbuj ponownie za chwilę.',
 		refused: 'Model nie mógł przygotować raportu.',
 		emptyIntro: 'W tym oknie czasowym selekcja nie znalazła meczów o wystarczającej wartości.',
-		emptySummary: 'Spróbuj ponownie, gdy oferta meczów będzie bogatsza — raport pokazuje tylko typy o realnej przewadze.',
+		emptySummary: 'Spróbuj ponownie, gdy terminarz będzie bogatszy — raport pokazuje tylko typy, które dane wspierają wyraźnie.',
 	},
 	en: {
 		limit: 'You have used the monthly report limit ({limit}). It resets on the first of the month.',
@@ -41,7 +41,7 @@ const MESSAGES = {
 		failed: 'Could not generate the report. Please try again in a moment.',
 		refused: 'The model could not prepare the report.',
 		emptyIntro: 'The selection found no sufficiently valuable matches in this time window.',
-		emptySummary: 'Try again when the fixture list is richer — the report only shows picks with a real edge.',
+		emptySummary: 'Try again when the fixture list is richer — the report only shows picks the data clearly supports.',
 	},
 };
 
