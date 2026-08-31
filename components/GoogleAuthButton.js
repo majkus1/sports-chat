@@ -2,12 +2,14 @@ import { useEffect, useRef, useState, useContext } from 'react';
 import { UserContext } from '@/context/UserContext';
 import { useTranslations } from 'next-intl';
 import { useAlert } from '@/context/AlertContext';
+import { useTheme } from '@/context/ThemeContext';
 import { CONSENT_EVENT, hasConsent, writeConsent } from '@/lib/consent';
 
 export default function GoogleAuthButton({ onSuccessClose }) {
   const { refreshUser } = useContext(UserContext);
   const t = useTranslations('common');
   const { showAlert } = useAlert();
+  const { theme } = useTheme();
   const googleDivRef = useRef(null);
 
   /*
@@ -32,6 +34,10 @@ export default function GoogleAuthButton({ onSuccessClose }) {
 
     const init = () => {
       if (!window.google || !googleDivRef.current) return;
+
+      // Przy ponownym rysowaniu (zmiana motywu) czyścimy kontener — inaczej przyciski
+      // dokładają się jeden pod drugim.
+      googleDivRef.current.replaceChildren();
 
       window.google.accounts.id.initialize({
         client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
@@ -68,8 +74,16 @@ export default function GoogleAuthButton({ onSuccessClose }) {
         ux_mode: 'popup',
       });
 
+      /*
+       * Motyw przycisku dobieramy do motywu aplikacji.
+       *
+       * `outline` to biały przycisk na białym podkładzie własnego kontenera Google.
+       * W ciemnym motywie zostawiał pod sobą biały prostokąt szerszy od samego przycisku —
+       * bo kontener jest kwadratowy, a przycisk zaokrąglony. `filled_black` maluje jedno
+       * i drugie na ciemno, więc podkład znika zamiast rzucać się w oczy.
+       */
       window.google.accounts.id.renderButton(googleDivRef.current, {
-        theme: 'outline',
+        theme: theme === 'dark' ? 'filled_black' : 'outline',
         size: 'large',
         shape: 'pill',
         text: 'continue_with',
@@ -88,7 +102,9 @@ export default function GoogleAuthButton({ onSuccessClose }) {
     } else {
       init();
     }
-  }, [allowed, refreshUser, t, onSuccessClose]);
+    // `theme` w zależnościach: po przełączeniu motywu przycisk trzeba narysować od nowa,
+    // inaczej zostaje w kolorach poprzedniego.
+  }, [allowed, theme, refreshUser, t, onSuccessClose]);
 
   if (!allowed) {
     return (
@@ -102,5 +118,15 @@ export default function GoogleAuthButton({ onSuccessClose }) {
     );
   }
 
-  return <div ref={googleDivRef} style={{ paddingTop: 10 }} />;
+  /*
+   * Kontener przycięty do pigułki i zwężony do szerokości przycisku.
+   *
+   * Google renderuje przycisk we własnym, prostokątnym kontenerze o stałej szerokości.
+   * Bez przycięcia jego rogi wystają zza zaokrąglonego przycisku jako jaśniejszy prostokąt.
+   */
+  return (
+    <div className="mt-2.5 flex justify-center">
+      <div ref={googleDivRef} className="overflow-hidden rounded-full" />
+    </div>
+  );
 }

@@ -14,15 +14,16 @@
 	display: flex;
 }
 
+// Zwykły kontener formularza konta — nie warstwa przykrywająca.
+//
+// Dopóki miał `position: fixed`, przyciemnienie `--overlay` malowało cały ekran i czytało
+// się jak nakładka. Po przeniesieniu do układu panelu ten sam kolor zostawał już tylko
+// pod kartą, jako pasek w innym odcieniu niż tło. Panel konta maluje własne tło, więc
+// druga warstwa koloru nie ma tu czego przykrywać.
 .overlay {
 	width: 100%;
-	min-height: 100%;
-	background: var(--overlay);
 	display: flex;
 	justify-content: center;
-	// To samo wyrównanie co w `.modalOverlay` — inaczej karta podskakiwałaby w pionie
-	// przy przełączaniu między logowaniem a rejestracją w tym samym panelu.
-	align-items: flex-start;
 	font-family: 'Roboto Condensed', sans-serif;
 
 	h2 {
@@ -163,7 +164,6 @@ input {
  */
 .modalOverlay {
 	width: 100%;
-	min-height: 100%;
 	display: flex;
 	justify-content: center;
 	/*
