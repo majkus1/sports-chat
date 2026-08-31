@@ -32,16 +32,28 @@ Parametry:
 --seasons=2024,2025      sezony do pobrania (domyślnie 2024,2025)
 --split=2025-07-01       data podziału na uczące i testowe
 --leagues=39,140,135     ograniczenie do wybranych lig (domyślnie wszystkie z LEAGUE_TIERS)
+--refit-days=14          co ile dni przeliczać model na danych testowych; 0 wyłącza
 ```
 
 Koszt: **jedno zapytanie na ligę i sezon**. Pełny przebieg to około 80 zapytań przy dziennym
 limicie 7500, bo `fixtures?league=&season=` oddaje cały sezon z wynikami naraz.
 
-Kod wyjścia `0` znaczy, że model bije linie odniesienia; `2` — że nie bije.
+Kod wyjścia `0` znaczy, że przewaga nad częstościami jest **istotna statystycznie**; `2` —
+że jej nie ma albo nie da się jej odróżnić od przypadku.
+
+Model przelicza się w trakcie okresu testowego co `--refit-days`, ucząc się wyłącznie na
+meczach rozegranych wcześniej — tak jak robiłaby to produkcja. Uczenie raz na cały sezon
+zaniża wynik i karze model za beniaminków, o których przez rok nie mógł nic wiedzieć.
 
 ## Jak czytać wynik
 
 - **log loss** i **Brier score** — mniej znaczy lepiej. To one decydują.
+- **statystyka t** przy różnicy log lossu — poniżej 2 przewaga jest w granicach szumu,
+  niezależnie od tego, jak ładnie wygląda sama średnia.
+- **odsetek meczów z nieznaną drużyną** — dla nich model nie wnosi nic ponad częstości,
+  więc wysoki udział rozwadnia cały wynik.
+- Punkty odniesienia dla log lossu 1X2: 1,0986 to prognoza „1/3 na każdy wynik”,
+  a przyzwoity model statystyczny na czołowych ligach osiąga 0,98–1,01.
 - **trafienia 1X2** — podane wyłącznie dla kontekstu. Odsetek trafień nagradza pewne siebie
   zgadywanie: „zawsze gospodarz" ma około 45% i zero wartości prognostycznej.
 - Podział jest **po dacie, nigdy losowy**. Losowy pozwoliłby uczyć się z kolejek rozegranych
