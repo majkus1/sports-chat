@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "next lint",
-    "test": "node --test \"test/**/*.test.mjs\""
+    "test": "node test/run.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",
