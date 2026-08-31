@@ -11,6 +11,7 @@ import { MODEL_ANALYSIS, MAX_TOKENS_ANALYSIS } from '@/lib/ai/config';
 import { parsePartialJson } from '@/lib/ai/partialJson';
 import { formatFrame } from '@/lib/sse/parseFrames';
 import { buildReportCandidates, REPORT_WINDOWS } from '@/lib/reports/service';
+import { leagueTier } from '@/lib/football/leagues';
 import { recordPicks } from '@/lib/picks/service';
 
 export const maxDuration = 300;
@@ -169,6 +170,24 @@ export async function POST(request) {
 						leagueName: pick.league ?? null,
 						kickoff: pick.kickoffUtc,
 					}),
+					/*
+					 * Kontekst per typ, nie wspólny: raport obejmuje kilkanaście różnych
+					 * meczów, każdy z własną ligą i własną próbą meczową. Dane bierzemy
+					 * z kandydata, na podstawie którego typ powstał.
+					 */
+					context: (pick) => {
+						const kandydat = candidates.find((c) => String(c.fixtureId) === String(pick.fixtureId));
+						return {
+							promptVersion: REPORT_PROMPT_VERSION,
+							modelVersion: meta?.model ?? null,
+							leagueId: kandydat?.leagueId ?? null,
+							leagueTier: leagueTier(kandydat?.leagueId),
+							// Kandydat przechodzi selekcję tylko z kompletem tych sekcji.
+							sectionsPresent: kandydat ? ['form', 'prediction'] : [],
+							playedHome: kandydat?.formHome?.played?.total ?? null,
+							playedAway: kandydat?.formAway?.played?.total ?? null,
+						};
+					},
 				});
 
 				// Limit i dziennik dopiero po udanym zapisie — nieudany raport nie kosztuje.

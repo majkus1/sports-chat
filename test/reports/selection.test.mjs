@@ -17,13 +17,24 @@ setupEnv();
 
 const { evaluateMarkets, selectionScore } = await import('@/lib/reports/service');
 
-/** Forma drużyny w kształcie, jaki daje `normalizeTeamForm`. */
-function forma({ strzelone, stracone, rozegrane = 10 }) {
+/**
+ * Forma drużyny w kształcie, jaki daje `normalizeTeamForm`.
+ *
+ * `wDomu` i `naWyjezdzie` pozwalają zbudować drużynę o różnych średnich w obu rolach —
+ * bez tego nie da się sprawdzić, czy selekcja faktycznie sięga po właściwy rozkład.
+ */
+function forma({ strzelone, stracone, rozegrane = 10, wDomu, naWyjezdzie }) {
+	const avg = (lacznie, dom, wyjazd) => ({
+		total: String(lacznie),
+		home: dom == null ? String(lacznie) : String(dom),
+		away: wyjazd == null ? String(lacznie) : String(wyjazd),
+	});
+
 	return {
-		played: { total: rozegrane },
+		played: { total: rozegrane, home: Math.ceil(rozegrane / 2), away: Math.floor(rozegrane / 2) },
 		goals: {
-			for: { average: { total: String(strzelone) } },
-			against: { average: { total: String(stracone) } },
+			for: { average: avg(strzelone, wDomu?.strzelone, naWyjezdzie?.strzelone) },
+			against: { average: avg(stracone, wDomu?.stracone, naWyjezdzie?.stracone) },
 		},
 	};
 }
@@ -155,6 +166,62 @@ describe('ranking selekcji', () => {
 
 		assert.ok(dluga > krotka);
 		assert.equal(bardzoDluga, dluga, 'powyżej dwunastu meczów próba nic już nie dokłada');
+	});
+});
+
+describe('rozkład dom / wyjazd', () => {
+	test('gospodarza oceniamy jego wynikami u siebie, nie średnią łączną', () => {
+		/*
+		 * Drużyna strzelecko rozdwojona: 2.6 gola u siebie, 0.4 na wyjeździe — średnia
+		 * łączna 1.5. Rywal równie słaby w obronie na wyjeździe. Ze średnich łącznych
+		 * wychodzi mecz nijaki; z rozkładów — wyraźne Over.
+		 */
+		const rynki = evaluateMarkets({
+			prediction: { percent: { home: 50, draw: 25, away: 25 } },
+			formHome: forma({
+				strzelone: 1.5,
+				stracone: 1.5,
+				wDomu: { strzelone: 2.6, stracone: 1.4 },
+				naWyjezdzie: { strzelone: 0.4, stracone: 1.6 },
+			}),
+			formAway: forma({
+				strzelone: 1.5,
+				stracone: 1.5,
+				wDomu: { strzelone: 2.4, stracone: 0.5 },
+				naWyjezdzie: { strzelone: 1.6, stracone: 2.6 },
+			}),
+		});
+
+		assert.ok(
+			znajdz(rynki, 'Suma goli', 'Over 2.5'),
+			'przy 2.6 u siebie i 2.6 straconych na wyjeździe Over musi się pojawić'
+		);
+		assert.equal(
+			znajdz(rynki, 'Suma goli', 'Under 2.5'),
+			null,
+			'średnia łączna 1.5 nie może przeważyć nad rozkładem z tej roli'
+		);
+	});
+
+	test('przy jednym meczu w danej roli wracamy do średniej łącznej', () => {
+		// Dwa mecze rozegrane to po jednym u siebie i na wyjeździe — za mało, żeby split
+		// cokolwiek znaczył. Wtedy wartość skrajna nie może zdominować rachunku.
+		const rynki = evaluateMarkets({
+			prediction: { percent: { home: 50, draw: 25, away: 25 } },
+			formHome: forma({
+				strzelone: 1.0,
+				stracone: 1.0,
+				rozegrane: 2,
+				wDomu: { strzelone: 5.0, stracone: 0 },
+			}),
+			formAway: forma({ strzelone: 1.0, stracone: 1.0, rozegrane: 2 }),
+		});
+
+		assert.equal(
+			znajdz(rynki, 'Suma goli', 'Over 2.5'),
+			null,
+			'pojedynczy mecz z pięcioma golami nie jest przesłanką'
+		);
 	});
 });
 

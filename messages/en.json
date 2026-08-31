@@ -288,6 +288,8 @@
 		"accuracy_range_days": "Last {days} days",
 		"accuracy_range_all": "All time",
 		"accuracy_from_settled": "from {count} settled picks",
+		"accuracy_interval": "True accuracy lies between {low}% and {high}%",
+		"accuracy_small_sample": "sample still too small for this figure to mean much",
 		"accuracy_no_data": "No settled picks in this range.",
 		"accuracy_won": "Won",
 		"accuracy_lost": "Lost",

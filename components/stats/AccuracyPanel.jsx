@@ -20,22 +20,37 @@ const KINDS = ['all', 'prematch', 'live', 'report'];
 const AUTHORS = ['ai', 'user'];
 const RANGES = ['30', '90', 'all'];
 
-/** Duży wskaźnik skuteczności — pierwsza rzecz, na którą patrzy odwiedzający. */
-function HitRate({ value, settled, t }) {
+/**
+ * Duży wskaźnik skuteczności — pierwsza rzecz, na którą patrzy odwiedzający.
+ *
+ * Pod procentem stoi przedział ufności, bo sam procent przy małej próbie kłamie: 47/68 to
+ * nie „69%", tylko „gdzieś między 57 a 79%". Podawanie samej środkowej wartości jako faktu
+ * byłoby obiecywaniem precyzji, której w tych danych nie ma.
+ */
+function HitRate({ value, settled, interval, reliable = true, t }) {
 	const known = Number.isFinite(value);
 	return (
-		<div className="flex items-baseline gap-3">
-			<span
-				className={cn(
-					'font-display text-5xl font-bold tabular-nums',
-					!known ? 'text-muted' : value >= 55 ? 'text-win' : value >= 45 ? 'text-text' : 'text-loss'
-				)}
-			>
-				{known ? `${value}%` : '—'}
-			</span>
-			<span className="text-sm text-muted">
-				{known ? t('accuracy_from_settled', { count: settled }) : t('accuracy_no_data')}
-			</span>
+		<div className="flex flex-col gap-1">
+			<div className="flex items-baseline gap-3">
+				<span
+					className={cn(
+						'font-display text-5xl font-bold tabular-nums',
+						!known ? 'text-muted' : value >= 55 ? 'text-win' : value >= 45 ? 'text-text' : 'text-loss'
+					)}
+				>
+					{known ? `${value}%` : '—'}
+				</span>
+				<span className="text-sm text-muted">
+					{known ? t('accuracy_from_settled', { count: settled }) : t('accuracy_no_data')}
+				</span>
+			</div>
+
+			{known && interval && (
+				<p className="text-xs text-muted">
+					{t('accuracy_interval', { low: interval.low, high: interval.high })}
+					{!reliable && ` · ${t('accuracy_small_sample')}`}
+				</p>
+			)}
 		</div>
 	);
 }
@@ -60,8 +75,11 @@ function BreakdownRow({ row, t }) {
 			<div className="min-w-0 flex-1">
 				<SplitBar won={row.won} lost={row.lost} />
 			</div>
+			{/* Przy garstce typów procent wprowadza w błąd — pokazujemy sam bilans.
+			    Dziesięć typów i jedno trafienie więcej to skok o dziesięć punktów. */}
 			<span className="w-24 shrink-0 text-right text-xs tabular-nums text-muted">
-				<span className="font-bold text-text">{row.hitRate}%</span> · {row.won}/{row.settled}
+				{row.settled >= 10 && <span className="font-bold text-text">{row.hitRate}% · </span>}
+				{row.won}/{row.settled}
 			</span>
 		</div>
 	);
@@ -264,7 +282,13 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 				<>
 					<Card>
 						<CardContent className="flex flex-col gap-4 px-5 py-5">
-							<HitRate value={s.hitRate} settled={s.settled} t={t} />
+							<HitRate
+								value={s.hitRate}
+								settled={s.settled}
+								interval={s.interval}
+								reliable={s.reliable !== false}
+								t={t}
+							/>
 							<SplitBar won={s.won} lost={s.lost} />
 
 							<div className="flex flex-wrap gap-x-5 gap-y-2 text-xs">

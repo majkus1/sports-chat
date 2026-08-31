@@ -57,6 +57,42 @@ const PickSchema = new mongoose.Schema(
 		leagueName: { type: String, default: null },
 		kickoff: { type: Date, default: null, index: true },
 
+		/*
+		 * KONTEKST POWSTANIA TYPU — do porównywania wersji między sobą.
+		 *
+		 * Bez tych pól skuteczność jest jedną liczbą bez wyjaśnienia. Nie da się odpowiedzieć
+		 * na pytanie „czy nowa wersja promptu jest lepsza", bo typy z obu wersji leżą w jednym
+		 * worku; nie da się też sprawdzić, czy słabe wyniki biorą się z ubogich danych, czy
+		 * z samego modelu. Zapisujemy w chwili powstania, bo później nie ma jak odtworzyć —
+		 * analiza live kasuje się po 15 minutach.
+		 */
+
+		/** Wersja instrukcji, z której powstał typ (`match-analysis/7`, `report/2`). */
+		promptVersion: { type: String, default: null, index: true },
+
+		/** Model językowy, który go wygenerował — z datą wydania, tak jak zwraca dostawca. */
+		modelVersion: { type: String, default: null },
+
+		/** Samoocena kompletności danych z analizy: `good` / `limited` / `insufficient`. */
+		dataQuality: { type: String, default: null },
+
+		leagueId: { type: Number, default: null },
+		/** Poziom rozgrywek z `lib/football/leagues.js`; `null` poza obsługiwaną listą. */
+		leagueTier: { type: Number, default: null },
+
+		/** Sekcje pakietu danych faktycznie obecne przy generowaniu. */
+		sectionsPresent: { type: [String], default: [] },
+
+		/*
+		 * Czy typ wchodzi do publicznej statystyki skuteczności.
+		 *
+		 * Typ postawiony na szczątkowych danych rozstrzyga się tak samo jak każdy inny, ale
+		 * wliczanie go do liczby pokazywanej na stronie głównej byłoby nieuczciwe w obie
+		 * strony: przy trafieniu zawyża, przy chybieniu karze model za to, że dostawca nie
+		 * ma danych o czwartej lidze. Typ zostaje widoczny przy meczu, tylko nie w statystyce.
+		 */
+		countsToStats: { type: Boolean, default: true, index: true },
+
 		/**
 		 * Kolejka tygodniowa, do której typ należy (`2026-W34`) albo `null` dla typów
 		 * postawionych poza zestawem. Zapisywane przy tworzeniu typu, żeby późniejsza

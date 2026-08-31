@@ -3,6 +3,7 @@ import connectToDb from '@/lib/db';
 import Pick from '@/models/Pick';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { MARKET_GROUPS } from '@/lib/picks/markets';
+import { BRIER_BASELINE, MIN_SETTLED_FOR_RATE, wilsonInterval } from '@/lib/picks/metrics';
 
 /**
  * Skuteczność typów — globalna albo własna.
@@ -35,6 +36,15 @@ export async function GET(request) {
 	const match = { author };
 	if (kind) match.kind = kind;
 	if (days) match.kickoff = { $gte: new Date(Date.now() - days * 24 * 3600 * 1000) };
+
+	/*
+	 * Typy postawione na szczątkowych danych nie wchodzą do publicznej statystyki.
+	 *
+	 * `$ne: false` zamiast `true`, bo typy sprzed wprowadzenia tego pola nie mają go wcale —
+	 * a nie ma powodu, żeby cała dotychczasowa historia zniknęła z panelu. Własną statystykę
+	 * pokazujemy w całości: użytkownik ma widzieć wszystko, co dla niego wygenerowaliśmy.
+	 */
+	if (scope !== 'me') match.countsToStats = { $ne: false };
 
 	if (scope === 'me') {
 		const session = await getAuthenticatedUser();
@@ -83,6 +93,66 @@ export async function GET(request) {
 						},
 					},
 				],
+				/*
+				 * KALIBRACJA — najważniejsza tabela na tej trasie.
+				 *
+				 * Kubełki po 10 punktów deklarowanego prawdopodobieństwa zestawione z faktycznym
+				 * odsetkiem trafień. Model skalibrowany trafia w 70% tam, gdzie deklaruje 70%.
+				 * Jeśli kubełek 60–69 daje 58%, a 70–79 daje 88%, to znaczy, że liczby podawane
+				 * użytkownikowi nie znaczą tego, co obiecują — i żadna średnia tego nie pokaże.
+				 */
+				wgPrawdopodobienstwa: [
+					{ $match: { status: { $in: ['won', 'lost'] }, probability: { $ne: null } } },
+					{
+						$group: {
+							_id: { $subtract: ['$probability', { $mod: ['$probability', 10] }] },
+							n: { $sum: 1 },
+							won: { $sum: { $cond: [{ $eq: ['$status', 'won'] }, 1, 0] } },
+							srednia: { $avg: '$probability' },
+						},
+					},
+					{ $sort: { _id: 1 } },
+				],
+				/*
+				 * Brier score liczony w bazie, żeby nie ściągać typów do aplikacji.
+				 * Sumujemy kwadraty błędu; średnią wyliczamy po odebraniu wyniku.
+				 */
+				brier: [
+					{ $match: { status: { $in: ['won', 'lost'] }, probability: { $ne: null } } },
+					{
+						$group: {
+							_id: null,
+							n: { $sum: 1 },
+							suma: {
+								$sum: {
+									$pow: [
+										{
+											$subtract: [
+												{ $divide: ['$probability', 100] },
+												{ $cond: [{ $eq: ['$status', 'won'] }, 1, 0] },
+											],
+										},
+										2,
+									],
+								},
+							},
+						},
+					},
+				],
+				// Czy skuteczność zależy od klasy rozgrywek i od kompletności danych.
+				wgPoziomuLigi: [
+					{ $match: { status: { $in: ['won', 'lost'] } } },
+					{ $group: { _id: { tier: '$leagueTier', status: '$status' }, n: { $sum: 1 } } },
+				],
+				wgJakosciDanych: [
+					{ $match: { status: { $in: ['won', 'lost'] } } },
+					{ $group: { _id: { quality: '$dataQuality', status: '$status' }, n: { $sum: 1 } } },
+				],
+				// Porównanie wersji instrukcji — jedyny sposób, żeby stwierdzić, czy zmiana pomogła.
+				wgWersjiPromptu: [
+					{ $match: { status: { $in: ['won', 'lost'] }, promptVersion: { $ne: null } } },
+					{ $group: { _id: { version: '$promptVersion', status: '$status' }, n: { $sum: 1 } } },
+				],
 				ostatnie: [
 					{ $match: { status: { $in: ['won', 'lost'] } } },
 					{ $sort: { settledAt: -1 } },
@@ -108,22 +178,35 @@ export async function GET(request) {
 		},
 	]);
 
+	/*
+	 * Typy sprzed wprowadzenia pól kontekstowych nie mają ich wcale i wpadają pod klucz
+	 * `undefined`. Nazywamy to wprost zamiast pokazywać surowy brak — historia nie znika
+	 * z panelu, ale widać, że pochodzi sprzed pomiaru.
+	 */
+	const BRAK = 'nieznane';
+
 	const licz = (rows, keyName) => {
 		const out = {};
 		for (const row of rows) {
-			const key = row._id[keyName];
+			const key = row._id[keyName] ?? BRAK;
 			out[key] = out[key] || { won: 0, lost: 0 };
 			out[key][row._id.status] = row.n;
 		}
 		return Object.entries(out)
-			.map(([key, v]) => ({
-				key,
-				label: keyName === 'market' ? (MARKET_GROUPS[key] ?? key) : key,
-				won: v.won,
-				lost: v.lost,
-				settled: v.won + v.lost,
-				hitRate: v.won + v.lost ? Math.round((v.won / (v.won + v.lost)) * 100) : null,
-			}))
+			.map(([key, v]) => {
+				const settled = v.won + v.lost;
+				return {
+					key,
+					label: keyName === 'market' ? (MARKET_GROUPS[key] ?? key) : key,
+					won: v.won,
+					lost: v.lost,
+					settled,
+					hitRate: settled ? Math.round((v.won / settled) * 100) : null,
+					// Przedział ufności przy każdym przekroju — bez niego 3/3 wygląda
+					// jak 100% skuteczności, a znaczy tyle co nic.
+					interval: wilsonInterval(v.won, settled),
+				};
+			})
 			.filter((row) => row.settled > 0)
 			.sort((a, b) => b.settled - a.settled);
 	};
@@ -132,6 +215,28 @@ export async function GET(request) {
 	const won = statusy.won || 0;
 	const lost = statusy.lost || 0;
 	const settled = won + lost;
+
+	const brierRow = result?.brier?.[0];
+	const brier = brierRow?.n ? Number((brierRow.suma / brierRow.n).toFixed(4)) : null;
+
+	/**
+	 * Kalibracja: kubełek deklarowanego prawdopodobieństwa vs. rzeczywistość.
+	 *
+	 * `gap` to różnica w punktach procentowych — dodatnia znaczy, że model był zbyt pewny
+	 * siebie, ujemna że niedoszacował. Zero to model idealnie skalibrowany.
+	 */
+	const calibration = (result?.wgPrawdopodobienstwa || []).map((r) => {
+		const actual = Math.round((100 * r.won) / r.n);
+		const declared = Math.round(r.srednia);
+		return {
+			bucket: `${r._id}-${r._id + 9}`,
+			declared,
+			actual,
+			gap: declared - actual,
+			settled: r.n,
+			interval: wilsonInterval(r.won, r.n),
+		};
+	});
 
 	return Response.json(
 		{
@@ -149,10 +254,26 @@ export async function GET(request) {
 				// że rozliczamy wszystko, a tak nie jest.
 				skipped: statusy.void || 0,
 				hitRate: settled ? Math.round((won / settled) * 100) : null,
+				// Granice, w których naprawdę mieści się skuteczność. Przy 47/68 to 57–79%,
+				// a nie „69%" — i dopiero to jest uczciwą odpowiedzią.
+				interval: wilsonInterval(won, settled),
+				// Czy próba jest już na tyle duża, żeby procent cokolwiek znaczył.
+				reliable: settled >= MIN_SETTLED_FOR_RATE,
+				minSettledForRate: MIN_SETTLED_FOR_RATE,
+			},
+			quality: {
+				brier,
+				brierBaseline: BRIER_BASELINE,
+				// Prognozy gorsze od rzutu monetą to sygnał, że deklarowane liczby szkodzą.
+				brierWorseThanCoinFlip: brier !== null && brier > BRIER_BASELINE,
+				calibration,
 			},
 			byKind: licz(result?.wgRodzaju || [], 'kind'),
 			byMarket: licz(result?.wgRynku || [], 'market'),
 			byConfidence: licz(result?.wgPewnosci || [], 'bucket'),
+			byLeagueTier: licz(result?.wgPoziomuLigi || [], 'tier'),
+			byDataQuality: licz(result?.wgJakosciDanych || [], 'quality'),
+			byPromptVersion: licz(result?.wgWersjiPromptu || [], 'version'),
 			recent: result?.ostatnie || [],
 		},
 		{ headers: { 'Cache-Control': 'no-store' } }

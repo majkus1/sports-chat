@@ -288,6 +288,8 @@
 		"accuracy_range_days": "Ostatnie {days} dni",
 		"accuracy_range_all": "Cały okres",
 		"accuracy_from_settled": "z {count} rozliczonych typów",
+		"accuracy_interval": "Rzeczywista skuteczność mieści się między {low}% a {high}%",
+		"accuracy_small_sample": "próba jeszcze za mała, żeby ten wynik był miarodajny",
 		"accuracy_no_data": "Brak rozliczonych typów w tym zakresie.",
 		"accuracy_won": "Trafione",
 		"accuracy_lost": "Chybione",
