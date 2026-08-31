@@ -82,6 +82,114 @@ function H2HTab({ bundle }) {
 	);
 }
 
+/**
+ * Ostatnie mecze obu drużyn.
+ *
+ * Dane (`bundle.recentForm`) pobieraliśmy od dawna — trafiały wyłącznie do promptu analizy,
+ * więc żeby zobaczyć ostatnie spotkania, trzeba było o nie zapytać asystenta. Zakładka
+ * pokazuje to samo wprost i nie kosztuje ani jednego dodatkowego zapytania do API.
+ *
+ * Kolejność jak w API: od najnowszego meczu. Ciąg formy w podsumowaniu jest odwrócony
+ * (najstarszy z lewej), bo tak czyta się go chronologicznie — i tak podaje go dostawca.
+ */
+const RESULT_TONE = {
+	W: 'bg-win text-white',
+	D: 'bg-draw text-white',
+	L: 'bg-loss text-white',
+};
+
+function ResultBadge({ result }) {
+	if (!result) return <span className="h-5 w-5 shrink-0" aria-hidden="true" />;
+	return (
+		<span
+			className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${RESULT_TONE[result] || 'bg-surface-2 text-muted'}`}
+		>
+			{result}
+		</span>
+	);
+}
+
+function RecentTeam({ teamName, data }) {
+	const t = useTranslations('common');
+	const locale = useLocale();
+
+	return (
+		<Card>
+			<CardContent className="p-0">
+				<div className="border-b border-border px-4 py-3">
+					<h4 className="truncate text-sm font-bold text-text">{teamName}</h4>
+					{data?.summary?.played ? (
+						<p className="mt-0.5 text-xs text-muted">
+							{t('recent_summary', {
+								wins: data.summary.wins,
+								draws: data.summary.draws,
+								loses: data.summary.loses,
+							})}
+							{' · '}
+							{t('recent_goals', {
+								scored: data.summary.goalsForAvg,
+								conceded: data.summary.goalsAgainstAvg,
+							})}
+						</p>
+					) : null}
+				</div>
+
+				{!data?.matches?.length ? (
+					<Empty>{t('no_recent')}</Empty>
+				) : (
+					<ul className="divide-y divide-border">
+						{data.matches.map((match) => (
+							<li key={match.id} className="flex items-center gap-2.5 px-4 py-2 text-sm">
+								<ResultBadge result={match.result} />
+
+								<span className="w-14 shrink-0 text-xs tabular-nums text-muted">
+									{match.date
+										? new Date(match.date).toLocaleDateString(locale, {
+												day: '2-digit',
+												month: '2-digit',
+											})
+										: '—'}
+								</span>
+
+								{/* Gospodarz czy gość — bez tego wynik 2:1 nic nie mówi o kontekście. */}
+								<span
+									className="w-4 shrink-0 text-center text-[11px] font-bold text-muted"
+									title={match.isHome ? t('recent_home') : t('recent_away')}
+								>
+									{match.isHome ? t('recent_home_short') : t('recent_away_short')}
+								</span>
+
+								<span className="min-w-0 flex-1 truncate text-text" title={match.competition || ''}>
+									{match.opponent || '—'}
+								</span>
+
+								<span className="shrink-0 font-bold tabular-nums text-text">
+									{match.goalsFor ?? '—'}:{match.goalsAgainst ?? '—'}
+								</span>
+							</li>
+						))}
+					</ul>
+				)}
+			</CardContent>
+		</Card>
+	);
+}
+
+function RecentFormTab({ bundle }) {
+	const t = useTranslations('common');
+	const recent = bundle.recentForm;
+	if (!recent?.home?.matches?.length && !recent?.away?.matches?.length) {
+		return <Empty>{t('no_recent')}</Empty>;
+	}
+
+	return (
+		<div className="grid gap-3 sm:grid-cols-2">
+			<RecentTeam teamName={bundle.fixture.teams.home.name} data={recent?.home} />
+			<RecentTeam teamName={bundle.fixture.teams.away.name} data={recent?.away} />
+		</div>
+	);
+}
+
 function LineupsTab({ bundle }) {
 	const t = useTranslations('common');
 	if (!bundle.lineups?.length) return <Empty>{t('no_lineups')}</Empty>;
@@ -235,6 +343,8 @@ export default function MatchDataTabs({
 					</TabsTrigger>
 				)}
 				<TabsTrigger value="stats">{t('match_room_stats')}</TabsTrigger>
+				{/* Ostatnie mecze przed H2H: częściej pyta się o formę niż o historię par. */}
+				<TabsTrigger value="recent">{t('match_room_recent')}</TabsTrigger>
 				<TabsTrigger value="h2h">{t('match_room_h2h')}</TabsTrigger>
 				<TabsTrigger value="lineups">{t('match_room_lineups')}</TabsTrigger>
 				<TabsTrigger value="standings">{t('match_room_standings')}</TabsTrigger>
@@ -315,6 +425,10 @@ export default function MatchDataTabs({
 				) : (
 					<StatsTab bundle={bundle} />
 				)}
+			</TabsContent>
+
+			<TabsContent value="recent">
+				<RecentFormTab bundle={bundle} />
 			</TabsContent>
 
 			<TabsContent value="h2h">

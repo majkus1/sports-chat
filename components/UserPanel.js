@@ -3,8 +3,9 @@ import { UserContext } from '@/context/UserContext';
 import Modal from './Modal';
 import PrivateChatComponent from './PrivateChatComponent';
 import { useTranslations } from 'next-intl'
-import { Bell, BellOff, Search, Star, Target, X } from 'lucide-react'
+import { Bell, BellOff, Gauge, Search, Star, Target, X } from 'lucide-react'
 import AccuracyPanel from '@/components/stats/AccuracyPanel'
+import PlanSummary from '@/components/billing/PlanSummary'
 import { Link } from '@/i18n/routing'
 import { fetchWithAuthRefresh } from '@/lib/authFetch'
 import { initialsFromName } from '@/components/ui/Avatar'
@@ -193,6 +194,20 @@ export default function UserPanel() {
          * do jednej kolumny, bo siatka ma tylko jeden tor.
          */}
         <div className="mt-4 grid gap-x-8 gap-y-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start">
+        {/*
+         * Plan i limity na samej górze lewej kolumny.
+         *
+         * To jedyne miejsce w aplikacji, gdzie widać termin ważności opłaconego dostępu —
+         * a przy płatności jednorazowej za 30 dni jest to informacja, po którą się tu wraca.
+         */}
+        <section className="lg:col-span-2">
+          <h3 className="section-heading flex items-center gap-1.5">
+            <Gauge size={14} aria-hidden="true" className="text-accent" />
+            {t('plan_and_limits')}
+          </h3>
+          <PlanSummary className="mt-2" />
+        </section>
+
         {/* Skuteczność moich typów — filtrowana po rodzaju, w wersji kompaktowej. */}
         <section>
           <h3 className="section-heading flex items-center gap-1.5">
