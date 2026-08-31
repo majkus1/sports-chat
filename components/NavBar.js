@@ -212,7 +212,12 @@ export default function NavBar({ onLanguageChange }) {
 
                                 {/* Akcje poboczne jako odnośniki, nie kafle: dwa pełne
                                     przyciski pod formularzem konkurowały z „Zaloguj się"
-                                    i nie było widać, co jest główną czynnością. */}
+                                    i nie było widać, co jest główną czynnością.
+
+                                    Przy otwartej rejestracji chowamy cały wiersz: „Rejestracja"
+                                    prowadziłaby tam, gdzie użytkownik już jest, a wiersz wisiałby
+                                    nad formularzem bez związku z nim. */}
+                                {!isRegisterModalOpen && (
                                 <div className="mt-4 flex w-full max-w-sm items-center justify-between gap-3 text-sm">
                                   <button
                                     type="button"
@@ -238,6 +243,7 @@ export default function NavBar({ onLanguageChange }) {
                                     {t('registernow')}
                                   </button>
                                 </div>
+                                )}
 
                                 <RegisterModal
                                   isOpen={isRegisterModalOpen}

@@ -15,14 +15,14 @@
 }
 
 .overlay {
-	top: 0;
-	left: 0;
 	width: 100%;
-	height: 100%;
+	min-height: 100%;
 	background: var(--overlay);
 	display: flex;
 	justify-content: center;
-	align-items: center;
+	// To samo wyrównanie co w `.modalOverlay` — inaczej karta podskakiwałaby w pionie
+	// przy przełączaniu między logowaniem a rejestracją w tym samym panelu.
+	align-items: flex-start;
 	font-family: 'Roboto Condensed', sans-serif;
 
 	h2 {
@@ -153,16 +153,25 @@ input {
 	font-size: 14px;
 }
 
+/*
+ * Warstwa rejestracji i przypomnienia hasła — CELOWO bez `position: fixed`.
+ *
+ * Oba okna otwierają się WEWNĄTRZ rozwijanego panelu konta, a ten jest już przypięty
+ * do ekranu poniżej nagłówka (`.mobile-dropdown`, top: 111px). Warstwa przypięta do całego
+ * okna centrowała kartę względem wysokości ekranu, nie panelu — więc karta wjeżdżała
+ * na pasek menu. Logowanie używa `.overlay` bez pozycjonowania i nigdy tego nie miało.
+ */
 .modalOverlay {
-	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	background: var(--overlay);
+	width: 100%;
+	min-height: 100%;
 	display: flex;
 	justify-content: center;
-	align-items: center;
+	/*
+	 * Do góry, nie na środek. Karta rejestracji jest wyższa od logowania (dochodzi zgoda
+	 * na regulamin), a przy centrowaniu w pionie jej początek chowa się poza krawędzią
+	 * przewijania panelu — na niższym oknie nie da się go dosięgnąć.
+	 */
+	align-items: flex-start;
 	font-family: 'Roboto Condensed', sans-serif;
 }
 
