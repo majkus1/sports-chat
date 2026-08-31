@@ -41,5 +41,14 @@ if (!pliki.length) {
 	process.exit(1);
 }
 
-const wynik = spawnSync(process.execPath, ['--test', ...pliki], { stdio: 'inherit' });
+/*
+ * `--no-experimental-detect-module` na Node 22+ wyrównuje zachowanie z Node 18, na którym
+ * stoi produkcja: bez niego nowszy Node po cichu ratuje pliki `.js` zawierające składnię
+ * modułu, a starszy wywala się na pierwszym `export`. Ta różnica raz już przepuściła
+ * zielone testy lokalnie i czerwone na serwerze. Format deklaruje jawnie `alias.mjs`.
+ */
+const flagi = ['--test'];
+if (Number(process.versions.node.split('.')[0]) >= 22) flagi.unshift('--no-experimental-detect-module');
+
+const wynik = spawnSync(process.execPath, [...flagi, ...pliki], { stdio: 'inherit' });
 process.exit(wynik.status ?? 1);

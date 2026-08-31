@@ -27,3 +27,32 @@ export function resolve(specifier, context, next) {
 
 	return next(pathToFileURL(target).href, context);
 }
+
+/**
+ * Pliki `.js` aplikacji są modułami ES — trzeba to Node'owi powiedzieć wprost.
+ *
+ * `package.json` nie ma `"type": "module"` i mieć nie może: `server.js` i `ecosystem.config.js`
+ * są CommonJS-em, a Next.js radzi sobie z tą mieszanką sam. Poza bundlerem rozstrzyga
+ * rozszerzenie, więc każdy plik `.js` ląduje domyślnie jako CommonJS.
+ *
+ * Node 22 tego nie zauważa, bo od 22.7 sam wykrywa składnię modułu i po cichu przełącza
+ * plik na ESM. Node 18 takiego mechanizmu nie ma i wywala się na pierwszym `export`
+ * komunikatem „Unexpected token 'export'". Produkcja stoi na 18, więc deklarujemy format
+ * jawnie i przestajemy zależeć od zachowania konkretnej wersji.
+ */
+const CJS_ENTRY_POINTS = new Set(['server.js', 'ecosystem.config.js']);
+
+export function load(url, context, next) {
+	if (!url.startsWith('file:') || !url.endsWith('.js')) return next(url, context);
+
+	const sciezka = fileURLToPath(url);
+	const wzgledna = path.relative(ROOT, sciezka);
+
+	const pozaProjektem = wzgledna.startsWith('..') || path.isAbsolute(wzgledna);
+	const zZaleznosci = wzgledna.split(path.sep).includes('node_modules');
+	if (pozaProjektem || zZaleznosci || CJS_ENTRY_POINTS.has(wzgledna)) {
+		return next(url, context);
+	}
+
+	return next(url, { ...context, format: 'module' });
+}
