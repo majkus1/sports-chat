@@ -5,11 +5,12 @@ import { setupEnv } from '../helpers/setup.mjs';
 /**
  * Selekcja meczów do raportu — część deterministyczna, bez AI i bez sieci.
  *
- * Testy pilnują trzech rzeczy naraz. Że raport NIE patrzy na kursy: żadna funkcja tutaj
- * nie przyjmuje danych rynkowych i nie ma jak ich przyjąć. Że progi pewności działają,
- * bo po usunięciu przewagi nad rynkiem to jedyne sito. I że bezpieczniki bramkowe są te
- * same, które obowiązują model w analizie pojedynczego meczu — obie ścieżki produkują
- * typy do tej samej statystyki skuteczności, więc nie mogą mieć różnych reguł.
+ * Testy pilnują czterech rzeczy. Że raport NIE patrzy na kursy: żadna funkcja tutaj nie
+ * przyjmuje danych rynkowych i nie ma jak ich przyjąć. Że progi pewności działają, bo po
+ * usunięciu przewagi nad rynkiem to jedyne sito. Że prawdopodobieństwa pochodzą z własnego
+ * modelu, gdy jest dostępny, a prognoza dostawcy schodzi do roli potwierdzenia. I — najmniej
+ * oczywiste — że w rynkach bramkowych NIE POWSTAJE ŻADEN TYP, bo backtest wykazał, że jest
+ * w nich gorzej niż zgadywanie.
  */
 
 // Rejestruje alias `@/` — bazy ani sieci ten plik nie dotyka.
@@ -17,34 +18,34 @@ setupEnv();
 
 const { evaluateMarkets, selectionScore } = await import('@/lib/reports/service');
 
-/**
- * Forma drużyny w kształcie, jaki daje `normalizeTeamForm`.
- *
- * `wDomu` i `naWyjezdzie` pozwalają zbudować drużynę o różnych średnich w obu rolach —
- * bez tego nie da się sprawdzić, czy selekcja faktycznie sięga po właściwy rozkład.
- */
-function forma({ strzelone, stracone, rozegrane = 10, wDomu, naWyjezdzie }) {
-	const avg = (lacznie, dom, wyjazd) => ({
-		total: String(lacznie),
-		home: dom == null ? String(lacznie) : String(dom),
-		away: wyjazd == null ? String(lacznie) : String(wyjazd),
-	});
-
+/** Forma drużyny w kształcie, jaki daje `normalizeTeamForm`. */
+function forma({ strzelone, stracone, rozegrane = 10 }) {
+	const avg = (v) => ({ total: String(v), home: String(v), away: String(v) });
 	return {
 		played: { total: rozegrane, home: Math.ceil(rozegrane / 2), away: Math.floor(rozegrane / 2) },
 		goals: {
-			for: { average: avg(strzelone, wDomu?.strzelone, naWyjezdzie?.strzelone) },
-			against: { average: avg(stracone, wDomu?.stracone, naWyjezdzie?.stracone) },
+			for: { average: avg(strzelone) },
+			against: { average: avg(stracone) },
 		},
 	};
 }
 
-/** Domyślny mecz: wyraźny faworyt gospodarzy, dużo goli po obu stronach. */
-function mecz({ home = 70, draw = 20, away = 10, gospodarz, gosc } = {}) {
+/** Mecz bez własnego modelu — ścieżka zapasowa, na samych procentach dostawcy. */
+function mecz({ home = 70, draw = 20, away = 10 } = {}) {
 	return {
 		prediction: { percent: { home, draw, away } },
-		formHome: forma(gospodarz ?? { strzelone: 1.8, stracone: 1.0 }),
-		formAway: forma(gosc ?? { strzelone: 1.4, stracone: 1.3 }),
+		formHome: forma({ strzelone: 1.8, stracone: 1.0 }),
+		formAway: forma({ strzelone: 1.4, stracone: 1.3 }),
+	};
+}
+
+/** Prognoza własnego modelu w kształcie, jaki zwraca `predictFixture`. */
+function zModelu({ home = 0.7, draw = 0.2, away = 0.1, homeScores = 0.8, awayScores = 0.7 } = {}) {
+	return {
+		matchWinner: { home, draw, away },
+		doubleChance: { '1X': home + draw, X2: away + draw, 12: home + away },
+		teamGoals: { home: { over: homeScores }, away: { over: awayScores } },
+		known: true,
 	};
 }
 
@@ -87,57 +88,109 @@ describe('progi pewności', () => {
 	});
 });
 
-describe('bezpieczniki bramkowe — te same co w analizie meczu', () => {
-	test('nie proponujemy Under 2.5 przy wysokiej sumie średnich goli', () => {
-		const rynki = evaluateMarkets(
-			mecz({ gospodarz: { strzelone: 2.2, stracone: 1.6 }, gosc: { strzelone: 2.0, stracone: 1.8 } })
-		);
+describe('rynki bramkowe nie są już wystawiane', () => {
+	/*
+	 * To nie jest test kosmetyczny. Backtest na 3541 meczach pokazał ujemny zysk na mierze
+	 * Brier we WSZYSTKICH rynkach zależnych od sumy goli — model jest tam gorszy od stałej
+	 * prognozy. Gdyby ktoś kiedyś dołożył je z powrotem „bo szkoda oferty", te testy mają
+	 * o tym przypomnieć.
+	 */
+	const zakazane = ['Suma goli', 'Obie strzelą'];
 
-		assert.equal(znajdz(rynki, 'Suma goli', 'Under 2.5'), null);
+	test('nawet przy skrajnie wysokiej średniej goli nie ma typu na sumę', () => {
+		const rynki = evaluateMarkets({
+			prediction: { percent: { home: 70, draw: 20, away: 10 } },
+			formHome: forma({ strzelone: 3.4, stracone: 2.2 }),
+			formAway: forma({ strzelone: 3.1, stracone: 2.6 }),
+		});
+
+		for (const market of zakazane) {
+			assert.equal(
+				rynki.filter((r) => r.market === market).length,
+				0,
+				`${market} nie może się pojawić`
+			);
+		}
 	});
 
-	test('nie proponujemy Over 2.5 przy niskiej sumie średnich goli', () => {
-		const rynki = evaluateMarkets(
-			mecz({ gospodarz: { strzelone: 0.7, stracone: 0.6 }, gosc: { strzelone: 0.6, stracone: 0.7 } })
-		);
+	test('nawet przy skrajnie niskiej średniej goli nie ma typu na sumę', () => {
+		const rynki = evaluateMarkets({
+			prediction: { percent: { home: 70, draw: 20, away: 10 } },
+			formHome: forma({ strzelone: 0.4, stracone: 0.3 }),
+			formAway: forma({ strzelone: 0.3, stracone: 0.4 }),
+		});
 
-		assert.equal(znajdz(rynki, 'Suma goli', 'Over 2.5'), null);
+		for (const market of zakazane) {
+			assert.equal(rynki.filter((r) => r.market === market).length, 0);
+		}
 	});
 
-	test('zerowe średnie z początku sezonu nie dają „pewnego Under”', () => {
-		const rynki = evaluateMarkets(
-			mecz({ gospodarz: { strzelone: 0, stracone: 0 }, gosc: { strzelone: 0, stracone: 0 } })
-		);
+	test('model podający wysokie prawdopodobieństwo goli też go nie przemyci', () => {
+		const rynki = evaluateMarkets({
+			...mecz(),
+			modelPrediction: zModelu({ homeScores: 0.95, awayScores: 0.93 }),
+		});
 
-		assert.equal(znajdz(rynki, 'Suma goli', 'Under 2.5'), null);
-		assert.equal(znajdz(rynki, 'Obie strzelą', 'Nie'), null);
+		for (const market of zakazane) {
+			assert.equal(rynki.filter((r) => r.market === market).length, 0);
+		}
 	});
 });
 
-describe('wsparcie niezależnych rachunków', () => {
-	test('zgodność prognozy z bilansem bramkowym podnosi wsparcie do dwóch', () => {
-		const rynki = evaluateMarkets(
-			mecz({
-				home: 68,
-				gospodarz: { strzelone: 2.1, stracone: 0.8 },
-				gosc: { strzelone: 0.9, stracone: 1.9 },
-			})
-		);
+describe('prawdopodobieństwa z własnego modelu', () => {
+	test('gdy model jest dostępny, to on wyznacza wartość typu', () => {
+		// Model widzi 74% na gospodarzy, dostawca tylko 63%. Liczy się model.
+		const rynki = evaluateMarkets({
+			prediction: { percent: { home: 63, draw: 22, away: 15 } },
+			formHome: forma({ strzelone: 1.8, stracone: 1.0 }),
+			formAway: forma({ strzelone: 1.2, stracone: 1.4 }),
+			modelPrediction: zModelu({ home: 0.74, draw: 0.16, away: 0.1 }),
+		});
+
+		assert.equal(znajdz(rynki, 'Wynik meczu', 'home').pModel, 74);
+	});
+
+	test('zgodność z prognozą dostawcy podnosi wsparcie do dwóch', () => {
+		const rynki = evaluateMarkets({
+			prediction: { percent: { home: 71, draw: 19, away: 10 } },
+			formHome: forma({ strzelone: 1.8, stracone: 1.0 }),
+			formAway: forma({ strzelone: 1.2, stracone: 1.4 }),
+			modelPrediction: zModelu({ home: 0.7, draw: 0.2, away: 0.1 }),
+		});
 
 		assert.equal(znajdz(rynki, 'Wynik meczu', 'home').support, 2);
 	});
 
-	test('brak zgodności zostawia wsparcie na jednym rachunku', () => {
-		// Prognoza wskazuje gospodarzy, ale z bilansu bramek nie wynika ich przewaga.
-		const rynki = evaluateMarkets(
-			mecz({
-				home: 68,
-				gospodarz: { strzelone: 1.2, stracone: 1.3 },
-				gosc: { strzelone: 1.3, stracone: 1.2 },
-			})
-		);
+	test('rozbieżność z dostawcą zostawia wsparcie na jednym rachunku', () => {
+		// Model 70%, dostawca 45% — różnica 25 punktów, więc bez potwierdzenia.
+		const rynki = evaluateMarkets({
+			prediction: { percent: { home: 45, draw: 25, away: 30 } },
+			formHome: forma({ strzelone: 1.8, stracone: 1.0 }),
+			formAway: forma({ strzelone: 1.2, stracone: 1.4 }),
+			modelPrediction: zModelu({ home: 0.7, draw: 0.2, away: 0.1 }),
+		});
 
 		assert.equal(znajdz(rynki, 'Wynik meczu', 'home').support, 1);
+	});
+
+	test('model wystawia typ na to, czy drużyna strzeli — jedyny potwierdzony rynek bramkowy', () => {
+		const rynki = evaluateMarkets({
+			...mecz(),
+			modelPrediction: zModelu({ homeScores: 0.83 }),
+		});
+
+		assert.equal(znajdz(rynki, 'Gole drużyny', 'Gospodarz powyżej 0.5')?.pModel, 83);
+	});
+
+	test('bez modelu działa ścieżka zapasowa na procentach dostawcy', () => {
+		const rynki = evaluateMarkets(mecz({ home: 68, draw: 20, away: 12 }));
+
+		assert.equal(znajdz(rynki, 'Wynik meczu', 'home').pModel, 68);
+		assert.equal(
+			znajdz(rynki, 'Gole drużyny', 'Gospodarz powyżej 0.5'),
+			null,
+			'bez modelu nie mamy skąd wziąć tej liczby'
+		);
 	});
 });
 
@@ -169,65 +222,9 @@ describe('ranking selekcji', () => {
 	});
 });
 
-describe('rozkład dom / wyjazd', () => {
-	test('gospodarza oceniamy jego wynikami u siebie, nie średnią łączną', () => {
-		/*
-		 * Drużyna strzelecko rozdwojona: 2.6 gola u siebie, 0.4 na wyjeździe — średnia
-		 * łączna 1.5. Rywal równie słaby w obronie na wyjeździe. Ze średnich łącznych
-		 * wychodzi mecz nijaki; z rozkładów — wyraźne Over.
-		 */
-		const rynki = evaluateMarkets({
-			prediction: { percent: { home: 50, draw: 25, away: 25 } },
-			formHome: forma({
-				strzelone: 1.5,
-				stracone: 1.5,
-				wDomu: { strzelone: 2.6, stracone: 1.4 },
-				naWyjezdzie: { strzelone: 0.4, stracone: 1.6 },
-			}),
-			formAway: forma({
-				strzelone: 1.5,
-				stracone: 1.5,
-				wDomu: { strzelone: 2.4, stracone: 0.5 },
-				naWyjezdzie: { strzelone: 1.6, stracone: 2.6 },
-			}),
-		});
-
-		assert.ok(
-			znajdz(rynki, 'Suma goli', 'Over 2.5'),
-			'przy 2.6 u siebie i 2.6 straconych na wyjeździe Over musi się pojawić'
-		);
-		assert.equal(
-			znajdz(rynki, 'Suma goli', 'Under 2.5'),
-			null,
-			'średnia łączna 1.5 nie może przeważyć nad rozkładem z tej roli'
-		);
-	});
-
-	test('przy jednym meczu w danej roli wracamy do średniej łącznej', () => {
-		// Dwa mecze rozegrane to po jednym u siebie i na wyjeździe — za mało, żeby split
-		// cokolwiek znaczył. Wtedy wartość skrajna nie może zdominować rachunku.
-		const rynki = evaluateMarkets({
-			prediction: { percent: { home: 50, draw: 25, away: 25 } },
-			formHome: forma({
-				strzelone: 1.0,
-				stracone: 1.0,
-				rozegrane: 2,
-				wDomu: { strzelone: 5.0, stracone: 0 },
-			}),
-			formAway: forma({ strzelone: 1.0, stracone: 1.0, rozegrane: 2 }),
-		});
-
-		assert.equal(
-			znajdz(rynki, 'Suma goli', 'Over 2.5'),
-			null,
-			'pojedynczy mecz z pięcioma golami nie jest przesłanką'
-		);
-	});
-});
-
 describe('brak danych rynkowych', () => {
 	test('selekcja działa bez jakiejkolwiek informacji o kursach', () => {
-		const rynki = evaluateMarkets(mecz({ home: 70 }));
+		const rynki = evaluateMarkets({ ...mecz(), modelPrediction: zModelu() });
 
 		assert.ok(rynki.length > 0);
 		for (const wpis of rynki) {

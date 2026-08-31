@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 
@@ -21,9 +22,18 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 export function resolve(specifier, context, next) {
 	if (!specifier.startsWith('@/')) return next(specifier, context);
 
-	let target = path.join(ROOT, specifier.slice(2));
-	// Importy bez rozszerzenia (`@/lib/db`) trafiają na plik `.js`.
-	if (!/\.[a-z]+$/.test(target)) target += '.js';
+	const base = path.join(ROOT, specifier.slice(2));
+	let target = base;
+
+	if (!/\.[a-z]+$/.test(base)) {
+		/*
+		 * Bundler Next.js sprawdza obie możliwości: plik `x.js` oraz katalog `x/index.js`.
+		 * Goły Node nie robi ani jednego, ani drugiego, więc musimy tu odtworzyć obie —
+		 * inaczej import `@/lib/model` szuka pliku `lib/model.js`, którego nie ma, i pada
+		 * na „Cannot find module" mimo poprawnego kodu.
+		 */
+		target = existsSync(`${base}.js`) ? `${base}.js` : path.join(base, 'index.js');
+	}
 
 	return next(pathToFileURL(target).href, context);
 }
