@@ -94,6 +94,13 @@ const PickSchema = new mongoose.Schema(
 		countsToStats: { type: Boolean, default: true, index: true },
 
 		/**
+		 * Dlaczego typ wypadł ze statystyki: `market_not_predictable`, `below_market_threshold`,
+		 * `market_not_measured`. `null` znaczy, że przeszedł. Bez tego pola wiadomo tylko, że
+		 * czegoś nie liczymy, ale nie wiadomo, czy to wina rynku, progu, czy danych.
+		 */
+		policyReason: { type: String, default: null },
+
+		/**
 		 * Kolejka tygodniowa, do której typ należy (`2026-W34`) albo `null` dla typów
 		 * postawionych poza zestawem. Zapisywane przy tworzeniu typu, żeby późniejsza
 		 * zmiana składu kolejki nie przepisywała historii rankingu.
