@@ -21,3 +21,5 @@ __pycache__/
 *.pyd
 .Python
 ai_agent/__pycache__/
+# Lokalne ustawienia Claude Code (launch.json dev servera) — nie dotyczy produkcji.
+.claude/

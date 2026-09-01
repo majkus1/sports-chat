@@ -177,73 +177,89 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 				</span>
 			</div>
 
-			{/* Przełącznik autora — pierwszy, bo zmienia znaczenie wszystkich liczb poniżej. */}
+			{/*
+			 * Każda grupa filtrów ma podpis.
+			 *
+			 * Trzy rzędy identycznie wyglądających pigułek jeden pod drugim nie mówiły, co która
+			 * grupa przełącza — czytelnik widział siedem przycisków i musiał zgadywać z ich treści.
+			 * Podpis kosztuje jeden wiersz i usuwa całe zgadywanie.
+			 */}
 			{scope === 'me' && (
-				<div className="inline-flex max-w-full items-center gap-0.5 self-start overflow-x-auto rounded-full border border-border bg-surface-2 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-					{AUTHORS.map((a) => (
-						<button
-							key={a}
-							type="button"
-							onClick={() => setAuthor(a)}
-							aria-pressed={author === a}
-							className={cn(
-								'rounded-full border-0 px-3 py-1 text-xs font-semibold transition-colors',
-								author === a
-									? 'bg-brand text-brand-fg shadow-sm'
-									: 'bg-transparent text-muted hover:bg-surface-3 hover:text-text'
-							)}
-						>
-							{a === 'user' ? t('accuracy_author_user') : t('accuracy_author_ai')}
-						</button>
-					))}
-				</div>
-			)}
-
-			{/* Filtry: rodzaj typu i okno czasowe. W wąskim panelu przewijają się poziomo,
-			    zamiast łamać w dwie linie. */}
-			<div className="flex flex-wrap items-center gap-2">
-				<div
-					className={cn(
-						'inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-border bg-surface-2 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-						author === 'user' && 'hidden'
-					)}
-				>
-					{KINDS.map((k) => (
-						<button
-							key={k}
-							type="button"
-							onClick={() => setKind(k)}
-							aria-pressed={kind === k}
-							className={cn(
-								'rounded-full border-0 px-3 py-1 text-xs font-semibold transition-colors',
-								kind === k
-									? 'bg-brand text-brand-fg shadow-sm'
-									: 'bg-transparent text-muted hover:bg-surface-3 hover:text-text'
-							)}
-						>
-							{kindLabel[k]}
-						</button>
-					))}
-				</div>
-
-				{!compact && (
-					<div className="inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-border bg-surface-2 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-						{RANGES.map((r) => (
+				<div className="flex flex-col gap-1">
+					<span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+						{t('accuracy_filter_author')}
+					</span>
+					<div className="inline-flex max-w-full items-center gap-0.5 self-start overflow-x-auto rounded-full border border-border bg-surface-2 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+						{AUTHORS.map((a) => (
 							<button
-								key={r}
+								key={a}
 								type="button"
-								onClick={() => setDays(r)}
-								aria-pressed={days === r}
+								onClick={() => setAuthor(a)}
+								aria-pressed={author === a}
 								className={cn(
-									'rounded-full border-0 px-3 py-1 text-xs font-semibold transition-colors',
-									days === r
+									'whitespace-nowrap rounded-full border-0 px-3 py-1 text-xs font-semibold transition-colors',
+									author === a
 										? 'bg-brand text-brand-fg shadow-sm'
 										: 'bg-transparent text-muted hover:bg-surface-3 hover:text-text'
 								)}
 							>
-								{r === 'all' ? t('accuracy_range_all') : t('accuracy_range_days', { days: r })}
+								{a === 'user' ? t('accuracy_author_user') : t('accuracy_author_ai')}
 							</button>
 						))}
+					</div>
+				</div>
+			)}
+
+			{/* Rodzaj typu i okno czasowe. W wąskim panelu przewijają się poziomo,
+			    zamiast łamać w dwie linie. */}
+			<div className="flex flex-wrap items-end gap-x-4 gap-y-3">
+				<div className={cn('flex flex-col gap-1', author === 'user' && 'hidden')}>
+					<span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+						{t('accuracy_filter_kind')}
+					</span>
+					<div className="inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-border bg-surface-2 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+						{KINDS.map((k) => (
+							<button
+								key={k}
+								type="button"
+								onClick={() => setKind(k)}
+								aria-pressed={kind === k}
+								className={cn(
+									'whitespace-nowrap rounded-full border-0 px-3 py-1 text-xs font-semibold transition-colors',
+									kind === k
+										? 'bg-brand text-brand-fg shadow-sm'
+										: 'bg-transparent text-muted hover:bg-surface-3 hover:text-text'
+								)}
+							>
+								{kindLabel[k]}
+							</button>
+						))}
+					</div>
+				</div>
+
+				{!compact && (
+					<div className="flex flex-col gap-1">
+						<span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+							{t('accuracy_filter_range')}
+						</span>
+						<div className="inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-border bg-surface-2 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+							{RANGES.map((r) => (
+								<button
+									key={r}
+									type="button"
+									onClick={() => setDays(r)}
+									aria-pressed={days === r}
+									className={cn(
+										'whitespace-nowrap rounded-full border-0 px-3 py-1 text-xs font-semibold transition-colors',
+										days === r
+											? 'bg-brand text-brand-fg shadow-sm'
+											: 'bg-transparent text-muted hover:bg-surface-3 hover:text-text'
+									)}
+								>
+									{r === 'all' ? t('accuracy_range_all') : t('accuracy_range_days', { days: r })}
+								</button>
+							))}
+						</div>
 					</div>
 				)}
 			</div>

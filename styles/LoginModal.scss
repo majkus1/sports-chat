@@ -83,13 +83,41 @@ input {
 
 // Panel zalogowanego użytkownika.
 .account-card {
-	padding: 18px;
+	padding: 20px;
 	border: 1px solid var(--border);
 	border-radius: 14px;
 	background: var(--surface);
 	box-shadow: var(--shadow-soft);
 	color: var(--text);
 	font-family: 'Roboto Condensed', sans-serif;
+}
+
+/*
+ * Sekcja panelu konta jako osobny blok, nie akapit oddzielony samym odstępem.
+ *
+ * Panel mieści siedem różnych rzeczy naraz — plan, limity, skuteczność, filtry, ranking,
+ * ulubione mecze, rozmowy i wyszukiwarkę. Rozdzielone samą przerwą zlewały się w jedną
+ * ścianę, bo każda z nich jest listą krótkich wierszy o podobnym rytmie. Własne tło
+ * i obramowanie mówią „to jest jedna rzecz" szybciej niż jakikolwiek nagłówek.
+ */
+.panel-block {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 14px;
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	background: var(--surface-2);
+}
+
+@media (max-width: 640px) {
+	.account-card {
+		padding: 14px;
+	}
+
+	.panel-block {
+		padding: 12px;
+	}
 }
 
 .account-avatar,
@@ -117,11 +145,13 @@ input {
 }
 
 .section-heading {
-	font-size: 11px;
+	font-size: 12px;
 	font-weight: 700;
-	letter-spacing: 0.08em;
+	letter-spacing: 0.09em;
 	text-transform: uppercase;
-	color: var(--muted);
+	// Nagłówek sekcji ma być czytelny jako etykieta bloku, a nie jako kolejny szary wiersz
+	// w liście — stąd kolor tekstu zamiast wyciszonego.
+	color: var(--text);
 }
 
 .person-row {

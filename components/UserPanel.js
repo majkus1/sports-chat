@@ -193,177 +193,177 @@ export default function UserPanel() {
          * po prawej listy — ulubione mecze i rozmowy. Na wąskim wszystko wraca
          * do jednej kolumny, bo siatka ma tylko jeden tor.
          */}
-        <div className="mt-4 grid gap-x-8 gap-y-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start">
-        {/*
-         * Plan i limity na samej górze lewej kolumny.
-         *
-         * To jedyne miejsce w aplikacji, gdzie widać termin ważności opłaconego dostępu —
-         * a przy płatności jednorazowej za 30 dni jest to informacja, po którą się tu wraca.
-         */}
-        <section className="lg:col-span-2">
-          <h3 className="section-heading flex items-center gap-1.5">
-            <Gauge size={14} aria-hidden="true" className="text-accent" />
-            {t('plan_and_limits')}
-          </h3>
-          <PlanSummary className="mt-2" />
-        </section>
+        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start">
+          {/*
+           * Plan i limity na samej górze lewej kolumny.
+           *
+           * To jedyne miejsce w aplikacji, gdzie widać termin ważności opłaconego dostępu —
+           * a przy płatności jednorazowej za 30 dni jest to informacja, po którą się tu wraca.
+           */}
+          <section className="panel-block lg:col-span-2">
+            <h3 className="section-heading flex items-center gap-1.5">
+              <Gauge size={14} aria-hidden="true" className="text-accent" />
+              {t('plan_and_limits')}
+            </h3>
+            <PlanSummary />
+          </section>
 
-        {/* Skuteczność moich typów — filtrowana po rodzaju, w wersji kompaktowej. */}
-        <section>
-          <h3 className="section-heading flex items-center gap-1.5">
-            <Target size={14} aria-hidden="true" className="text-accent" />
-            {t('accuracy_mine')}
-          </h3>
-          <AccuracyPanel scope="me" compact className="mt-2" />
-        </section>
+          {/* Skuteczność moich typów — filtrowana po rodzaju, w wersji kompaktowej. */}
+          <section className="panel-block">
+            <h3 className="section-heading flex items-center gap-1.5">
+              <Target size={14} aria-hidden="true" className="text-accent" />
+              {t('accuracy_mine')}
+            </h3>
+            <AccuracyPanel scope="me" compact />
+          </section>
 
-        {/* Prawa kolumna: ulubione mecze, rozmowy i wyszukiwarka jako jeden blok. */}
-        <div className="flex flex-col gap-6">
-        {/* Ulubione mecze — pogrupowane po przybliżonym stanie liczonym z godziny startu. */}
-        <section>
-          <h3 className="section-heading flex items-center gap-1.5">
-            <Star size={14} aria-hidden="true" className="text-draw" />
-            {t('favorites_title')}
-          </h3>
+          {/* Prawa kolumna: ulubione mecze, rozmowy i wyszukiwarka jako jeden blok. */}
+          <div className="flex flex-col gap-4">
+            {/* Ulubione mecze — pogrupowane po przybliżonym stanie liczonym z godziny startu. */}
+            <section className="panel-block">
+              <h3 className="section-heading flex items-center gap-1.5">
+                <Star size={14} aria-hidden="true" className="text-draw" />
+                {t('favorites_title')}
+              </h3>
 
-          {favorites.length === 0 ? (
-            <p className="px-1 py-2 text-sm text-muted">{t('favorites_empty')}</p>
-          ) : (
-            (() => {
-              const groups = { live: [], upcoming: [], finished: [] };
-              for (const f of favorites) groups[favoriteBucket(f.kickoff)].push(f);
-              // Nadchodzące od najbliższego; zakończone od najświeższego.
-              groups.upcoming.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
-
-              const order = [
-                ['live', t('favorites_live')],
-                ['upcoming', t('favorites_upcoming')],
-                ['finished', t('favorites_finished')],
-              ];
-
-              return order.map(([key, label]) =>
-                groups[key].length === 0 ? null : (
-                  <div key={key} className="mt-2">
-                    <p className="px-1 text-[11px] font-bold uppercase tracking-wide text-muted">
-                      {label}
-                      {key === 'live' && (
-                        <span
-                          aria-hidden="true"
-                          className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-live motion-safe:animate-pulse"
-                        />
-                      )}
-                    </p>
-                    <div className="mt-0.5 max-h-44 overflow-y-auto">
-                      {groups[key].map((f) => (
-                        <div key={f.fixtureId} className="flex items-center gap-1">
-                          <Link href={`/mecz/${f.fixtureId}`} className="person-row min-w-0 flex-1">
-                            <span className="min-w-0 flex-1 truncate text-left text-sm font-semibold">
-                              {f.homeName} – {f.awayName}
-                            </span>
-                            <span className="shrink-0 text-xs text-muted">
-                              {f.kickoff
-                                ? new Date(f.kickoff).toLocaleString([], {
-                                    day: '2-digit',
-                                    month: '2-digit',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })
-                                : ''}
-                            </span>
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => removeFavorite(f.fixtureId)}
-                            aria-label={t('favorite_remove')}
-                            className="shrink-0 rounded-full p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-loss"
-                          >
-                            <X size={13} aria-hidden="true" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              );
-            })()
-          )}
-        </section>
-
-        <section className="border-t border-border pt-5">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="section-heading">{t('privc')}</h3>
-
-            {/* Przełącznik dźwięku przy rozmowach, bo tylko ich dotyczy. */}
-            <button
-              type="button"
-              onClick={() => {
-                const next = !soundOn;
-                setSoundOn(next);
-                setSoundEnabled(next);
-              }}
-              aria-pressed={soundOn}
-              aria-label={soundOn ? t('sound_off') : t('sound_on')}
-              title={soundOn ? t('sound_off') : t('sound_on')}
-              className="rounded-full p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-text"
-            >
-              {soundOn ? <Bell size={14} aria-hidden="true" /> : <BellOff size={14} aria-hidden="true" />}
-            </button>
-          </div>
-
-          {chatHistory.length === 0 ? (
-            <p className="px-1 py-2 text-sm text-muted">{t('no_conversations')}</p>
-          ) : (
-            <div className="mt-1 max-h-56 overflow-y-auto">
-              {chatHistory.map((chat) => (
-                <PersonRow
-                  key={chat.username}
-                  name={chat.username}
-                  preview={chat.lastMessagePreview}
-                  unread={chat.unreadCount || 0}
-                  meta={chat.lastMessageDate ? formatWhen(chat.lastMessageDate) : null}
-                  onClick={() => openPrivateChat(chat.username)}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="border-t border-border pt-5">
-          <h3 className="section-heading">{t('searc')}</h3>
-          <div className="relative mt-1">
-            <Search
-              size={16}
-              aria-hidden="true"
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
-            />
-            <input
-              type="search"
-              placeholder={t('usersea')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-field"
-            />
-          </div>
-
-          {searchQuery && (
-            <div className="mt-1 max-h-48 overflow-y-auto">
-              {searchResults.length === 0 ? (
-                <p className="px-1 py-2 text-sm text-muted">{t('no_users_found')}</p>
+              {favorites.length === 0 ? (
+                <p className="px-1 py-2 text-sm text-muted">{t('favorites_empty')}</p>
               ) : (
-                searchResults.map((u) => (
-                  <PersonRow
-                    key={u.username}
-                    name={u.username}
-                    onClick={() => openPrivateChat(u.username)}
-                  />
-                ))
+                (() => {
+                  const groups = { live: [], upcoming: [], finished: [] };
+                  for (const f of favorites) groups[favoriteBucket(f.kickoff)].push(f);
+                  // Nadchodzące od najbliższego; zakończone od najświeższego.
+                  groups.upcoming.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
+
+                  const order = [
+                    ['live', t('favorites_live')],
+                    ['upcoming', t('favorites_upcoming')],
+                    ['finished', t('favorites_finished')],
+                  ];
+
+                  return order.map(([key, label]) =>
+                    groups[key].length === 0 ? null : (
+                      <div key={key} className="mt-2">
+                        <p className="px-1 text-[11px] font-bold uppercase tracking-wide text-muted">
+                          {label}
+                          {key === 'live' && (
+                            <span
+                              aria-hidden="true"
+                              className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-live motion-safe:animate-pulse"
+                            />
+                          )}
+                        </p>
+                        <div className="mt-0.5 max-h-44 overflow-y-auto">
+                          {groups[key].map((f) => (
+                            <div key={f.fixtureId} className="flex items-center gap-1">
+                              <Link href={`/mecz/${f.fixtureId}`} className="person-row min-w-0 flex-1">
+                                <span className="min-w-0 flex-1 truncate text-left text-sm font-semibold">
+                                  {f.homeName} – {f.awayName}
+                                </span>
+                                <span className="shrink-0 text-xs text-muted">
+                                  {f.kickoff
+                                    ? new Date(f.kickoff).toLocaleString([], {
+                                        day: '2-digit',
+                                        month: '2-digit',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })
+                                    : ''}
+                                </span>
+                              </Link>
+                              <button
+                                type="button"
+                                onClick={() => removeFavorite(f.fixtureId)}
+                                aria-label={t('favorite_remove')}
+                                className="shrink-0 rounded-full p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-loss"
+                              >
+                                <X size={13} aria-hidden="true" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  );
+                })()
               )}
+            </section>
+
+            <section className="panel-block">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="section-heading">{t('privc')}</h3>
+
+                {/* Przełącznik dźwięku przy rozmowach, bo tylko ich dotyczy. */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !soundOn;
+                    setSoundOn(next);
+                    setSoundEnabled(next);
+                  }}
+                  aria-pressed={soundOn}
+                  aria-label={soundOn ? t('sound_off') : t('sound_on')}
+                  title={soundOn ? t('sound_off') : t('sound_on')}
+                  className="rounded-full p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-text"
+                >
+                  {soundOn ? <Bell size={14} aria-hidden="true" /> : <BellOff size={14} aria-hidden="true" />}
+                </button>
+              </div>
+
+              {chatHistory.length === 0 ? (
+                <p className="px-1 py-2 text-sm text-muted">{t('no_conversations')}</p>
+              ) : (
+                <div className="mt-1 max-h-56 overflow-y-auto">
+                  {chatHistory.map((chat) => (
+                    <PersonRow
+                      key={chat.username}
+                      name={chat.username}
+                      preview={chat.lastMessagePreview}
+                      unread={chat.unreadCount || 0}
+                      meta={chat.lastMessageDate ? formatWhen(chat.lastMessageDate) : null}
+                      onClick={() => openPrivateChat(chat.username)}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="panel-block">
+              <h3 className="section-heading">{t('searc')}</h3>
+              <div className="relative mt-1">
+                <Search
+                  size={16}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+                />
+                <input
+                  type="search"
+                  placeholder={t('usersea')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="search-field"
+                />
+              </div>
+
+              {searchQuery && (
+                <div className="mt-1 max-h-48 overflow-y-auto">
+                  {searchResults.length === 0 ? (
+                    <p className="px-1 py-2 text-sm text-muted">{t('no_users_found')}</p>
+                  ) : (
+                    searchResults.map((u) => (
+                      <PersonRow
+                        key={u.username}
+                        name={u.username}
+                        onClick={() => openPrivateChat(u.username)}
+                      />
+                    ))
+                  )}
+                </div>
+              )}
+            </section>
             </div>
-          )}
-        </section>
+          </div>
         </div>
-        </div>
-      </div>
     </div>
   );
 }
