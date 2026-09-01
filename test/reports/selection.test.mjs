@@ -76,6 +76,30 @@ describe('progi pewności', () => {
 		);
 	});
 
+	test('gole drużyny mają najwyższy próg, bo zdarzają się najczęściej', () => {
+		/*
+		 * „Drużyna strzeli gola" zachodzi samo z siebie w 70–79% meczów. Typ z 78% jest więc
+		 * w tym rynku słabszy niż zwykła średnia ligowa i nie może przejść — mimo że przy
+		 * progu ogólnym (62%) wyglądałby na mocny.
+		 */
+		const rynki = evaluateMarkets({
+			...mecz(),
+			modelPrediction: zModelu({ homeScores: 0.78, awayScores: 0.74 }),
+		});
+
+		assert.equal(znajdz(rynki, 'Gole drużyny', 'Gospodarz powyżej 0.5'), null);
+		assert.equal(znajdz(rynki, 'Gole drużyny', 'Gość powyżej 0.5'), null);
+	});
+
+	test('gol drużyny wyraźnie powyżej normy przechodzi', () => {
+		const rynki = evaluateMarkets({
+			...mecz(),
+			modelPrediction: zModelu({ homeScores: 0.89 }),
+		});
+
+		assert.equal(znajdz(rynki, 'Gole drużyny', 'Gospodarz powyżej 0.5')?.pModel, 89);
+	});
+
 	test('podwójna szansa ma wyższy próg niż rynki pojedyncze', () => {
 		// 1X = 45+25 = 70: powyżej progu ogólnego (62), poniżej progu dla podwójnej (74).
 		const rynki = evaluateMarkets(mecz({ home: 45, draw: 25, away: 30 }));
@@ -174,12 +198,13 @@ describe('prawdopodobieństwa z własnego modelu', () => {
 	});
 
 	test('model wystawia typ na to, czy drużyna strzeli — jedyny potwierdzony rynek bramkowy', () => {
+		// Wartość musi przekraczać własny próg rynku (85%), a nie tylko ogólny.
 		const rynki = evaluateMarkets({
 			...mecz(),
-			modelPrediction: zModelu({ homeScores: 0.83 }),
+			modelPrediction: zModelu({ homeScores: 0.88 }),
 		});
 
-		assert.equal(znajdz(rynki, 'Gole drużyny', 'Gospodarz powyżej 0.5')?.pModel, 83);
+		assert.equal(znajdz(rynki, 'Gole drużyny', 'Gospodarz powyżej 0.5')?.pModel, 88);
 	});
 
 	test('bez modelu działa ścieżka zapasowa na procentach dostawcy', () => {
