@@ -178,16 +178,28 @@ export default function AnalysisPanel({
 				)}
 
 				{sections.goals && !insufficient && (
-					<div className="grid grid-cols-3 gap-3">
-						{goalStats.map((stat) => (
-							<div
-								key={stat.label}
-								className="rounded-[var(--radius-ui)] bg-surface-2 px-3 py-3.5 text-center"
-							>
-								<div className="text-xl font-bold text-text">{stat.value}</div>
-								<div className="mt-1 text-xs text-muted">{stat.label}</div>
-							</div>
-						))}
+					/*
+					 * Liczby bramkowe zostają, ale z zastrzeżeniem.
+					 *
+					 * Sprawdziliśmy prognozy sumy goli i „obie strzelą" na 3541 rozegranych meczach:
+					 * wypadają gorzej niż stałe zgadywanie średniej ligowej. Dlatego nie wystawiamy
+					 * w nich typów — a skoro nie wystawiamy, nie wolno pokazywać tych procentów jak
+					 * prognozy, za którą stoimy. Zostają jako opis charakteru meczu, z podpisem
+					 * mówiącym wprost, ile są warte.
+					 */
+					<div>
+						<div className="grid grid-cols-3 gap-3">
+							{goalStats.map((stat) => (
+								<div
+									key={stat.label}
+									className="rounded-[var(--radius-ui)] bg-surface-2 px-3 py-3.5 text-center"
+								>
+									<div className="text-xl font-bold text-text">{stat.value}</div>
+									<div className="mt-1 text-xs text-muted">{stat.label}</div>
+								</div>
+							))}
+						</div>
+						<p className="mt-2 text-xs leading-relaxed text-muted">{t('goals_indicative')}</p>
 					</div>
 				)}
 

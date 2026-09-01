@@ -6,6 +6,7 @@ import {
 	Sparkles,
 	Target,
 	Trophy,
+	Users,
 } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import BallIcon from '@/components/icons/BallIcon';
@@ -25,7 +26,7 @@ import { cn } from '@/lib/utils';
  * sekcja jako `section` z własnym `h2` i powiązaniem przez `aria-labelledby`.
  */
 
-const ICONS = { FileText, Radio, Sparkles, MessagesSquare, Target, Trophy };
+const ICONS = { FileText, Radio, Sparkles, MessagesSquare, Target, Trophy, Users };
 
 /** Przycisk-odnośnik. Klasy zamiast komponentu `Button`, żeby nie wciągać klienta bez potrzeby. */
 function CtaLink({ href, children, variant = 'primary', className }) {
