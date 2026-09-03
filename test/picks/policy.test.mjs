@@ -259,3 +259,37 @@ describe('typ zapasowy w statystyce', () => {
 		assert.equal(countsAsFallback(zaMalaPrzewaga.reason), true);
 	});
 });
+
+describe('próg wejścia wobec normy warunkowej', () => {
+	/*
+	 * Podpis pod typem mówi, ILE zabrakło do pełnego typu, więc próg musi być liczony tą samą
+	 * normą co przewaga. W meczu w trakcie norma pochodzi z aktualnego stanu, nie z tabeli —
+	 * gdyby próg brał ją z tabeli, różnica wyszłaby z sufitu.
+	 */
+	test('norma z opcji nadpisuje tabelaryczną', () => {
+		const n = typ('Wynik meczu', 'Lech Poznań');
+
+		assert.equal(entryThresholdFor(n), MIN_PROBABILITY, 'z tabeli: norma 43,8% wiąże dolna granica');
+		assert.equal(entryThresholdFor(n, { base: 95 }), 107, 'przy 2:0 w końcówce nie da się przeskoczyć normy');
+	});
+
+	test('brak nadpisania zostawia zachowanie sprzed zmiany', () => {
+		for (const [market, selection] of [
+			['Wynik meczu', 'Lech Poznań'],
+			['Podwójna szansa', '1X'],
+			['Gole drużyny', 'Lech Poznań powyżej 0.5 gola'],
+		]) {
+			const n = typ(market, selection);
+			assert.equal(entryThresholdFor(n, {}), entryThresholdFor(n));
+		}
+	});
+
+	test('ile zabrakło do progu zgadza się z powodem odrzucenia', () => {
+		// 1X przy 78%: prog 81, wiec brakuje 3 — dokladnie ta liczba stoi w podpisie.
+		const n = typ('Podwójna szansa', '1X');
+		const wynik = meetsPolicy(n, 78);
+
+		assert.equal(countsAsFallback(wynik.reason), true);
+		assert.equal(entryThresholdFor(n) - 78, 3);
+	});
+});
