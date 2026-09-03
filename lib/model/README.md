@@ -13,11 +13,31 @@ z korektą Dixona-Colesa, wszystkie rynki wyprowadzone z jednej macierzy.
 
 ## Stan: PODPIĘTY DO PRODUKCJI — raporty i analizy pojedynczych meczów
 
-Model wszedł do produkcji po tym, jak backtest wykazał przewagę nad liniami odniesienia
-(log loss 1X2 1,0348 wobec 1,0717 dla częstości, t = 6,60 na 8715 meczach testowych).
-Rynki zależne od sumy goli przegrały z częstością i pozostają wyłączone — patrz
-`USABLE_MARKETS` w `index.js`. Rynek bukmacherski jest od modelu lepszy (0,9842 wobec
-1,0137 na 3692 meczach z kursami zamknięcia) i to jest stan oczekiwany, nie usterka.
+Model liczy WYŁĄCZNIE tam, gdzie backtest wykazał jego przewagę, i to zastrzeżenie jest
+tu najważniejsze. Na 10029 meczach testowych z 41 rozgrywek wypadł GORZEJ od częstości
+(1,0862 wobec 1,0690), ale to była średnia z dwóch przeciwnych rzeczy:
+
+| zakres | mecze | model | częstości |
+|---|---|---|---|
+| 27 rozgrywek — przewaga | 7334 | 1,0042 | 1,0705 |
+| 8 rozgrywek — szkodzi | 2572 | 1,3164 | 1,0657 |
+
+Cała szkoda pochodziła z pucharów, a 84% z niej z samego Pucharu Anglii: log loss 1,6648
+wobec 1,0437 na 869 meczach. Przyczyna jest strukturalna, nie losowa — model dopasowuje
+się osobno dla każdych rozgrywek, a puchar daje setki drużyn po dwa mecze każda, w dodatku
+z różnych poziomów rozgrywkowych. Oceny wychodzą z szumu, a model podaje je z pełnym
+przekonaniem.
+
+Odcina to `MIN_MATCHES_PER_TEAM` w `index.js`: liczy się MEDIANA meczów na drużynę,
+nie ich łączna liczba, bo Puchar Anglii ma 869 spotkań i próg na liczbę meczów przechodzi
+z zapasem. Do tego `EXCLUDED_COMPETITIONS` na rozgrywki, które przechodzą próg, a mimo to
+przegrywają w pomiarze.
+
+Zakres rynków (`USABLE_MARKETS`) czeka na przeliczenie: liczby per rynek z tamtego przebiegu
+są policzone na puli zawierającej puchary, więc mówią więcej o pucharach niż o rynkach.
+
+Rynek bukmacherski jest od modelu lepszy (0,9842 wobec 1,0129 na 3692 meczach z kursami
+zamknięcia) i to jest stan oczekiwany, nie usterka.
 
 Gdzie liczy:
 

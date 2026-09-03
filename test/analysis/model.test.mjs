@@ -17,6 +17,9 @@ setupEnv();
 const { buildAnalysisModel, bindAnalysisToModel, formatModelSection, toPercentTriple } =
 	await import('@/lib/analysis/model');
 const { meetsPolicy, BASE_RATES } = await import('@/lib/picks/policy');
+// Wersja z modułu, nie wpisana na sztywno — inaczej każdy jej podbicie wywraca testy,
+// które o wersję wcale nie pytają.
+const { MODEL_VERSION } = await import('@/lib/model');
 
 /**
  * Dopasowany model ligi w kształcie, jakiego używa `expectedGoals`: mapa ocen drużyn,
@@ -51,7 +54,7 @@ describe('prognoza przed meczem', () => {
 	test('powstaje dla pary znanej modelowi', () => {
 		assert.ok(model);
 		assert.equal(model.inPlay, false);
-		assert.equal(model.version, 'dixon-coles/1');
+		assert.equal(model.version, MODEL_VERSION);
 	});
 
 	test('szanse 1X2 to liczby całkowite sumujące się do stu', () => {
@@ -175,7 +178,7 @@ describe('wiązanie odpowiedzi z modelem', () => {
 		assert.equal(zwiazane.picks[0].probability, home.probability);
 		assert.equal(zwiazane.picks[0].baseRate, home.base);
 		assert.equal(zwiazane.picks[0].lift, home.lift);
-		assert.equal(zwiazane.model.version, 'dixon-coles/1');
+		assert.equal(zwiazane.model.version, MODEL_VERSION);
 	});
 
 	test('selekcja napisana po swojemu i tak trafia do właściwego wpisu', () => {
