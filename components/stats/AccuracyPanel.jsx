@@ -385,6 +385,43 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 						</Card>
 					)}
 
+					{/*
+					 * Typy nad progiem kontra zapasowe.
+					 *
+					 * Typ zapasowy powstaje, gdy żadna selekcja nie przewyższa normy o wymagany
+					 * margines, i wchodzi do skuteczności na równi z resztą — taka była decyzja
+					 * produktowa, bo analiza bez typu jest dla czytelnika bezużyteczna. Ale jest
+					 * z definicji słabszy, więc bez tego rozbicia jedna liczba miesza dwie różne
+					 * rzeczy i nie widać, skąd bierze się zmiana trafności.
+					 */}
+					{!compact && data.byThreshold?.length > 1 && (
+						<Card>
+							<CardContent className="flex flex-col gap-1 px-5 py-4">
+								<h3 className="mb-1 flex items-center gap-1.5 text-sm font-bold text-text">
+									<Target size={14} aria-hidden="true" className="text-accent" />
+									{t('accuracy_by_threshold')}
+								</h3>
+								<p className="mb-2 text-xs leading-relaxed text-muted">
+									{t('accuracy_by_threshold_hint')}
+								</p>
+								{data.byThreshold.map((row) => (
+									<BreakdownRow
+										key={row.key}
+										row={{
+											...row,
+											label: t(
+												row.key === 'above'
+													? 'accuracy_threshold_above'
+													: 'accuracy_threshold_fallback'
+											),
+										}}
+										t={t}
+									/>
+								))}
+							</CardContent>
+						</Card>
+					)}
+
 					{/* Kalibracja: czy deklarowana pewność ma pokrycie w wynikach. */}
 					{!compact && data.byConfidence?.length > 0 && (
 						<Card>

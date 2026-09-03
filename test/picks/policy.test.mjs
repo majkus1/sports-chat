@@ -26,6 +26,7 @@ const {
 	MIN_PROBABILITY,
 	MIN_LIFT,
 	MARKET_CEILING,
+	countsAsFallback,
 } = await import('@/lib/picks/policy');
 const { normalizePick } = await import('@/lib/picks/markets');
 
@@ -219,5 +220,42 @@ describe('sufit rynkowy — „to już wszyscy wiedzą"', () => {
 		assert.equal(marketProbabilityFor(typ('Podwójna szansa', '12'), implied), null, 'rynek 12 nie jest liczony');
 		assert.equal(marketProbabilityFor(typ('Gole drużyny', 'Lech Poznań powyżej 1.5 gola'), implied), null);
 		assert.equal(marketProbabilityFor(gosc, null), null);
+	});
+});
+
+describe('typ zapasowy w statystyce', () => {
+	/*
+	 * Decyzja produktowa: gdy żadna selekcja nie sięga progu, analiza dostaje typ zapasowy
+	 * i ten typ LICZY SIĘ do skuteczności — analiza bez typu jest dla czytelnika bezużyteczna.
+	 * Twarde odrzucenia zostają twarde, bo ich wliczanie cofnęłoby całą zmianę.
+	 */
+	test('powody progowe wpuszczają typ do statystyki', () => {
+		assert.equal(countsAsFallback('below_min_probability'), true);
+		assert.equal(countsAsFallback('below_min_lift'), true);
+	});
+
+	test('rynek zakazany pomiarem nadal nie wchodzi', () => {
+		assert.equal(countsAsFallback('market_not_predictable'), false);
+	});
+
+	test('zdarzenie pewne dla rynku nadal nie wchodzi — to był ten typ za kurs 1,04', () => {
+		assert.equal(countsAsFallback('market_certain'), false);
+	});
+
+	test('selekcja bez zmierzonej normy nadal nie wchodzi', () => {
+		assert.equal(countsAsFallback('market_not_measured'), false);
+		assert.equal(countsAsFallback('market_not_supported'), false);
+	});
+
+	test('typ, który przeszedł politykę, nie jest zapasowy', () => {
+		assert.equal(countsAsFallback(null), false);
+	});
+
+	test('każdy powód progowy pochodzi z meetsPolicy, a nie z osobnej listy', () => {
+		const zaNiski = meetsPolicy(typ('Wynik meczu', 'Legia Warszawa'), 50);
+		const zaMalaPrzewaga = meetsPolicy(typ('Gole drużyny', 'Lech Poznań powyżej 0.5 gola'), 85);
+
+		assert.equal(countsAsFallback(zaNiski.reason), true);
+		assert.equal(countsAsFallback(zaMalaPrzewaga.reason), true);
 	});
 });

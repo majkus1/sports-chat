@@ -14,8 +14,8 @@ import { cn } from '@/lib/utils';
  *
  * Normę i przewagę bierze z typu, gdy zostały tam zapisane (raport wiąże je po stronie
  * serwera), a w przeciwnym razie liczy z nazw drużyn tą samą funkcją, która decyduje
- * o wliczeniu typu do statystyki. Typ pod progiem dostaje o tym wyraźną wzmiankę —
- * ma być widoczny, ale nie może udawać, że jest liczony.
+ * o wliczeniu typu do statystyki. Typ pod progiem dostaje o tym wyraźną wzmiankę: liczy się
+ * do skuteczności jak każdy inny, ale czytelnik ma wiedzieć, że powstał z braku laku.
  */
 export default function LiftLabel({
 	market,
@@ -51,7 +51,7 @@ export default function LiftLabel({
 			{powyzej
 				? t('pick_lift_above', { lift: przewaga, base: norma })
 				: t('pick_lift_below', { lift: Math.abs(przewaga), base: norma })}
-			{!liczony && ` · ${t('pick_lift_not_counted')}`}
+			{!liczony && ` · ${t('pick_lift_fallback')}`}
 		</p>
 	);
 }

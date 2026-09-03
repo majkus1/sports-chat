@@ -148,7 +148,12 @@ describe('sekcja promptu', () => {
 		assert.match(tekst, /przepisz DOKŁADNIE do "probabilities"/);
 	});
 
-	test('bez kandydatów każe zostawić pustą tablicę', () => {
+	test('bez kandydatów każe wystawić jeden typ zapasowy, a nie pustą tablicę', () => {
+		/*
+		 * Decyzja produktowa: analiza bez żadnego typu jest dla czytelnika bezużyteczna.
+		 * Gdy nic nie sięga progu, model językowy ma wskazać jeden typ z własną oceną —
+		 * i taki typ liczy się do skuteczności, więc nie wolno mu naciągać liczby do progu.
+		 */
 		const model = buildAnalysisModel({
 			leagueModel: liga,
 			fixture: mecz({ live: true, elapsed: 85, goals: { home: 2, away: 0 } }),
@@ -156,7 +161,8 @@ describe('sekcja promptu', () => {
 		const tekst = formatModelSection(model).join('\n');
 
 		assert.equal(model.selections.some((s) => s.eligible), false);
-		assert.match(tekst, /zostaw "picks" pustą tablicą/);
+		assert.match(tekst, /wystaw DOKŁADNIE JEDEN typ zapasowy/);
+		assert.match(tekst, /pomijając te oznaczone jako "zbyt oczywiste"/);
 		assert.match(tekst, /Stan: 2:0 w 85\. minucie/);
 	});
 
