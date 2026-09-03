@@ -162,10 +162,24 @@ export async function POST(request) {
         `,
       });
     } catch (emailErr) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Error sending verification email:', emailErr);
-      }
-      // Continue anyway - user is created, they can request resend later
+      /*
+       * Wysyłka maila jest częścią rejestracji, nie dodatkiem do niej.
+       *
+       * Logowanie odrzuca konto bez potwierdzonego adresu (app/api/auth/login/route.js),
+       * więc niewysłany mail zostawiał konto, do którego nikt nigdy się nie zaloguje —
+       * a zajęty adres blokował ponowną próbę komunikatem „email jest zajęty". Użytkownik
+       * zostawał zamknięty na zewnątrz własnego konta, widząc „sprawdź skrzynkę".
+       *
+       * Dlatego świeże konto znika razem z nieudaną wysyłką: rejestracja udaje się w całości
+       * albo wcale, a adres wraca do puli i można spróbować ponownie.
+       */
+      console.error(
+        '[register] wysyłka maila weryfikacyjnego nie powiodła się:',
+        emailErr?.code || '',
+        emailErr?.message
+      );
+      await User.deleteOne({ _id: user._id });
+      return NextResponse.json({ error: 'register_email_failed' }, { status: 502 });
     }
 
     return NextResponse.json({ 

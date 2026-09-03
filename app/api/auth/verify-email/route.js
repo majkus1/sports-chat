@@ -56,10 +56,9 @@ export async function GET(request) {
 
     return Response.json({ ok: true, username: user.username, verified: true }, { status: 200 });
   } catch (e) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error('verify-email error:', e);
-      console.error('Error stack:', e.stack);
-    }
+    // Log bezwarunkowy: na produkcji to jedyny ślad po nieudanej weryfikacji, a bez niego
+    // zgłoszenie „link nie działa" nie ma jak zostać sprawdzone.
+    console.error('[verify-email] błąd:', e?.message);
     return Response.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }
