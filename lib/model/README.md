@@ -13,30 +13,29 @@ z korektą Dixona-Colesa, wszystkie rynki wyprowadzone z jednej macierzy.
 
 ## Stan: PODPIĘTY DO PRODUKCJI — raporty i analizy pojedynczych meczów
 
-Model liczy WYŁĄCZNIE tam, gdzie backtest wykazał jego przewagę, i to zastrzeżenie jest
-tu najważniejsze. Na 10029 meczach testowych z 41 rozgrywek wypadł GORZEJ od częstości
-(1,0862 wobec 1,0690), ale to była średnia z dwóch przeciwnych rzeczy:
+Model liczy WYŁĄCZNIE tam, gdzie backtest wykazał jego przewagę — na tym samym
+dopasowaniu per rozgrywki, które idzie na produkcję. Na 8069 meczach objętych modelem
+(80,5% puli testowej):
 
-| zakres | mecze | model | częstości |
-|---|---|---|---|
-| 27 rozgrywek — przewaga | 7334 | 1,0042 | 1,0705 |
-| 8 rozgrywek — szkodzi | 2572 | 1,3164 | 1,0657 |
+| miara | model | częstości |
+|---|---|---|
+| log loss 1X2 | 1,0301 | 1,0730 |
+| trafienia 1X2 | 49,4% | 43,9% |
 
-Cała szkoda pochodziła z pucharów, a 84% z niej z samego Pucharu Anglii: log loss 1,6648
-wobec 1,0437 na 869 meczach. Przyczyna jest strukturalna, nie losowa — model dopasowuje
-się osobno dla każdych rozgrywek, a puchar daje setki drużyn po dwa mecze każda, w dodatku
-z różnych poziomów rozgrywkowych. Oceny wychodzą z szumu, a model podaje je z pełnym
-przekonaniem.
+Przewaga istotna statystycznie, t = 8,27. Pozostałe 19,5% puli to rozgrywki odcięte
+progami; tam prognoz nie wystawiamy wcale, zamiast wystawiać gorsze.
 
-Odcina to `MIN_MATCHES_PER_TEAM` w `index.js`: liczy się MEDIANA meczów na drużynę,
-nie ich łączna liczba, bo Puchar Anglii ma 869 spotkań i próg na liczbę meczów przechodzi
-z zapasem. Do tego `EXCLUDED_COMPETITIONS` na rozgrywki, które przechodzą próg, a mimo to
-przegrywają w pomiarze.
+Dwa progi i lista, wszystkie z pomiaru, nie z ostrożności:
 
-Zakres rynków (`USABLE_MARKETS`) czeka na przeliczenie: liczby per rynek z tamtego przebiegu
-są policzone na puli zawierającej puchary, więc mówią więcej o pucharach niż o rynkach.
+-  — czy w rozgrywkach jest z czego liczyć.
+-  — MEDIANA meczów na drużynę. Puchar Anglii ma 869 spotkań, więc
+  pierwszy próg przechodzi z zapasem, a przy dopasowaniu wewnątrz rozgrywek dawał log loss
+  1,6648 wobec 1,0437 dla zwykłych częstości. Setki drużyn po dwa mecze to oceny z szumu.
+-  — puchary europejskie. Faza ligowa daje osiem meczów, więc próg
+  mediany przechodzą, ale porównanie sił zespołów z różnych lig krajowych wewnątrz tych
+  rozgrywek się nie udaje: Liga Mistrzów 1,0859 wobec 1,0205.
 
-Rynek bukmacherski jest od modelu lepszy (0,9842 wobec 1,0129 na 3692 meczach z kursami
+Rynek bukmacherski jest od modelu lepszy (0,9842 wobec 1,0191 na 3692 meczach z kursami
 zamknięcia) i to jest stan oczekiwany, nie usterka.
 
 Gdzie liczy:

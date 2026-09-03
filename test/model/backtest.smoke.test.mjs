@@ -82,11 +82,11 @@ describe('wszystkie sekcje raportu powstają', () => {
 
 describe('progi wejścia odcinają to, co mają odcinać', () => {
 	test('drabinka pucharowa nie dostaje modelu', () => {
-		assert.match(out, /bez modelu:.*FA Cup/);
+		assert.match(out, /bez modelu na dzień podziału.*FA Cup/);
 	});
 
 	test('rozgrywki z listy wykluczeń też nie', () => {
-		assert.match(out, /bez modelu:.*Conference/);
+		assert.match(out, /bez modelu na dzień podziału.*Conference/);
 	});
 
 	test('mecze bez modelu wypadają z pomiaru, a nie wchodzą do niego z zerem', () => {
