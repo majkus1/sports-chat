@@ -13,6 +13,7 @@ import { formatFrame } from '@/lib/sse/parseFrames';
 import { buildReportCandidates, bindPicksToSelection, REPORT_WINDOWS } from '@/lib/reports/service';
 import { leagueTier } from '@/lib/football/leagues';
 import { recordPicks } from '@/lib/picks/service';
+import { sameSelection } from '@/lib/picks/markets';
 
 export const maxDuration = 300;
 
@@ -182,9 +183,16 @@ export async function POST(request) {
 					 * meczów, każdy z własną ligą i własną próbą meczową. Dane bierzemy
 					 * z kandydata, na podstawie którego typ powstał.
 					 */
-					context: (pick) => {
+					context: (pick, normalized) => {
 						const kandydat = candidates.find((c) => String(c.fixtureId) === String(pick.fixtureId));
+						// Prawdopodobieństwo rynkowe selekcji — do sufitu i do pomiaru, nie do treści.
+						const wpis = kandydat
+							? [kandydat.best, ...(kandydat.otherMarkets || [])].find((m) =>
+									sameSelection(m.normalized, normalized)
+								)
+							: null;
 						return {
+							marketProbability: wpis?.marketProbability ?? null,
 							promptVersion: REPORT_PROMPT_VERSION,
 							modelVersion: meta?.model ?? null,
 							leagueId: kandydat?.leagueId ?? null,

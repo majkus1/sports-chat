@@ -219,3 +219,48 @@ describe('zaokrąglanie do stu', () => {
 		}
 	});
 });
+
+describe('sufit rynkowy w analizie', () => {
+	// Ułamki celowo: liczby modelu są całkowite, więc „95.3" w tekście oznaczałoby wyciek.
+	const pewne = { home: 95.3, draw: 2.7, away: 2, '1X': 98, X2: 4.7, homeScores: 97.1, awayScores: 55 };
+
+	test('selekcja pewna dla rynku traci status kandydata, ale zostaje na liście z powodem', () => {
+		const model = buildAnalysisModel({ leagueModel: liga, fixture: mecz(), implied: pewne });
+		const home = model.selections.find((s) => s.key === 'home');
+
+		assert.equal(home.eligible, false);
+		assert.equal(home.reason, 'market_certain');
+		assert.equal(home.marketProbability, 95.3);
+	});
+
+	test('model językowy nie widzi rynku — tylko słowo „oczywiste"', () => {
+		const model = buildAnalysisModel({ leagueModel: liga, fixture: mecz(), implied: pewne });
+		const tekst = formatModelSection(model).join('\n');
+
+		assert.match(tekst, /zbyt oczywiste/);
+		assert.doesNotMatch(tekst, /rynek|kurs|bukmach|95\.3|97\.1/i);
+	});
+
+	test('w trakcie meczu kursy przedmeczowe są ignorowane', () => {
+		const model = buildAnalysisModel({
+			leagueModel: liga,
+			fixture: mecz({ live: true, elapsed: 20, goals: { home: 0, away: 0 } }),
+			implied: pewne,
+		});
+
+		for (const s of model.selections) assert.equal(s.marketProbability, null);
+	});
+
+	test('liczba rynkowa nie trafia do sekcji zapisywanych przy analizie', () => {
+		const implied = { home: 60, draw: 22, away: 18, '1X': 82, X2: 40, homeScores: 80, awayScores: 70 };
+		const model = buildAnalysisModel({ leagueModel: liga, fixture: mecz(), implied });
+		const zwiazane = bindAnalysisToModel(
+			{ picks: [{ market: 'Wynik meczu', selection: 'Machida Zelvia (gospodarze)', probability: 64 }] },
+			model,
+			{ homeName: 'Machida Zelvia', awayName: 'Kawasaki Frontale' }
+		);
+
+		assert.equal('marketProbability' in zwiazane.picks[0], false);
+		assert.equal('marketProbability' in zwiazane.model, false);
+	});
+});

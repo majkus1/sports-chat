@@ -30,6 +30,27 @@ Gdzie liczy:
 Typ liczy się do skuteczności tylko wtedy, gdy przewyższa normę swojej selekcji o margines
 z `lib/picks/policy.js` — sam wysoki procent nie wystarcza.
 
+## Rynek bukmacherski: sufit i pomiar, nigdy baza
+
+Kursy wróciły do serwisu w dwóch wąskich rolach, obie bez śladu w treści i interfejsie:
+
+- **Sufit „to już wszyscy wiedzą"** — `MARKET_CEILING` w `lib/picks/policy.js`. Gdy rynek
+  (po zdjęciu marży) daje selekcji co najmniej tyle procent, typu nie wystawiamy, choćby
+  model przechodził próg przewagi. Kursy jednego meczu przychodzą z `oddsByFixture`
+  i trafiają do polityki przez `meetsPolicy(..., { market })`; przy typie zostaje
+  `marketProbability` wyłącznie do pomiaru.
+- **Linia odniesienia w backteście** — `marketData.mjs` pobiera kursy zamknięcia
+  z football-data.co.uk (Pinnacle, średnia rynku, Bet365) dla lig z `FOOTBALL_DATA_CODES`,
+  dopasowuje je do meczów po dacie i nazwach drużyn i backtest zestawia model z rynkiem
+  na tych samych meczach: log loss, Brier, kalibracja w kubełkach i liczba „pewniaków",
+  które sufit odetnie. `--market=off` wyłącza.
+- **Pomiar na produkcji** — `marketCheck.mjs` liczy to samo na rozliczonych typach
+  z zapisanym `marketProbability`; jedyne źródło dla lig spoza archiwum i dla rynku
+  „drużyna strzeli".
+
+Granica, której pilnujemy: rynek nie jest bazą do liczenia przewagi. „Przewaga nad rynkiem"
+to value betting — mechanika usunięta z serwisu świadomie.
+
 ## Uruchomienie backtestu
 
 Wymaga ważnego klucza `API_SPORTS_KEY`, więc w praktyce uruchamia się go na serwerze:
@@ -41,6 +62,7 @@ node --experimental-loader ./test/helpers/alias.mjs lib/model/backtest.mjs
 Parametry:
 
 ```bash
+--market=off             bez kursów zamknięcia z football-data.co.uk
 --seasons=2024,2025      sezony do pobrania (domyślnie 2024,2025)
 --split=2025-07-01       data podziału na uczące i testowe
 --leagues=39,140,135     ograniczenie do wybranych lig (domyślnie wszystkie z LEAGUE_TIERS)

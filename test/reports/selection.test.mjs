@@ -17,7 +17,9 @@ import { setupEnv } from '../helpers/setup.mjs';
 // Rejestruje alias `@/` — bazy ani sieci ten plik nie dotyka.
 setupEnv();
 
-const { evaluateMarkets, selectionScore, bindPicksToSelection } = await import('@/lib/reports/service');
+const { evaluateMarkets, selectionScore, bindPicksToSelection, applyMarketCeiling } = await import(
+	'@/lib/reports/service'
+);
 
 /** Forma drużyny w kształcie, jaki daje `normalizeTeamForm`. */
 function forma({ strzelone, stracone, rozegrane = 10 }) {
@@ -338,5 +340,41 @@ describe('brak danych rynkowych', () => {
 				'wpis selekcji nie może nieść pola pochodzącego z rynku zakładów'
 			);
 		}
+	});
+});
+
+describe('sufit rynkowy w selekcji raportu', () => {
+	const rynki = evaluateMarkets({
+		...mecz(),
+		modelPrediction: zModelu({ home: 0.7, draw: 0.2, away: 0.1, awayScores: 0.86 }),
+	});
+
+	test('bez kursów wszystko zostaje, a prawdopodobieństwo rynkowe jest puste', () => {
+		const po = applyMarketCeiling(rynki, null);
+
+		assert.equal(po.length, rynki.length);
+		for (const wpis of po) assert.equal(wpis.marketProbability, null);
+	});
+
+	test('selekcja, którą rynek uznaje za pewną, wypada; reszta dostaje swój procent rynkowy', () => {
+		const implied = { home: 60, draw: 22, away: 18, '1X': 82, X2: 40, homeScores: 92, awayScores: 93 };
+		const po = applyMarketCeiling(rynki, implied);
+
+		assert.equal(znajdz(po, 'Gole drużyny', 'Gość powyżej 0.5'), null, 'rynek 93% — odcięte');
+		assert.equal(znajdz(po, 'Wynik meczu', 'home')?.marketProbability, 60);
+		assert.equal(znajdz(po, 'Podwójna szansa', '1X')?.marketProbability, 82);
+	});
+
+	test('wpis selekcji nie niesie liczby rynkowej do promptu ani do typu', () => {
+		// `bindPicksToSelection` kopiuje wyłącznie procent, normę i przewagę.
+		const implied = { home: 60, draw: 22, away: 18, '1X': 82, X2: 40, homeScores: 80, awayScores: 70 };
+		const po = applyMarketCeiling(rynki, implied);
+		const kandydat = { fixtureId: 5, home: 'Machida Zelvia', away: 'Kawasaki Frontale', best: po[0], otherMarkets: po.slice(1) };
+		const [typ] = bindPicksToSelection(
+			[{ fixtureId: 5, market: 'Wynik meczu', selection: 'Machida Zelvia', probability: 66 }],
+			[kandydat]
+		);
+
+		assert.equal('marketProbability' in typ, false);
 	});
 });

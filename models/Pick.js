@@ -51,6 +51,18 @@ const PickSchema = new mongoose.Schema(
 		baseRate: { type: Number, default: null },
 		lift: { type: Number, default: null },
 
+		/*
+		 * Prawdopodobieństwo rynkowe selekcji (po zdjęciu marży) w chwili powstania typu.
+		 *
+		 * WYŁĄCZNIE DO POMIARU, NIGDY DO WYŚWIETLANIA. Żadna trasa nie zwraca tego pola —
+		 * `/api/stats/picks` agreguje, `/api/picks` zwraca tylko typy użytkowników, które go
+		 * nie mają. Dwa zastosowania: sufit „to już wszyscy wiedzą" w polityce typów
+		 * (`MARKET_CEILING`) oraz porównanie modelu z rynkiem po rozliczeniu
+		 * (`lib/model/marketCheck.mjs`). Kursy historyczne u dostawcy nie istnieją, więc
+		 * to jest jedyny sposób, żeby taki materiał w ogóle powstał.
+		 */
+		marketProbability: { type: Number, default: null },
+
 		/** Uzasadnienie od użytkownika — pokazywane innym przy typie. */
 		comment: { type: String, default: null },
 		/**
@@ -107,7 +119,8 @@ const PickSchema = new mongoose.Schema(
 
 		/**
 		 * Dlaczego typ wypadł ze statystyki: `market_not_predictable`, `market_not_measured`,
-		 * `below_min_probability`, `below_min_lift`. `null` znaczy, że przeszedł. Bez tego pola
+		 * `market_certain`, `below_min_probability`, `below_min_lift`. `null` znaczy, że
+		 * przeszedł. Bez tego pola
 		 * wiadomo tylko, że czegoś nie liczymy, ale nie wiadomo, czy to wina rynku, progu,
 		 * czy danych.
 		 */

@@ -17,8 +17,16 @@ import { setupEnv } from '../helpers/setup.mjs';
 
 setupEnv();
 
-const { meetsPolicy, liftFor, entryThresholdFor, BASE_RATES, MIN_PROBABILITY, MIN_LIFT } =
-	await import('@/lib/picks/policy');
+const {
+	meetsPolicy,
+	liftFor,
+	entryThresholdFor,
+	marketProbabilityFor,
+	BASE_RATES,
+	MIN_PROBABILITY,
+	MIN_LIFT,
+	MARKET_CEILING,
+} = await import('@/lib/picks/policy');
 const { normalizePick } = await import('@/lib/picks/markets');
 
 /** Typ w postaci, jaką daje parser — tak jak w `recordPicks`. */
@@ -172,5 +180,44 @@ describe('norma warunkowa — mecz w trakcie', () => {
 
 	test('norma warunkowa nie ratuje rynku zakazanego', () => {
 		assert.equal(meetsPolicy(typ('Suma goli', 'Powyżej 2.5 gola'), 90, { base: 50 }).ok, false);
+	});
+});
+
+describe('sufit rynkowy — „to już wszyscy wiedzą"', () => {
+	/*
+	 * Typ „gość strzeli" przy 85% wobec normy 70% to +15 pkt i przechodzi próg przewagi —
+	 * a u bukmachera miał kurs 1,04. Rynek widział dziurawą obronę lepiej niż my. Gdy rynek
+	 * uznaje zdarzenie za pewne, typ nie wnosi informacji niezależnie od naszego procentu.
+	 */
+	const gosc = typ('Gole drużyny', 'Legia Warszawa powyżej 0.5 gola');
+
+	test('zdarzenie pewne dla rynku nie jest typem, choć przechodzi próg przewagi', () => {
+		assert.equal(meetsPolicy(gosc, 85).ok, true, 'bez rynku przechodzi');
+		const wynik = meetsPolicy(gosc, 85, { market: 94 });
+		assert.equal(wynik.ok, false);
+		assert.equal(wynik.reason, 'market_certain');
+	});
+
+	test('rynek poniżej sufitu niczego nie zmienia', () => {
+		assert.equal(meetsPolicy(gosc, 85, { market: MARKET_CEILING - 1 }).ok, true);
+	});
+
+	test('brak kursu to brak sufitu, nie odrzucenie', () => {
+		assert.equal(meetsPolicy(gosc, 85, { market: null }).ok, true);
+		assert.equal(meetsPolicy(gosc, 85, { market: undefined }).ok, true);
+	});
+
+	test('sufit działa przed progami — odrzuca nawet typ bez własnego procentu', () => {
+		assert.equal(meetsPolicy(gosc, null, { market: 95 }).reason, 'market_certain');
+	});
+
+	test('selekcje mapują się na klucze prawdopodobieństw rynkowych', () => {
+		const implied = { home: 50.5, draw: 25, away: 24.5, '1X': 75.5, X2: 49.5, homeScores: 88, awayScores: 61 };
+		assert.equal(marketProbabilityFor(typ('Wynik meczu', 'Lech Poznań'), implied), 50.5);
+		assert.equal(marketProbabilityFor(typ('Podwójna szansa', 'X2'), implied), 49.5);
+		assert.equal(marketProbabilityFor(gosc, implied), 61);
+		assert.equal(marketProbabilityFor(typ('Podwójna szansa', '12'), implied), null, 'rynek 12 nie jest liczony');
+		assert.equal(marketProbabilityFor(typ('Gole drużyny', 'Lech Poznań powyżej 1.5 gola'), implied), null);
+		assert.equal(marketProbabilityFor(gosc, null), null);
 	});
 });
