@@ -159,6 +159,24 @@ export async function GET(request) {
 						},
 					},
 				],
+				/*
+				 * TYPY NAD PROGIEM KONTRA ZAPASOWE.
+				 *
+				 * Typ podprogowy wchodzi do skuteczności (decyzja produktowa: analiza bez typu jest
+				 * dla czytelnika bezużyteczna), ale jest z definicji słabszy. Bez tego rozbicia
+				 * jedna liczba miesza dwie różne rzeczy i nie da się stwierdzić, czy spadek
+				 * trafności bierze się z modelu, czy z rosnącego udziału typów z braku laku.
+				 * `policyReason` jest zapisywany także przy typie wliczonym właśnie po to.
+				 */
+				wgProgu: [
+					{ $match: { status: { $in: ['won', 'lost'] } } },
+					{
+						$group: {
+							_id: { nadProgiem: { $eq: [{ $ifNull: ['$policyReason', null] }, null] }, status: '$status' },
+							n: { $sum: 1 },
+						},
+					},
+				],
 				// Czy skuteczność zależy od klasy rozgrywek i od kompletności danych.
 				wgPoziomuLigi: [
 					{ $match: { status: { $in: ['won', 'lost'] } } },
@@ -306,6 +324,10 @@ export async function GET(request) {
 				brierWorseThanCoinFlip: brier !== null && brier > BRIER_BASELINE,
 				calibration,
 			},
+			byThreshold: licz(result?.wgProgu || [], 'nadProgiem').map((row) => ({
+				...row,
+				key: row.key === 'true' ? 'above' : 'fallback',
+			})),
 			byKind: licz(result?.wgRodzaju || [], 'kind'),
 			byMarket: licz(result?.wgRynku || [], 'market'),
 			byConfidence: licz(result?.wgPewnosci || [], 'bucket'),
