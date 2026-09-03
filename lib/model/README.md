@@ -14,9 +14,10 @@ z korektą Dixona-Colesa, wszystkie rynki wyprowadzone z jednej macierzy.
 ## Stan: PODPIĘTY DO PRODUKCJI — raporty i analizy pojedynczych meczów
 
 Model wszedł do produkcji po tym, jak backtest wykazał przewagę nad liniami odniesienia
-(log loss 1X2 1,0218 wobec 1,0756 dla częstości, t = 7,58 na 3541 meczach testowych).
+(log loss 1X2 1,0348 wobec 1,0717 dla częstości, t = 6,60 na 8715 meczach testowych).
 Rynki zależne od sumy goli przegrały z częstością i pozostają wyłączone — patrz
-`USABLE_MARKETS` w `index.js`.
+`USABLE_MARKETS` w `index.js`. Rynek bukmacherski jest od modelu lepszy (0,9842 wobec
+1,0137 na 3692 meczach z kursami zamknięcia) i to jest stan oczekiwany, nie usterka.
 
 Gdzie liczy:
 

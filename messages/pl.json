@@ -100,7 +100,7 @@
 		"picks": "Typy",
 		"risks": "Ryzyka",
 		"expected_goals": "Oczekiwane gole",
-		"goals_indicative": "Liczby orientacyjne — opisują charakter meczu, nie są prognozą. Sprawdziliśmy rynki bramkowe na 3541 rozegranych spotkaniach i wypadają w nich gorzej niż zwykła średnia ligowa, dlatego nie wystawiamy tu typów.",
+		"goals_indicative": "Liczby orientacyjne — opisują charakter meczu, nie są prognozą. Sprawdziliśmy rynki bramkowe na 8715 rozegranych spotkaniach i wypadają w nich gorzej niż zwykła średnia ligowa, dlatego nie wystawiamy tu typów.",
 		"data_quality_good": "Dane pełne",
 		"data_quality_limited": "Dane ograniczone",
 		"data_quality_insufficient": "Za mało danych",
