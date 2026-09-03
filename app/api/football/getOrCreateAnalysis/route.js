@@ -67,7 +67,8 @@ export async function POST(request) {
 			maxTokens: MAX_TOKENS_ANALYSIS,
 		});
 
-		const analysisText = await finalizeAnalysis({
+		// Sekcje po związaniu z modelem liczbowym — to one są zapisane, więc to one idą do klienta.
+		const { analysisText, sections: gotowe } = await finalizeAnalysis({
 			fixtureId,
 			language,
 			sections,
@@ -75,7 +76,7 @@ export async function POST(request) {
 			...prepared,
 		});
 
-		return Response.json({ analysis: analysisText, sections, cached: false }, { status: 200 });
+		return Response.json({ analysis: analysisText, sections: gotowe, cached: false }, { status: 200 });
 	} catch (error) {
 		if (error instanceof AiRefusalError) {
 			console.warn('[analysis] odmowa modelu:', error.category);

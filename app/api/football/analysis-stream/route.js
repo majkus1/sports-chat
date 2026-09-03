@@ -114,7 +114,8 @@ export async function POST(request) {
 					},
 				});
 
-				const analysisText = await finalizeAnalysis({
+				// Sekcje po związaniu z modelem liczbowym — to one są zapisane, więc to one idą do klienta.
+				const { analysisText, sections: gotowe } = await finalizeAnalysis({
 					fixtureId,
 					language,
 					sections,
@@ -122,7 +123,7 @@ export async function POST(request) {
 					...prepared,
 				});
 
-				send('done', { analysis: analysisText, sections, cached: false });
+				send('done', { analysis: analysisText, sections: gotowe, cached: false });
 			} catch (error) {
 				if (error instanceof AiRefusalError) {
 					console.warn('[analysis-stream] odmowa modelu:', error.category);

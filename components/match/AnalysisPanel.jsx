@@ -3,6 +3,7 @@
 import { useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import LiftLabel from '@/components/picks/LiftLabel';
 import { cn } from '@/lib/utils';
 
 /**
@@ -170,11 +171,21 @@ export default function AnalysisPanel({
 				</p>
 
 				{!insufficient && probabilitiesReady && (
-					<ProbabilityBar
-						homeName={homeTeam}
-						awayName={awayTeam}
-						probabilities={sections.probabilities}
-					/>
+					<div className="flex flex-col gap-2">
+						<ProbabilityBar
+							homeName={homeTeam}
+							awayName={awayTeam}
+							probabilities={sections.probabilities}
+						/>
+						{/* Skąd liczby: z własnego rachunku sił drużyn, nie z oceny modelu językowego.
+						    Pole pojawia się po związaniu odpowiedzi z modelem, więc w trakcie strumienia
+						    go nie ma — i wtedy nic nie obiecujemy. */}
+						{sections.model?.version && (
+							<p className="text-xs leading-relaxed text-muted">
+								{t(sections.model.inPlay ? 'analysis_model_note_live' : 'analysis_model_note')}
+							</p>
+						)}
+					</div>
 				)}
 
 				{sections.goals && !insufficient && (
@@ -243,6 +254,17 @@ export default function AnalysisPanel({
 										</span>
 										<ConfidenceMeter value={pick.confidence} />
 									</div>
+									{/* Procent z przewagą nad normą rynku — dotąd analiza pokazywała przy typie
+									    tylko pewność danych, a samo prawdopodobieństwo nie było nigdzie widoczne. */}
+									<LiftLabel
+										market={pick.market}
+										selection={pick.selection}
+										homeName={homeTeam}
+										awayName={awayTeam}
+										probability={pick.probability}
+										showProbability
+										className="mt-1.5"
+									/>
 									<p className="mt-2 text-sm leading-relaxed text-muted">{pick.rationale}</p>
 								</li>
 							))}

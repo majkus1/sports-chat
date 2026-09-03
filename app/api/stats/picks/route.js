@@ -139,6 +139,26 @@ export async function GET(request) {
 						},
 					},
 				],
+				/*
+				 * TRAFNOŚĆ WOBEC NORMY — jedyna liczba, która mówi, czy typy coś wnoszą.
+				 *
+				 * Procent trafień sam w sobie nie świadczy o niczym: typy na „gospodarz strzeli"
+				 * trafią w 80%, bo tyle wynosi norma tego rynku bez żadnego modelu. Średnia norm
+				 * tych samych typów to trafność, jaką dałoby czyste zgadywanie średniej ligowej —
+				 * a różnica między nią a faktyczną trafnością jest dowodem umiejętności
+				 * albo jego brakiem. Liczona tylko z typów, które mają normę zapisaną przy sobie.
+				 */
+				wzgledemNormy: [
+					{ $match: { status: { $in: ['won', 'lost'] }, baseRate: { $ne: null } } },
+					{
+						$group: {
+							_id: null,
+							n: { $sum: 1 },
+							sumaNorm: { $sum: '$baseRate' },
+							won: { $sum: { $cond: [{ $eq: ['$status', 'won'] }, 1, 0] } },
+						},
+					},
+				],
 				// Czy skuteczność zależy od klasy rozgrywek i od kompletności danych.
 				wgPoziomuLigi: [
 					{ $match: { status: { $in: ['won', 'lost'] } } },
@@ -220,6 +240,22 @@ export async function GET(request) {
 	const brier = brierRow?.n ? Number((brierRow.suma / brierRow.n).toFixed(4)) : null;
 
 	/**
+	 * Trafność zestawiona z normą tych samych typów.
+	 *
+	 * `expectedHitRate` to średnia norm — tyle trafiłoby zgadywanie średniej ligowej dla
+	 * dokładnie tych selekcji. `edge` w punktach procentowych: dodatnia znaczy, że typy
+	 * wnoszą coś ponad normę, ujemna — że gorzej byłoby nie typować wcale.
+	 */
+	const normaRow = result?.wzgledemNormy?.[0];
+	const baseline = normaRow?.n
+		? (() => {
+				const expected = Math.round(normaRow.sumaNorm / normaRow.n);
+				const actual = Math.round((100 * normaRow.won) / normaRow.n);
+				return { settled: normaRow.n, expectedHitRate: expected, hitRate: actual, edge: actual - expected };
+			})()
+		: null;
+
+	/**
 	 * Kalibracja: kubełek deklarowanego prawdopodobieństwa vs. rzeczywistość.
 	 *
 	 * `gap` to różnica w punktach procentowych — dodatnia znaczy, że model był zbyt pewny
@@ -260,6 +296,8 @@ export async function GET(request) {
 				// Czy próba jest już na tyle duża, żeby procent cokolwiek znaczył.
 				reliable: settled >= MIN_SETTLED_FOR_RATE,
 				minSettledForRate: MIN_SETTLED_FOR_RATE,
+				// Trafność wobec normy tych samych typów — patrz `wzgledemNormy`.
+				baseline,
 			},
 			quality: {
 				brier,

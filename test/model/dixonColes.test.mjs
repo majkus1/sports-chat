@@ -12,7 +12,7 @@ import { setupEnv } from '../helpers/setup.mjs';
 
 setupEnv();
 
-const { scoreMatrix, marketProbabilities, predictMarkets, tau, DEFAULT_RHO, MAX_GOALS } =
+const { scoreMatrix, marketProbabilities, predictMarkets, inPlayMarkets, tau, DEFAULT_RHO, MAX_GOALS } =
 	await import('@/lib/model/dixonColes');
 const { fitRatings, expectedGoals } = await import('@/lib/model/ratings');
 
@@ -305,5 +305,52 @@ describe('rozmiar macierzy', () => {
 		assert.ok(MAX_GOALS >= 8, 'przy mniejszym zakresie ucinamy wyniki, które naprawdę padają');
 		const m = scoreMatrix(1.5, 1.5);
 		assert.equal(m.length, MAX_GOALS + 1);
+	});
+});
+
+describe('mecz w trakcie', () => {
+	/*
+	 * Prognoza dla pozostałego czasu przesunięta o aktualny wynik. Te testy pilnują, żeby
+	 * stan meczu faktycznie wchodził do rachunku — a nie żeby prognoza w 80. minucie
+	 * wyglądała jak przed pierwszym gwizdkiem.
+	 */
+	const λ = { lambdaHome: 1.5, lambdaAway: 1.1 };
+
+	test('na początku meczu przy 0:0 daje to samo, co rachunek bez korekty niskobramkowej', () => {
+		const przed = predictMarkets(λ.lambdaHome, λ.lambdaAway, 0);
+		const wTrakcie = inPlayMarkets({ ...λ, homeGoals: 0, awayGoals: 0, minute: 0 });
+
+		for (const k of ['home', 'draw', 'away']) {
+			assert.ok(blisko(przed.matchWinner[k], wTrakcie.matchWinner[k], 1e-9), k);
+		}
+	});
+
+	test('rynki wyniku sumują się do jedności także po przesunięciu o wynik', () => {
+		const r = inPlayMarkets({ ...λ, homeGoals: 2, awayGoals: 1, minute: 55 });
+		const suma = r.matchWinner.home + r.matchWinner.draw + r.matchWinner.away;
+
+		assert.ok(blisko(suma, 1, 1e-9));
+	});
+
+	test('prowadzenie 2:0 w 90. minucie to niemal pewna wygrana gospodarzy', () => {
+		const r = inPlayMarkets({ ...λ, homeGoals: 2, awayGoals: 0, minute: 90 });
+
+		assert.ok(r.matchWinner.home > 0.99, `wyszło ${r.matchWinner.home}`);
+		assert.ok(r.teamGoals.home[0.5].over > 0.999, 'gol gospodarzy już padł');
+	});
+
+	test('po 90. minucie zostaje ułamek na czas doliczony, nie zero', () => {
+		const r = inPlayMarkets({ ...λ, homeGoals: 1, awayGoals: 1, minute: 92 });
+
+		assert.ok(r.matchWinner.draw < 1, 'gol w doliczonym czasie musi być możliwy');
+		assert.ok(r.matchWinner.draw > 0.9, 'ale to już resztka rozkładu');
+	});
+
+	test('prowadzenie gości podnosi ich szanse względem stanu 0:0 w tej samej minucie', () => {
+		const rowno = inPlayMarkets({ ...λ, homeGoals: 0, awayGoals: 0, minute: 60 });
+		const goscie = inPlayMarkets({ ...λ, homeGoals: 0, awayGoals: 1, minute: 60 });
+
+		assert.ok(goscie.matchWinner.away > rowno.matchWinner.away);
+		assert.ok(goscie.matchWinner.home < rowno.matchWinner.home);
 	});
 });

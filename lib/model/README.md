@@ -11,12 +11,24 @@ z korektą Dixona-Colesa, wszystkie rynki wyprowadzone z jednej macierzy.
 | `ratings.js` | szacowanie sił drużyn, przewagi boiska i korekty `rho` z historycznych wyników |
 | `backtest.mjs` | sprawdzenie modelu na meczach, których nie widział podczas uczenia |
 
-## Stan: NIE JEST PODPIĘTY DO PRODUKCJI
+## Stan: PODPIĘTY DO PRODUKCJI — raporty i analizy pojedynczych meczów
 
-Selekcja typów nadal korzysta z prognoz dostawcy. Model wchodzi do produkcji **wyłącznie
-wtedy, gdy backtest wykaże, że bije linie odniesienia** na danych testowych. Model, który
-nie bije prostego licznika częstości, nie jest wart wywołania — a wynik negatywny też jest
-wynikiem i trzeba go przyjąć.
+Model wszedł do produkcji po tym, jak backtest wykazał przewagę nad liniami odniesienia
+(log loss 1X2 1,0218 wobec 1,0756 dla częstości, t = 7,58 na 3541 meczach testowych).
+Rynki zależne od sumy goli przegrały z częstością i pozostają wyłączone — patrz
+`USABLE_MARKETS` w `index.js`.
+
+Gdzie liczy:
+
+- **Raport AI** — `lib/reports/service.js`: kandydaci i ich prawdopodobieństwa pochodzą
+  z modelu, prognoza dostawcy jest tylko potwierdzeniem.
+- **Analiza meczu (przed meczem i w trakcie)** — `lib/analysis/model.js`: szanse 1X2 i selekcje
+  liczy model, a model językowy je uzasadnia albo odrzuca. W meczu w trakcie `inPlayMarkets`
+  liczy rozkład pozostałych goli przy aktualnym wyniku, a norma to przeciętna para drużyn
+  w tej samej sytuacji.
+
+Typ liczy się do skuteczności tylko wtedy, gdy przewyższa normę swojej selekcji o margines
+z `lib/picks/policy.js` — sam wysoki procent nie wystarcza.
 
 ## Uruchomienie backtestu
 

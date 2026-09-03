@@ -39,6 +39,18 @@ const PickSchema = new mongoose.Schema(
 		probability: { type: Number, default: null },
 		confidence: { type: Number, default: null },
 
+		/*
+		 * Norma rynku i przewaga typu nad nią (punkty procentowe) — z `lib/picks/policy`.
+		 *
+		 * Sam procent trafień nic nie mówi: typy trafiające w 85% w rynku, w którym cokolwiek
+		 * trafia w 79%, to statystyka bez treści. Norma zapisana przy typie pozwala zestawić
+		 * trafność z tym, co dałoby zgadywanie średniej dla dokładnie tych samych selekcji.
+		 * Zapisujemy przy powstaniu, bo późniejsza zmiana tabeli norm nie może przepisywać
+		 * historii.
+		 */
+		baseRate: { type: Number, default: null },
+		lift: { type: Number, default: null },
+
 		/** Uzasadnienie od użytkownika — pokazywane innym przy typie. */
 		comment: { type: String, default: null },
 		/**
@@ -94,9 +106,10 @@ const PickSchema = new mongoose.Schema(
 		countsToStats: { type: Boolean, default: true, index: true },
 
 		/**
-		 * Dlaczego typ wypadł ze statystyki: `market_not_predictable`, `below_market_threshold`,
-		 * `market_not_measured`. `null` znaczy, że przeszedł. Bez tego pola wiadomo tylko, że
-		 * czegoś nie liczymy, ale nie wiadomo, czy to wina rynku, progu, czy danych.
+		 * Dlaczego typ wypadł ze statystyki: `market_not_predictable`, `market_not_measured`,
+		 * `below_min_probability`, `below_min_lift`. `null` znaczy, że przeszedł. Bez tego pola
+		 * wiadomo tylko, że czegoś nie liczymy, ale nie wiadomo, czy to wina rynku, progu,
+		 * czy danych.
 		 */
 		policyReason: { type: String, default: null },
 

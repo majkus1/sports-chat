@@ -10,7 +10,7 @@ import { REPORT_SYSTEM_PROMPT, REPORT_PROMPT_VERSION, buildReportPrompt } from '
 import { MODEL_ANALYSIS, MAX_TOKENS_ANALYSIS } from '@/lib/ai/config';
 import { parsePartialJson } from '@/lib/ai/partialJson';
 import { formatFrame } from '@/lib/sse/parseFrames';
-import { buildReportCandidates, REPORT_WINDOWS } from '@/lib/reports/service';
+import { buildReportCandidates, bindPicksToSelection, REPORT_WINDOWS } from '@/lib/reports/service';
 import { leagueTier } from '@/lib/football/leagues';
 import { recordPicks } from '@/lib/picks/service';
 
@@ -137,6 +137,13 @@ export async function POST(request) {
 						},
 					}));
 				}
+
+				/*
+				 * Liczby wracają do wartości z selekcji, a przy typie ląduje norma rynku
+				 * i przewaga. Zapisujemy już związane, żeby zapisany raport pokazywał to samo,
+				 * co panel skuteczności policzy.
+				 */
+				sections.picks = bindPicksToSelection(sections.picks, candidates);
 
 				const report = await Report.create({
 					userId: session.userId,

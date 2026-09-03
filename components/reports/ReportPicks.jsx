@@ -5,6 +5,7 @@ import { CalendarClock, ChevronRight, Target } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import LiftLabel from '@/components/picks/LiftLabel';
 import { cn } from '@/lib/utils';
 
 /**
@@ -71,9 +72,22 @@ function PickCard({ pick, locale, t }) {
 					)}
 				</div>
 
-				<div className="flex flex-wrap items-end gap-x-6 gap-y-3">
-					<ProbabilityBar value={pick.probability} label={t('report_probability')} />
-					<ProbabilityBar value={pick.confidence} label={t('report_confidence')} />
+				<div className="flex flex-col gap-1.5">
+					<div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+						<ProbabilityBar value={pick.probability} label={t('report_probability')} />
+						<ProbabilityBar value={pick.confidence} label={t('report_confidence')} />
+					</div>
+					{/* „Gospodarze vs Goście" — nazwy potrzebne, gdy raport sprzed zapisu normy
+					    nie ma jej przy typie i trzeba ją policzyć z rynku i selekcji. */}
+					<LiftLabel
+						market={pick.market}
+						selection={pick.selection}
+						homeName={String(pick.match || '').split(/\s+vs\s+/i)[0]?.trim() || null}
+						awayName={String(pick.match || '').split(/\s+vs\s+/i)[1]?.trim() || null}
+						probability={pick.probability}
+						baseRate={pick.baseRate}
+						lift={pick.lift}
+					/>
 				</div>
 
 				{pick.analysis && <p className="text-sm leading-relaxed text-text">{pick.analysis}</p>}

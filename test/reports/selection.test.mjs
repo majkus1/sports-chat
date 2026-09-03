@@ -5,18 +5,19 @@ import { setupEnv } from '../helpers/setup.mjs';
 /**
  * Selekcja meczów do raportu — część deterministyczna, bez AI i bez sieci.
  *
- * Testy pilnują czterech rzeczy. Że raport NIE patrzy na kursy: żadna funkcja tutaj nie
- * przyjmuje danych rynkowych i nie ma jak ich przyjąć. Że progi pewności działają, bo po
- * usunięciu przewagi nad rynkiem to jedyne sito. Że prawdopodobieństwa pochodzą z własnego
- * modelu, gdy jest dostępny, a prognoza dostawcy schodzi do roli potwierdzenia. I — najmniej
- * oczywiste — że w rynkach bramkowych NIE POWSTAJE ŻADEN TYP, bo backtest wykazał, że jest
- * w nich gorzej niż zgadywanie.
+ * Testy pilnują pięciu rzeczy. Że raport NIE patrzy na kursy: żadna funkcja tutaj nie
+ * przyjmuje danych rynkowych i nie ma jak ich przyjąć. Że o wejściu typu decyduje PRZEWAGA
+ * NAD NORMĄ rynku, a nie sam procent — inaczej raport zapełnia się typami prawdziwymi
+ * i pustymi. Że prawdopodobieństwa pochodzą z własnego modelu, gdy jest dostępny, a prognoza
+ * dostawcy schodzi do roli potwierdzenia. Że w rynkach bramkowych NIE POWSTAJE ŻADEN TYP,
+ * bo backtest wykazał, że jest w nich gorzej niż zgadywanie. I że liczby, które czytelnik
+ * widzi przy typie, są liczbami z selekcji, a nie „skorygowanymi" przez model językowy.
  */
 
 // Rejestruje alias `@/` — bazy ani sieci ten plik nie dotyka.
 setupEnv();
 
-const { evaluateMarkets, selectionScore } = await import('@/lib/reports/service');
+const { evaluateMarkets, selectionScore, bindPicksToSelection } = await import('@/lib/reports/service');
 
 /** Forma drużyny w kształcie, jaki daje `normalizeTeamForm`. */
 function forma({ strzelone, stracone, rozegrane = 10 }) {
@@ -52,18 +53,21 @@ function zModelu({ home = 0.7, draw = 0.2, away = 0.1, homeScores = 0.8, awaySco
 const znajdz = (rynki, market, selection) =>
 	rynki.find((r) => r.market === market && r.selection === selection) ?? null;
 
-describe('progi pewności', () => {
-	test('typ poniżej progu nie wchodzi do raportu', () => {
-		// 58% to więcej niż rzut monetą, ale mniej niż wymagane 62.
+describe('przewaga nad normą jako próg wejścia', () => {
+	test('typ poniżej dolnej granicy nie wchodzi do raportu', () => {
+		// 58% to więcej niż rzut monetą, ale mniej niż wymagane 60.
 		const rynki = evaluateMarkets(mecz({ home: 58, draw: 22, away: 20 }));
 
 		assert.equal(znajdz(rynki, 'Wynik meczu', 'home'), null);
 	});
 
-	test('typ powyżej progu wchodzi', () => {
+	test('typ powyżej progu wchodzi z normą i przewagą przy sobie', () => {
 		const rynki = evaluateMarkets(mecz({ home: 66, draw: 20, away: 14 }));
+		const wpis = znajdz(rynki, 'Wynik meczu', 'home');
 
-		assert.equal(znajdz(rynki, 'Wynik meczu', 'home')?.pModel, 66);
+		assert.equal(wpis.pModel, 66);
+		assert.equal(wpis.base, 43.8);
+		assert.equal(wpis.lift, 22);
 	});
 
 	test('prawdopodobieństwo bliskie pewności odrzucamy jako artefakt danych', () => {
@@ -76,39 +80,42 @@ describe('progi pewności', () => {
 		);
 	});
 
-	test('gole drużyny mają najwyższy próg, bo zdarzają się najczęściej', () => {
+	test('gol drużyny tuż nad normą nie wchodzi, choć procent wygląda na wysoki', () => {
 		/*
-		 * „Drużyna strzeli gola" zachodzi samo z siebie w 70–79% meczów. Typ z 78% jest więc
-		 * w tym rynku słabszy niż zwykła średnia ligowa i nie może przejść — mimo że przy
-		 * progu ogólnym (62%) wyglądałby na mocny.
+		 * „Drużyna strzeli gola" zachodzi samo z siebie w 79% meczów gospodarzy i 70% gości.
+		 * Typ z 85% u gospodarza to +6 pkt — dokładnie taki typ miał u bukmachera kurs 1,04
+		 * i to z niego wzięła się cała ta zmiana.
 		 */
 		const rynki = evaluateMarkets({
 			...mecz(),
-			modelPrediction: zModelu({ homeScores: 0.78, awayScores: 0.74 }),
+			modelPrediction: zModelu({ homeScores: 0.85, awayScores: 0.78 }),
 		});
 
 		assert.equal(znajdz(rynki, 'Gole drużyny', 'Gospodarz powyżej 0.5'), null);
 		assert.equal(znajdz(rynki, 'Gole drużyny', 'Gość powyżej 0.5'), null);
 	});
 
-	test('gol drużyny wyraźnie powyżej normy przechodzi', () => {
+	test('gol gościa wyraźnie powyżej normy przechodzi', () => {
 		const rynki = evaluateMarkets({
 			...mecz(),
-			modelPrediction: zModelu({ homeScores: 0.89 }),
+			modelPrediction: zModelu({ awayScores: 0.86 }),
 		});
+		const wpis = znajdz(rynki, 'Gole drużyny', 'Gość powyżej 0.5');
 
-		assert.equal(znajdz(rynki, 'Gole drużyny', 'Gospodarz powyżej 0.5')?.pModel, 89);
+		assert.equal(wpis?.pModel, 86);
+		assert.equal(wpis?.lift, 16);
 	});
 
-	test('podwójna szansa ma wyższy próg niż rynki pojedyncze', () => {
-		// 1X = 45+25 = 70: powyżej progu ogólnego (62), poniżej progu dla podwójnej (74).
+	test('podwójna szansa 1X potrzebuje znacznie więcej niż X2, bo jej norma jest wyższa', () => {
+		// 1X = 45+25 = 70: zaledwie +1 pkt nad normą 69%. X2 = 30+25 = 55: poniżej dolnej granicy.
 		const rynki = evaluateMarkets(mecz({ home: 45, draw: 25, away: 30 }));
 
-		assert.equal(
-			znajdz(rynki, 'Podwójna szansa', '1X'),
-			null,
-			'suma dwóch zgrubnych procentów zawyża pewność — stąd osobny, wyższy próg'
-		);
+		assert.equal(znajdz(rynki, 'Podwójna szansa', '1X'), null, '+1 pkt nad normą to nie typ');
+		assert.equal(znajdz(rynki, 'Podwójna szansa', 'X2'), null);
+
+		// X2 = 45+25 = 70 przy normie 56%: +14 pkt, wchodzi.
+		const odwrotnie = evaluateMarkets(mecz({ home: 30, draw: 25, away: 45 }));
+		assert.equal(znajdz(odwrotnie, 'Podwójna szansa', 'X2')?.lift, 14);
 	});
 });
 
@@ -198,13 +205,14 @@ describe('prawdopodobieństwa z własnego modelu', () => {
 	});
 
 	test('model wystawia typ na to, czy drużyna strzeli — jedyny potwierdzony rynek bramkowy', () => {
-		// Wartość musi przekraczać własny próg rynku (85%), a nie tylko ogólny.
+		// Gość: norma 70%, więc 88% to +18 pkt. Ten sam procent u gospodarza (norma 79%) nie wchodzi.
 		const rynki = evaluateMarkets({
 			...mecz(),
-			modelPrediction: zModelu({ homeScores: 0.88 }),
+			modelPrediction: zModelu({ homeScores: 0.88, awayScores: 0.88 }),
 		});
 
-		assert.equal(znajdz(rynki, 'Gole drużyny', 'Gospodarz powyżej 0.5')?.pModel, 88);
+		assert.equal(znajdz(rynki, 'Gole drużyny', 'Gość powyżej 0.5')?.pModel, 88);
+		assert.equal(znajdz(rynki, 'Gole drużyny', 'Gospodarz powyżej 0.5'), null);
 	});
 
 	test('bez modelu działa ścieżka zapasowa na procentach dostawcy', () => {
@@ -220,14 +228,27 @@ describe('prawdopodobieństwa z własnego modelu', () => {
 });
 
 describe('ranking selekcji', () => {
-	const slabsze = { pModel: 70, support: 1 };
-	const mocniejsze = { pModel: 70, support: 2 };
+	const slabsze = { pModel: 70, lift: 26, support: 1 };
+	const mocniejsze = { pModel: 70, lift: 26, support: 2 };
 
-	test('przy równym procencie wygrywa typ potwierdzony dwoma rachunkami', () => {
+	test('przy równej przewadze wygrywa typ potwierdzony dwoma rachunkami', () => {
 		const a = selectionScore(mocniejsze, { tier: 2, played: 10 });
 		const b = selectionScore(slabsze, { tier: 2, played: 10 });
 
-		assert.ok(a > b, 'samo prawdopodobieństwo nie może być jedynym kryterium');
+		assert.ok(a > b, 'sama przewaga nie może być jedynym kryterium');
+	});
+
+	test('sortuje po przewadze nad normą, nie po procencie', () => {
+		/*
+		 * Gol gospodarza przy 91% to +12 pkt; wygrana gości przy 62% to +31 pkt. Sortowanie
+		 * po procencie stawiałoby pewniak na czele — a to on jest typem bez treści.
+		 */
+		const pewniak = { pModel: 91, lift: 12, support: 2 };
+		const odkrycie = { pModel: 62, lift: 31, support: 2 };
+
+		assert.ok(
+			selectionScore(odkrycie, { tier: 2, played: 10 }) > selectionScore(pewniak, { tier: 2, played: 10 })
+		);
 	});
 
 	test('mecz z czołowych rozgrywek wyprzedza taki sam typ z niższego poziomu', () => {
@@ -247,6 +268,64 @@ describe('ranking selekcji', () => {
 	});
 });
 
+describe('wiązanie typów modelu językowego z selekcją', () => {
+	const rynki = evaluateMarkets({
+		...mecz(),
+		modelPrediction: zModelu({ home: 0.55, draw: 0.3, away: 0.15, awayScores: 0.86 }),
+	});
+	const kandydat = {
+		fixtureId: 777,
+		home: 'Machida Zelvia',
+		away: 'Kawasaki Frontale',
+		best: rynki[0],
+		otherMarkets: rynki.slice(1),
+	};
+
+	test('prawdopodobieństwo wraca do wartości z selekcji, gdy model je „skorygował"', () => {
+		// Selekcja: 1X przy 85%. Model językowy zjechał na 76 i napisał selekcję po swojemu.
+		const [typ] = bindPicksToSelection(
+			[{ fixtureId: 777, market: 'Podwójna szansa', selection: '1X — Machida Zelvia lub remis', probability: 76 }],
+			[kandydat]
+		);
+
+		assert.equal(typ.probability, 85);
+		assert.equal(typ.baseRate, 69.3);
+		assert.equal(typ.lift, 16);
+	});
+
+	test('gol drużyny rozpoznawany po nazwie zespołu w selekcji', () => {
+		const [typ] = bindPicksToSelection(
+			[{ fixtureId: 777, market: 'Gole drużyny', selection: 'Kawasaki Frontale powyżej 0.5 gola', probability: 80 }],
+			[kandydat]
+		);
+
+		assert.equal(typ.probability, 86);
+		assert.equal(typ.lift, 16);
+	});
+
+	test('typ spoza selekcji zostaje z własnym procentem, ale dostaje normę z tej samej tabeli', () => {
+		// Model wystawił wygraną gospodarzy, której selekcja nie proponowała (55% < próg 60).
+		const [typ] = bindPicksToSelection(
+			[{ fixtureId: 777, market: 'Wynik meczu', selection: 'Machida Zelvia', probability: 64 }],
+			[kandydat]
+		);
+
+		assert.equal(typ.probability, 64, 'brak wpisu selekcji — nie ma czym nadpisać');
+		assert.equal(typ.baseRate, 43.8);
+		assert.equal(typ.lift, 20);
+	});
+
+	test('mecz spoza listy kandydatów nie wywraca wiązania', () => {
+		const [typ] = bindPicksToSelection(
+			[{ fixtureId: 1, market: 'Suma goli', selection: 'Powyżej 2.5', probability: 70 }],
+			[kandydat]
+		);
+
+		assert.equal(typ.probability, 70);
+		assert.equal(typ.baseRate, null);
+	});
+});
+
 describe('brak danych rynkowych', () => {
 	test('selekcja działa bez jakiejkolwiek informacji o kursach', () => {
 		const rynki = evaluateMarkets({ ...mecz(), modelPrediction: zModelu() });
@@ -255,7 +334,7 @@ describe('brak danych rynkowych', () => {
 		for (const wpis of rynki) {
 			assert.deepEqual(
 				Object.keys(wpis).sort(),
-				['market', 'pModel', 'selection', 'support'],
+				['base', 'lift', 'market', 'normalized', 'pModel', 'selection', 'support'],
 				'wpis selekcji nie może nieść pola pochodzącego z rynku zakładów'
 			);
 		}

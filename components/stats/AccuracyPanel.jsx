@@ -27,17 +27,33 @@ const RANGES = ['30', '90', 'all'];
  * nie „69%", tylko „gdzieś między 57 a 79%". Podawanie samej środkowej wartości jako faktu
  * byłoby obiecywaniem precyzji, której w tych danych nie ma.
  */
-function HitRate({ value, settled, interval, reliable = true, t }) {
+function HitRate({ value, settled, interval, reliable = true, baseline = null, t }) {
 	const known = Number.isFinite(value);
+	/*
+	 * Kolor procentu zależy od przewagi nad normą, nie od samej wysokości.
+	 *
+	 * 80% trafień w rynku, w którym norma wynosi 79%, to nie sukces, tylko zgadywanie
+	 * średniej. Dopóki nie ma typów z zapisaną normą, zostaje dawne kryterium bezwzględne.
+	 */
+	const edge = baseline?.edge;
+	const ton = !known
+		? 'text-muted'
+		: Number.isFinite(edge)
+			? edge >= 5
+				? 'text-win'
+				: edge >= 0
+					? 'text-text'
+					: 'text-loss'
+			: value >= 55
+				? 'text-win'
+				: value >= 45
+					? 'text-text'
+					: 'text-loss';
+
 	return (
 		<div className="flex flex-col gap-1">
 			<div className="flex items-baseline gap-3">
-				<span
-					className={cn(
-						'font-display text-5xl font-bold tabular-nums',
-						!known ? 'text-muted' : value >= 55 ? 'text-win' : value >= 45 ? 'text-text' : 'text-loss'
-					)}
-				>
+				<span className={cn('font-display text-5xl font-bold tabular-nums', ton)}>
 					{known ? `${value}%` : '—'}
 				</span>
 				<span className="text-sm text-muted">
@@ -49,6 +65,16 @@ function HitRate({ value, settled, interval, reliable = true, t }) {
 				<p className="text-xs text-muted">
 					{t('accuracy_interval', { low: interval.low, high: interval.high })}
 					{!reliable && ` · ${t('accuracy_small_sample')}`}
+				</p>
+			)}
+
+			{/* Norma tych samych typów obok trafności — bez niej procent nie ma punktu odniesienia. */}
+			{known && baseline && (
+				<p className="text-xs text-muted">
+					{t('accuracy_baseline', {
+						base: baseline.expectedHitRate,
+						edge: `${baseline.edge > 0 ? '+' : ''}${baseline.edge}`,
+					})}
 				</p>
 			)}
 		</div>
@@ -303,6 +329,7 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 								settled={s.settled}
 								interval={s.interval}
 								reliable={s.reliable !== false}
+								baseline={s.baseline ?? null}
 								t={t}
 							/>
 							<SplitBar won={s.won} lost={s.lost} />
