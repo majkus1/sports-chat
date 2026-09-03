@@ -53,13 +53,22 @@ function ProbabilityBar({ homeName, awayName, probabilities }) {
 	);
 }
 
-function ConfidenceMeter({ value }) {
+/**
+ * Pewność danych przy typie — Z PODPISEM, bo bez niego to była zagadka.
+ *
+ * Przy typie stoją dwie różne liczby: prawdopodobieństwo zdarzenia (ile jest szans, że
+ * zajdzie) i pewność danych (jak mocno statystyki tę ocenę wspierają). Analiza pokazywała
+ * obie bez etykiet — czytelnik widział „63%" obok „74%" i nie miał jak zgadnąć, co jest
+ * czym. Raport podpisywał je od początku; to była niespójność, nie decyzja.
+ */
+function ConfidenceMeter({ value, label }) {
 	// Podczas strumienia typ pojawia się przed swoją pewnością — bez tej osłony
 	// szerokość paska wyszłaby jako `NaN%`, a obok wyświetliłoby się „NaN%".
 	if (!Number.isFinite(value)) return null;
 
 	return (
 		<div className="flex items-center gap-2">
+			{label && <span className="text-xs text-muted">{label}</span>}
 			<div className="h-1.5 w-16 overflow-hidden rounded-full bg-surface-2">
 				<div className="h-full bg-accent" style={{ width: `${Math.min(Math.max(value, 0), 100)}%` }} />
 			</div>
@@ -252,7 +261,7 @@ export default function AnalysisPanel({
 										<span className="text-sm font-semibold text-text">
 											{[pick.market, pick.selection].filter(Boolean).join(': ')}
 										</span>
-										<ConfidenceMeter value={pick.confidence} />
+										<ConfidenceMeter value={pick.confidence} label={t('report_confidence')} />
 									</div>
 									{/* Procent z przewagą nad normą rynku — dotąd analiza pokazywała przy typie
 									    tylko pewność danych, a samo prawdopodobieństwo nie było nigdzie widoczne. */}

@@ -45,8 +45,13 @@ export default function LiftLabel({
 
 	return (
 		<p className={cn('text-xs leading-relaxed', powyzej && liczony ? 'text-text' : 'text-muted', className)}>
+			{/* Etykieta, bo przy typie stoją dwie różne liczby i trzeba je odróżnić. */}
 			{showProbability && Number.isFinite(probability) && (
-				<strong className="tabular-nums">{probability}% · </strong>
+				<>
+					{t('report_probability')}{' '}
+					<strong className="tabular-nums">{probability}%</strong>
+					{' · '}
+				</>
 			)}
 			{powyzej
 				? t('pick_lift_above', { lift: przewaga, base: norma })
