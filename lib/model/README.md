@@ -27,11 +27,11 @@ progami; tam prognoz nie wystawiamy wcale, zamiast wystawiać gorsze.
 
 Dwa progi i lista, wszystkie z pomiaru, nie z ostrożności:
 
--  — czy w rozgrywkach jest z czego liczyć.
--  — MEDIANA meczów na drużynę. Puchar Anglii ma 869 spotkań, więc
+- `MIN_MATCHES` — czy w rozgrywkach jest w ogóle z czego liczyć.
+- `MIN_MATCHES_PER_TEAM` — MEDIANA meczów na drużynę. Puchar Anglii ma 869 spotkań, więc
   pierwszy próg przechodzi z zapasem, a przy dopasowaniu wewnątrz rozgrywek dawał log loss
   1,6648 wobec 1,0437 dla zwykłych częstości. Setki drużyn po dwa mecze to oceny z szumu.
--  — puchary europejskie. Faza ligowa daje osiem meczów, więc próg
+- `EXCLUDED_COMPETITIONS` — puchary europejskie. Faza ligowa daje osiem meczów, więc próg
   mediany przechodzą, ale porównanie sił zespołów z różnych lig krajowych wewnątrz tych
   rozgrywek się nie udaje: Liga Mistrzów 1,0859 wobec 1,0205.
 
