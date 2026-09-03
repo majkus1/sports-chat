@@ -128,6 +128,8 @@
 		"analysis_preparing": "Zbieram dane meczu…",
 		"analysis_model_note": "Szanse policzone przez własny model statystyczny sił drużyn, nie oszacowane przez AI.",
 		"analysis_model_note_live": "Szanse końcowe policzone przez własny model dla pozostałego czasu przy aktualnym wyniku.",
+		"leaning_title": "W którą stronę przechylają się dane",
+		"leaning_hint": "To nie jest typ. Żadna selekcja nie sięgnęła naszego progu, więc nic tu nie wystawiamy i nic nie wlicza się do skuteczności. Pokazujemy tylko kierunek, w który dane przechylają się najmocniej.",
 		"analysis_disclaimer": "Analiza ma charakter informacyjny i statystyczny. Nie jest poradą bukmacherską ani zachętą do gry.",
 		"close": "Zamknij",
 		"account": "Konto",

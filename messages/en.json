@@ -128,6 +128,8 @@
 		"analysis_preparing": "Gathering match data…",
 		"analysis_model_note": "Chances computed by our own statistical team-strength model, not estimated by the AI.",
 		"analysis_model_note_live": "Final-result chances computed by our own model for the remaining time at the current score.",
+		"leaning_title": "Which way the data leans",
+		"leaning_hint": "This is not a pick. No selection reached our threshold, so we place nothing here and nothing counts towards accuracy. We only show the direction the data leans most.",
 		"analysis_disclaimer": "This analysis is informational and statistical. It is not betting advice or an encouragement to gamble.",
 		"close": "Close",
 		"account": "Account",

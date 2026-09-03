@@ -272,6 +272,39 @@ export default function AnalysisPanel({
 					</section>
 				)}
 
+				{/*
+				 * Skłonność, gdy żaden typ nie przeszedł progu.
+				 *
+				 * Analiza kończąca się bez niczego wygląda dla czytelnika na pustą, a przy obecnym
+				 * progu typu nie dostaje spora część meczów. Obniżenie progu cofnęłoby wszystko, co
+				 * daje typom wartość, więc zamiast tego pokazujemy KIERUNEK — z wyraźnym podpisem,
+				 * że to nie jest typ i nie wlicza się do skuteczności. Do bazy nie trafia.
+				 */}
+				{!insufficient && !sections.picks?.length && sections.leaning && (
+					<section>
+						<h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">
+							{t('leaning_title')}
+						</h4>
+						<div className="rounded-[var(--radius-ui)] border border-dashed border-border px-4 py-3.5">
+							<span className="text-sm font-semibold text-text">
+								{[sections.leaning.market, sections.leaning.selection].filter(Boolean).join(': ')}
+							</span>
+							<LiftLabel
+								market={sections.leaning.market}
+								selection={sections.leaning.selection}
+								homeName={homeTeam}
+								awayName={awayTeam}
+								probability={sections.leaning.probability}
+								baseRate={sections.leaning.baseRate}
+								lift={sections.leaning.lift}
+								showProbability
+								className="mt-1.5"
+							/>
+							<p className="mt-2 text-sm leading-relaxed text-muted">{t('leaning_hint')}</p>
+						</div>
+					</section>
+				)}
+
 				{sections.risks?.length > 0 && (
 					<section>
 						<h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">

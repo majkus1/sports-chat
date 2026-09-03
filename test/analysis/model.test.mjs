@@ -14,8 +14,14 @@ import { setupEnv } from '../helpers/setup.mjs';
 
 setupEnv();
 
-const { buildAnalysisModel, bindAnalysisToModel, formatModelSection, toPercentTriple } =
-	await import('@/lib/analysis/model');
+const {
+	buildAnalysisModel,
+	bindAnalysisToModel,
+	formatModelSection,
+	toPercentTriple,
+	bestLeaning,
+	leaningFromProbabilities,
+} = await import('@/lib/analysis/model');
 const { meetsPolicy, BASE_RATES } = await import('@/lib/picks/policy');
 // Wersja z modułu, nie wpisana na sztywno — inaczej każdy jej podbicie wywraca testy,
 // które o wersję wcale nie pytają.
@@ -203,9 +209,21 @@ describe('wiązanie odpowiedzi z modelem', () => {
 		assert.equal(zwiazane.picks[0].baseRate, undefined);
 	});
 
-	test('bez modelu odpowiedź wraca nietknięta', () => {
+	test('bez modelu liczby zostają nietknięte — dochodzi tylko kierunek', () => {
+		/*
+		 * Rozgrywki spoza obsługiwanej listy: szanse pisze model językowy i nie mamy czym ich
+		 * zastąpić, więc ich nie ruszamy. Dokładamy wyłącznie skłonność, żeby analiza nie
+		 * kończyła się niczym — patrz osobny opis niżej.
+		 */
 		const odpowiedz = { probabilities: { home: 50, draw: 30, away: 20 }, picks: [] };
-		assert.equal(bindAnalysisToModel(odpowiedz, null, names), odpowiedz);
+		const zwiazane = bindAnalysisToModel(odpowiedz, null, names);
+
+		assert.deepEqual(zwiazane.probabilities, odpowiedz.probabilities);
+		assert.deepEqual(zwiazane.picks, []);
+		assert.equal('model' in zwiazane, false, 'nie ma czym się podpisać');
+		// 1X = 50 + 30 = 80 przy normie 69,3 to +11 pkt, najwięcej z czterech wariantów.
+		assert.equal(zwiazane.leaning.selection, '1X (gospodarz lub remis)');
+		assert.equal(zwiazane.leaning.lift, 11);
 	});
 });
 
@@ -265,5 +283,84 @@ describe('sufit rynkowy w analizie', () => {
 
 		assert.equal('marketProbability' in zwiazane.picks[0], false);
 		assert.equal('marketProbability' in zwiazane.model, false);
+	});
+});
+
+describe('skłonność, gdy żaden typ nie przeszedł progu', () => {
+	/*
+	 * Analiza bez niczego wygląda dla czytelnika na pustą, a przy obecnym progu typu nie
+	 * dostaje spora część meczów. Skłonność wypełnia tę lukę, ale NIE JEST TYPEM: nie trafia
+	 * do `picks`, więc `recordPicks` jej nie zapisuje i nie wchodzi do skuteczności.
+	 */
+	const names = { homeName: 'Machida Zelvia', awayName: 'Kawasaki Frontale' };
+
+	test('wybiera selekcję z największą przewagą, nie z najwyższym procentem', () => {
+		const wynik = bestLeaning([
+			{ market: 'Gole drużyny', selection: 'gospodarz', probability: 88, base: 78.6, lift: 9 },
+			{ market: 'Wynik meczu', selection: 'gospodarze', probability: 55, base: 43.8, lift: 11 },
+		]);
+
+		assert.equal(wynik.selection, 'gospodarze', '88% wygląda mocniej, ale wnosi mniej');
+		assert.equal(wynik.lift, 11);
+		assert.equal(wynik.baseRate, 43.8);
+	});
+
+	test('bez sensownych selekcji nie wymyśla niczego', () => {
+		assert.equal(bestLeaning([]), null);
+		assert.equal(bestLeaning(null), null);
+		assert.equal(bestLeaning([{ market: 'x', selection: 'y', probability: 50, lift: null }]), null);
+	});
+
+	test('dokładana tylko wtedy, gdy typów nie ma', () => {
+		const model = buildAnalysisModel({ leagueModel: liga, fixture: mecz() });
+		const home = model.selections.find((s) => s.key === 'home');
+
+		const zTypem = bindAnalysisToModel(
+			{ picks: [{ market: 'Wynik meczu', selection: 'Machida Zelvia (gospodarze)', probability: 64 }] },
+			model,
+			names
+		);
+		const bezTypu = bindAnalysisToModel({ picks: [] }, model, names);
+
+		assert.equal('leaning' in zTypem, false, 'przy typie skłonność tylko myliłaby');
+		assert.equal(bezTypu.leaning.lift, home.lift, 'najmocniejsza selekcja tego meczu');
+	});
+
+	test('mecz bez modelu też ją dostaje — z szans modelu językowego', () => {
+		const zwiazane = bindAnalysisToModel(
+			{ probabilities: { home: 31, draw: 35, away: 34 }, picks: [] },
+			null,
+			names
+		);
+
+		// X2 = 34 + 35 = 69 przy normie 56,2 to +13 pkt — najwięcej z czterech wariantów.
+		assert.equal(zwiazane.leaning.selection, 'X2 (gość lub remis)');
+		assert.equal(zwiazane.leaning.probability, 69);
+		assert.equal(zwiazane.leaning.lift, 13);
+	});
+
+	test('bez modelu i bez typu, ale z typem w odpowiedzi — skłonności nie ma', () => {
+		const zwiazane = bindAnalysisToModel(
+			{ probabilities: { home: 70, draw: 20, away: 10 }, picks: [{ market: 'Wynik meczu', selection: 'x' }] },
+			null,
+			names
+		);
+
+		assert.equal('leaning' in zwiazane, false);
+	});
+
+	test('bez kompletu szans nie zgadujemy kierunku', () => {
+		assert.equal(leaningFromProbabilities({ home: 40, draw: null, away: 30 }, names), null);
+		assert.equal(leaningFromProbabilities(null, names), null);
+	});
+
+	test('skłonność niesie te same pola co typ, więc podpis o przewadze zadziała', () => {
+		const model = buildAnalysisModel({ leagueModel: liga, fixture: mecz() });
+		const { leaning } = bindAnalysisToModel({ picks: [] }, model, names);
+
+		assert.deepEqual(
+			Object.keys(leaning).sort(),
+			['baseRate', 'lift', 'market', 'probability', 'selection']
+		);
 	});
 });
