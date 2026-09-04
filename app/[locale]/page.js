@@ -13,7 +13,9 @@ import {
 } from '@/components/landing/LandingSections';
 import { buildMetadata } from '@/lib/seo/metadata';
 import { JsonLd, faqLd, organizationLd, webApplicationLd, websiteLd } from '@/lib/seo/jsonLd';
+import { MethodTeaser } from '@/components/method/MethodSections';
 import { landingContent } from '@/lib/landing/content';
+import { methodContent } from '@/lib/landing/method';
 import { faqItems } from '@/lib/landing/faq';
 import { SPORT_CATEGORIES } from '@/lib/navigation';
 import { PUBLIC_PLANS } from '@/lib/billing/plans';
@@ -73,6 +75,7 @@ export default async function HomePage({ params }) {
 	const { locale } = await params;
 	const t = await getTranslations('common');
 	const content = landingContent(locale);
+	const method = methodContent(locale);
 	const faq = faqItems(locale);
 
 	const plans = PUBLIC_PLANS.map((plan) => ({
@@ -94,6 +97,7 @@ export default async function HomePage({ params }) {
 			<Problem content={content.problem} />
 			<Features content={content.features} />
 			<HowItWorks content={content.how} />
+			<MethodTeaser content={method.teaser} />
 			<Accuracy content={content.accuracy} methodText={content.accuracy.method} />
 			<Sports content={content.sports} categories={SPORT_CATEGORIES} labelFor={(key) => t(key)} />
 			<Pricing

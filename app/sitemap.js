@@ -21,6 +21,7 @@ const STATIC_ROUTES = [
 	{ path: '/pilka-nozna/kolejka', changeFrequency: 'daily', priority: 0.8 },
 	{ path: '/pilka-nozna/skutecznosc', changeFrequency: 'daily', priority: 0.7 },
 	{ path: '/pilka-nozna/ai-agent', changeFrequency: 'daily', priority: 0.7 },
+	{ path: '/jak-to-dziala', changeFrequency: 'monthly', priority: 0.8 },
 	{ path: '/cennik', changeFrequency: 'monthly', priority: 0.8 },
 	{ path: '/blog', changeFrequency: 'weekly', priority: 0.8 },
 	{ path: '/kontakt', changeFrequency: 'yearly', priority: 0.4 },

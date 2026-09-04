@@ -22,6 +22,7 @@
 		"write": "Napisz wiadomość...",
 		"mustlog": "Zaloguj się, aby napisać wiadomość",
 		"message_not_sent": "nie wysłano",
+		"method_title": "Jak to działa",
 		"pricing_title": "Plany i limity",
 		"pricing_intro": "Analizy generuje model językowy, a każde wywołanie kosztuje. Plany określają, ile analiz, pytań do asystenta i raportów możesz wykorzystać w ciągu doby.",
 		"pricing_current": "Twój plan",
