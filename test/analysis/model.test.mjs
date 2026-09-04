@@ -370,3 +370,42 @@ describe('skłonność, gdy żaden typ nie przeszedł progu', () => {
 		);
 	});
 });
+
+describe('sekcja promptu przy braku kandydatów', () => {
+	/*
+	 * Typ zapasowy TEŻ dostaje liczbę z naszego modelu — inaczej prompt i kod mówiłyby
+	 * co innego. Wcześniej instrukcja kazała modelowi językowemu podać własne
+	 * prawdopodobieństwo, a `bindAnalysisToModel` zaraz je nadpisywał wartością z selekcji.
+	 */
+	const pewne = { home: 95.3, draw: 2.7, away: 2, '1X': 98, X2: 4.7, homeScores: 97.1, awayScores: 55 };
+
+	test('każe przepisać procent z listy, a nie wymyślać własny', () => {
+		const model = buildAnalysisModel({ leagueModel: liga, fixture: mecz(), implied: pewne });
+		const tekst = formatModelSection(model).join('\n');
+
+		assert.equal(model.selections.some((s) => s.eligible), false, 'przygotowanie: brak kandydatów');
+		assert.match(tekst, /wystaw DOKŁADNIE JEDEN typ zapasowy/);
+		assert.match(tekst, /"probability" przepisz z jej wiersza/);
+		assert.doesNotMatch(tekst, /WŁASNE "probability"/);
+	});
+
+	test('kod faktycznie nadpisuje procent typu zapasowego wartością modelu', () => {
+		const model = buildAnalysisModel({ leagueModel: liga, fixture: mecz(), implied: pewne });
+		const najlepsza = model.selections.reduce((a, b) => (b.lift > a.lift ? b : a));
+		const zwiazane = bindAnalysisToModel(
+			{ picks: [{ market: najlepsza.market, selection: najlepsza.selection, probability: 51 }] },
+			model,
+			{ homeName: 'Machida Zelvia', awayName: 'Kawasaki Frontale' }
+		);
+
+		assert.equal(zwiazane.picks[0].probability, najlepsza.probability, 'liczba modelu, nie modelu językowego');
+		assert.equal(zwiazane.picks[0].baseRate, najlepsza.base);
+	});
+
+	test('wersja modelu jest w wyniku, żeby dało się ją zapisać przy typie', () => {
+		const model = buildAnalysisModel({ leagueModel: liga, fixture: mecz() });
+
+		assert.equal(model.version, MODEL_VERSION);
+		assert.equal(buildAnalysisModel({ leagueModel: null, fixture: mecz() }), null, 'bez modelu nie ma wersji');
+	});
+});

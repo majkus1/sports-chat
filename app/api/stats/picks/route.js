@@ -177,6 +177,26 @@ export async function GET(request) {
 						},
 					},
 				],
+				/*
+				 * KTO POLICZYŁ LICZBĘ — najważniejszy podział, jaki mamy.
+				 *
+				 * Nasz model liczbowy działa w ligach z kompletem wyników; w pucharach i w
+				 * rozgrywkach spoza obsługiwanej listy prawdopodobieństwo szacuje model językowy.
+				 * To dwa różne sposoby powstania typu i bez tego rozbicia spadek trafności nie
+				 * mówi, czy zawiódł rachunek, czy AI tam, gdzie rachunku nie ma.
+				 */
+				wgZrodla: [
+					{ $match: { status: { $in: ['won', 'lost'] } } },
+					{
+						$group: {
+							_id: {
+								zModelu: { $ne: [{ $ifNull: ['$numericModelVersion', null] }, null] },
+								status: '$status',
+							},
+							n: { $sum: 1 },
+						},
+					},
+				],
 				// Czy skuteczność zależy od klasy rozgrywek i od kompletności danych.
 				wgPoziomuLigi: [
 					{ $match: { status: { $in: ['won', 'lost'] } } },
@@ -324,6 +344,10 @@ export async function GET(request) {
 				brierWorseThanCoinFlip: brier !== null && brier > BRIER_BASELINE,
 				calibration,
 			},
+			bySource: licz(result?.wgZrodla || [], 'zModelu').map((row) => ({
+				...row,
+				key: row.key === 'true' ? 'model' : 'ai',
+			})),
 			byThreshold: licz(result?.wgProgu || [], 'nadProgiem').map((row) => ({
 				...row,
 				key: row.key === 'true' ? 'above' : 'fallback',

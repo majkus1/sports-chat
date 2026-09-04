@@ -386,6 +386,39 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 					)}
 
 					{/*
+					 * Kto policzył liczbę: nasz model czy model językowy.
+					 *
+					 * Model liczbowy działa w ligach z kompletem wyników; w pucharach i poza
+					 * obsługiwaną listą prawdopodobieństwo szacuje AI. Bez tego rozbicia spadek
+					 * trafności nie mówi, czy zawiódł rachunek, czy AI tam, gdzie rachunku nie ma.
+					 */}
+					{!compact && data.bySource?.length > 1 && (
+						<Card>
+							<CardContent className="flex flex-col gap-1 px-5 py-4">
+								<h3 className="mb-1 flex items-center gap-1.5 text-sm font-bold text-text">
+									<TrendingUp size={14} aria-hidden="true" className="text-accent" />
+									{t('accuracy_by_source')}
+								</h3>
+								<p className="mb-2 text-xs leading-relaxed text-muted">
+									{t('accuracy_by_source_hint')}
+								</p>
+								{data.bySource.map((row) => (
+									<BreakdownRow
+										key={row.key}
+										row={{
+											...row,
+											label: t(
+												row.key === 'model' ? 'accuracy_source_model' : 'accuracy_source_ai'
+											),
+										}}
+										t={t}
+									/>
+								))}
+							</CardContent>
+						</Card>
+					)}
+
+					{/*
 					 * Typy nad progiem kontra zapasowe.
 					 *
 					 * Typ zapasowy powstaje, gdy żadna selekcja nie przewyższa normy o wymagany

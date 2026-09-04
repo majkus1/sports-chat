@@ -94,8 +94,24 @@ const PickSchema = new mongoose.Schema(
 		/** Wersja instrukcji, z której powstał typ (`match-analysis/7`, `report/2`). */
 		promptVersion: { type: String, default: null, index: true },
 
-		/** Model językowy, który go wygenerował — z datą wydania, tak jak zwraca dostawca. */
+		/**
+		 * MODEL JĘZYKOWY, który napisał analizę — `gpt-5.5`, `claude-opus-5` i tak dalej.
+		 *
+		 * Nazwa pola jest myląca i zostaje wyłącznie dlatego, że zmiana przepisałaby historię.
+		 * To NIE jest nasz model liczbowy; ten siedzi w `numericModelVersion` niżej.
+		 */
 		modelVersion: { type: String, default: null },
+
+		/**
+		 * NASZ MODEL LICZBOWY, jeśli to on policzył prawdopodobieństwo — np. `dixon-coles/3`.
+		 *
+		 * `null` znaczy, że liczbę oszacował model językowy: rozgrywki spoza obsługiwanej
+		 * listy, puchary albo drużyna nieznana modelowi. To dwa zupełnie różne sposoby
+		 * powstania typu i bez tego pola nie da się ich w statystyce rozdzielić — a to jest
+		 * najważniejszy podział, jaki mamy. Gdy trafność zacznie spadać, ta jedna kolumna
+		 * mówi, czy zawodzi rachunek, czy AI tam, gdzie rachunku nie ma.
+		 */
+		numericModelVersion: { type: String, default: null, index: true },
 
 		/** Samoocena kompletności danych z analizy: `good` / `limited` / `insufficient`. */
 		dataQuality: { type: String, default: null },

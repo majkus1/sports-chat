@@ -195,6 +195,8 @@ export async function POST(request) {
 							marketProbability: wpis?.marketProbability ?? null,
 							promptVersion: REPORT_PROMPT_VERSION,
 							modelVersion: meta?.model ?? null,
+							// `buildReportCandidates` zapisuje ją przy kandydacie, gdy model policzył selekcje.
+							numericModelVersion: kandydat?.modelVersion ?? null,
 							leagueId: kandydat?.leagueId ?? null,
 							leagueTier: leagueTier(kandydat?.leagueId),
 							// Kandydat przechodzi selekcję tylko z kompletem tych sekcji.
