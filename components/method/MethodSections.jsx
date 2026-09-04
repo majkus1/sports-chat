@@ -206,10 +206,15 @@ export function MethodProof({ content }) {
  * naturalny moment na pytanie, skąd biorą się liczby. Cała sekcja to jedna karta: metoda
  * jest ciekawa dla części odwiedzających, nie dla wszystkich, i nie może odbierać miejsca
  * temu, po co ludzie tu przychodzą.
+ *
+ * GÓRNY ODSTĘP JEST TU KONIECZNY, NIE OZDOBNY. Sekcja nad zajawką („Jak to działa") ma własne
+ * tło, więc jej kolorowy blok kończy się dokładnie tam, gdzie zaczyna się ta sekcja. Bez `pt`
+ * karta przykleja się do krawędzi bloku i czyta się jak jego urwany fragment, a nie jak osobny
+ * element. Dolny odstęp może być mniejszy, bo sekcja pod spodem dokłada własny.
  */
 export function MethodTeaser({ content }) {
 	return (
-		<section className="px-5 pb-4">
+		<section className="px-5 pb-6 pt-10 sm:pb-8 sm:pt-14">
 			<div className="mx-auto w-full max-w-5xl">
 				{/*
 				 * `block` na odnośniku jest tu WYMAGANE, nie kosmetyczne.
