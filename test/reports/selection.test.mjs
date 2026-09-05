@@ -26,6 +26,8 @@ const {
 	applyMarketCeiling,
 	countPlayed,
 	spreadAcrossLeagues,
+	modelCanYield,
+	allocateBudget,
 } = await import('@/lib/reports/service');
 
 /** Forma drużyny w kształcie, jaki daje `normalizeTeamForm`. */
@@ -546,5 +548,94 @@ describe('opisy selekcji są jednocześnie czytelne i rozpoznawalne', () => {
 			normalizePick({ market: 'Gole drużyny', selection: 'Manchester powyżej 0.5 gola', ...derby }),
 			null
 		);
+	});
+});
+
+/**
+ * Odsiew przed wydaniem budżetu — mecze, z których i tak nic nie wyjdzie.
+ *
+ * Zapytanie o prognozę dostawcy kosztuje i jest jedno na mecz, więc budżet czterdziestu
+ * wywołań to najcenniejszy zasób raportu. Dotąd szedł na spotkania wybrane po randze ligi
+ * i godzinie — z 40 obejrzanych zostawało 11 kandydatów, czyli prawie trzy czwarte pytań
+ * dotyczyło meczów bez szans na jakikolwiek typ.
+ *
+ * `modelCanYield` odpowiada TYM SAMYM rachunkiem, który zadecyduje później, więc pusta
+ * odpowiedź teraz znaczy pustą listę selekcji potem. To filtr, nie ranking: nie wybieramy
+ * czubka po własnej ocenie, tylko odrzucamy dno.
+ */
+describe('odsiew meczów bez szans na selekcję', () => {
+	test('mecz, w którym nic nie przekracza progu, jest odrzucany', () => {
+		// 45/25/30: 1X wychodzi 70% przy normie 69, X2 55% — obie poniżej progu.
+		const model = zModelu({ home: 0.45, draw: 0.25, away: 0.3, homeScores: 0.79, awayScores: 0.7 });
+
+		assert.equal(modelCanYield(model), false);
+	});
+
+	test('mecz z wyraźną przewagą przechodzi', () => {
+		assert.equal(modelCanYield(zModelu({ home: 0.74, draw: 0.16, away: 0.1 })), true);
+	});
+
+	test('brak modelu ligi to „nie wiem", a nie „odrzuć"', () => {
+		assert.equal(modelCanYield(null), null);
+	});
+
+	test('odpowiedź zgadza się z tym, co policzy evaluateMarkets', () => {
+		/*
+		 * To jest cała gwarancja bezpieczeństwa tego filtru. Gdyby odsiew liczył cokolwiek
+		 * inaczej niż właściwa selekcja, odrzucałby mecze, które by przeszły — po cichu,
+		 * bo nic by się nie wywróciło.
+		 */
+		for (const home of [0.4, 0.5, 0.6, 0.7, 0.8]) {
+			const model = zModelu({ home, draw: 0.15, away: 0.85 - home });
+			const rynki = evaluateMarkets({ ...mecz(), modelPrediction: model });
+			assert.equal(modelCanYield(model), rynki.length > 0, `home=${home}`);
+		}
+	});
+});
+
+describe('podział budżetu między mecze ocenione i nieocenione', () => {
+	const mecz2 = (leagueId, godzina) => ({
+		id: `${leagueId}-${godzina}`,
+		league: { id: leagueId, season: 2026 },
+		date: `2026-09-05T${String(godzina).padStart(2, '0')}:00:00Z`,
+	});
+	const tierOf = () => 2;
+	const ile = (lista, leagueId) => lista.filter((f) => f.league.id === leagueId).length;
+
+	test('rozgrywki bez modelu dostają zagwarantowane miejsca', () => {
+		const pewne = Array.from({ length: 50 }, (_, i) => mecz2(98, 10 + (i % 12)));
+		const niepewne = Array.from({ length: 20 }, (_, i) => mecz2(45, 10 + (i % 12)));
+
+		const wynik = allocateBudget({ pewne, niepewne, budget: 40, reserved: 10, tierOf });
+
+		assert.equal(wynik.length, 40);
+		assert.equal(ile(wynik, 45), 10, 'rezerwa dla rozgrywek bez modelu');
+		assert.equal(ile(wynik, 98), 30);
+	});
+
+	test('niewykorzystana rezerwa wraca do meczów ocenionych', () => {
+		const pewne = Array.from({ length: 50 }, (_, i) => mecz2(98, 10 + (i % 12)));
+		const niepewne = [mecz2(45, 11), mecz2(45, 12)];
+
+		const wynik = allocateBudget({ pewne, niepewne, budget: 40, reserved: 10, tierOf });
+
+		assert.equal(wynik.length, 40);
+		assert.equal(ile(wynik, 45), 2, 'tyle, ile w ogóle było');
+		assert.equal(ile(wynik, 98), 38, 'reszta rezerwy nie przepada');
+	});
+
+	test('gdy ocenionych jest mało, nieocenione biorą resztę budżetu', () => {
+		const pewne = [mecz2(98, 11), mecz2(98, 12)];
+		const niepewne = Array.from({ length: 50 }, (_, i) => mecz2(45, 10 + (i % 12)));
+
+		const wynik = allocateBudget({ pewne, niepewne, budget: 40, reserved: 10, tierOf });
+
+		assert.equal(wynik.length, 40);
+		assert.equal(ile(wynik, 98), 2);
+		assert.equal(ile(wynik, 45), 38);
+	});
+
+	test('obie grupy puste nie wywracają podziału', () => {
+		assert.deepEqual(allocateBudget({ pewne: [], niepewne: [], budget: 40, reserved: 10, tierOf }), []);
 	});
 });
