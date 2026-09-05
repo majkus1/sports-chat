@@ -17,9 +17,14 @@ import { setupEnv } from '../helpers/setup.mjs';
 // Rejestruje alias `@/` — bazy ani sieci ten plik nie dotyka.
 setupEnv();
 
-const { evaluateMarkets, selectionScore, bindPicksToSelection, applyMarketCeiling } = await import(
-	'@/lib/reports/service'
-);
+const {
+	evaluateMarkets,
+	selectionScore,
+	bindPicksToSelection,
+	applyMarketCeiling,
+	countPlayed,
+	spreadAcrossLeagues,
+} = await import('@/lib/reports/service');
 
 /** Forma drużyny w kształcie, jaki daje `normalizeTeamForm`. */
 function forma({ strzelone, stracone, rozegrane = 10 }) {
@@ -376,5 +381,102 @@ describe('sufit rynkowy w selekcji raportu', () => {
 		);
 
 		assert.equal('marketProbability' in typ, false);
+	});
+});
+
+/**
+ * Podział budżetu prognoz — część, przez którą raport 3-dniowy potrafił mieć dwa typy.
+ *
+ * Kolejność sortowana po samej randze oddawała cały budżet czołowym ligom, a te we wrześniu
+ * mają rozegraną kolejkę albo dwie i w komplecie odpadają na progu próby meczowej. Testy
+ * pilnują obu połówek naprawy: że wiemy, ile drużyna rozegrała, ZANIM zapłacimy za prognozę,
+ * i że jedna liga nie zabiera całej puli.
+ */
+describe('rozegrane mecze liczone z terminarza ligi', () => {
+	/** Wiersz `leagueFixtures` w kształcie, jaki daje API. */
+	const spotkanie = (homeId, awayId, status = 'FT') => ({
+		fixture: { id: homeId * 1000 + awayId, status: { short: status } },
+		teams: { home: { id: homeId }, away: { id: awayId } },
+	});
+
+	test('liczy tylko mecze rozegrane do końca', () => {
+		const licznik = countPlayed([
+			spotkanie(1, 2),
+			spotkanie(2, 1),
+			spotkanie(1, 3, 'NS'),
+			spotkanie(1, 3, 'PST'),
+		]);
+
+		assert.equal(licznik.get(1), 2, 'dwa zakończone, dwa nierozegrane');
+		assert.equal(licznik.get(2), 2);
+		assert.equal(licznik.get(3), undefined, 'przeciwnik tylko z meczów nierozegranych');
+	});
+
+	test('dogrywka i karne to też mecz rozegrany', () => {
+		const licznik = countPlayed([spotkanie(1, 2, 'AET'), spotkanie(1, 3, 'PEN')]);
+		assert.equal(licznik.get(1), 2);
+	});
+
+	test('dokłada do wspólnej mapy, bo lig jest w oknie kilkanaście', () => {
+		const wspolna = new Map();
+		countPlayed([spotkanie(1, 2)], wspolna);
+		countPlayed([spotkanie(1, 2)], wspolna);
+		assert.equal(wspolna.get(1), 2);
+	});
+});
+
+describe('budżet prognoz rozłożony po ligach', () => {
+	/** Mecz w kształcie, jakiego używa selekcja: liga, godzina, drużyny. */
+	const mecz = (leagueId, godzina) => ({
+		id: `${leagueId}-${godzina}`,
+		league: { id: leagueId, season: 2026 },
+		date: `2026-09-05T${String(godzina).padStart(2, '0')}:00:00Z`,
+	});
+
+	const tierOf = (f) => (f.league.id === 106 ? 1 : 2);
+
+	test('liga z wieloma meczami nie zabiera całego budżetu', () => {
+		const pula = [
+			...Array.from({ length: 10 }, (_, i) => mecz(106, 10 + i)),
+			mecz(98, 11),
+			mecz(71, 12),
+		];
+
+		const wybrane = spreadAcrossLeagues(pula, { budget: 4, tierOf });
+		const ligi = wybrane.map((f) => f.league.id);
+
+		assert.equal(wybrane.length, 4);
+		assert.deepEqual(ligi, [106, 98, 71, 106], 'runda po jednym meczu z ligi, potem druga');
+	});
+
+	test('ranga decyduje o kolejności w rundzie, nie o dostępie do budżetu', () => {
+		const pula = [mecz(98, 12), mecz(71, 11), mecz(106, 15)];
+		const wybrane = spreadAcrossLeagues(pula, { budget: 3, tierOf });
+
+		assert.equal(wybrane[0].league.id, 106, 'poziom 1 pierwszy, choć gra najpóźniej');
+		assert.deepEqual(
+			wybrane.slice(1).map((f) => f.league.id),
+			[71, 98],
+			'przy równym poziomie wcześniejszy termin'
+		);
+	});
+
+	test('w obrębie ligi bierzemy mecze najbliższe w czasie', () => {
+		const pula = [mecz(98, 20), mecz(98, 9), mecz(98, 14)];
+		const wybrane = spreadAcrossLeagues(pula, { budget: 2, tierOf });
+
+		assert.deepEqual(
+			wybrane.map((f) => f.date.slice(11, 16)),
+			['09:00', '14:00']
+		);
+	});
+
+	test('budżet większy niż pula oddaje całą pulę i nie zapętla się', () => {
+		const pula = [mecz(98, 12), mecz(71, 11)];
+		assert.equal(spreadAcrossLeagues(pula, { budget: 40, tierOf }).length, 2);
+	});
+
+	test('pusta pula nie wywraca podziału', () => {
+		assert.deepEqual(spreadAcrossLeagues([], { budget: 40, tierOf }), []);
 	});
 });
