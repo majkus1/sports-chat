@@ -143,8 +143,14 @@ export default function PlanSummary({ className = '' }) {
 				})}
 			</ul>
 
-			<p className="mt-3 text-xs text-muted">
-				{t('quota_reset_note')}{' '}
+			{/*
+			 * Dwa zdania, nie akapit. „Czytanie cudzych analiz" to jedyna pozycja tej listy,
+			 * której nazwa sama z siebie nic nie mówi — użytkownik nie wie, skąd biorą się
+			 * cudze analizy ani dlaczego mają osobny licznik. Wyjaśnienie idzie pierwsze,
+			 * bo bez niego pozostała część przypisu dotyczy czegoś nieznanego.
+			 */}
+			<p className="mt-3 text-xs leading-relaxed text-muted">
+				{t('quota_shared_note')} {t('quota_reset_note')}{' '}
 				<Link href="/cennik" className="footer-link underline">
 					{t('see_plans')}
 				</Link>

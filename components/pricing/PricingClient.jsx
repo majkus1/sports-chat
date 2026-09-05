@@ -173,6 +173,17 @@ export default function PricingClient() {
 										value={plan.limits.analysis}
 										unlimitedLabel={t('pricing_unlimited')}
 									/>
+									{/*
+									 * Czytanie cudzych analiz było jedyną pozycją widoczną w panelu konta,
+									 * a nieobecną w cenniku — więc użytkownik spotykał ten limit dopiero,
+									 * gdy go wyczerpał, i nie miał gdzie sprawdzić, czym się różnią plany.
+									 * To realna różnica: darmowy ma dzienny sufit, płatne nie mają żadnego.
+									 */}
+									<LimitRow
+										label={t('pricing_analysis_view')}
+										value={plan.limits.analysisView}
+										unlimitedLabel={t('pricing_unlimited')}
+									/>
 									<LimitRow
 										label={t('pricing_ai_chat')}
 										value={plan.limits.aiChat}
@@ -236,7 +247,17 @@ export default function PricingClient() {
 				})}
 			</div>
 
+			{/*
+			 * Skąd biorą się „cudze analizy" — jedno zdanie, bo bez niego cała pozycja jest
+			 * zagadką. Analiza meczu powstaje raz i widzą ją wszyscy; kto wchodzi później,
+			 * czyta gotową, nie zużywając własnej puli. Bez tego zdania wygląda to na drugi,
+			 * niezrozumiały limit, a jest odwrotnie: to sposób, żeby limitu nie ruszać.
+			 */}
 			<p className="mt-6 max-w-2xl text-xs leading-relaxed text-muted">
+				{t('quota_shared_note')}
+			</p>
+
+			<p className="mt-3 max-w-2xl text-xs leading-relaxed text-muted">
 				{t('pricing_one_off_note')}
 			</p>
 
