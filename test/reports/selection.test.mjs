@@ -17,6 +17,8 @@ import { setupEnv } from '../helpers/setup.mjs';
 // Rejestruje alias `@/` — bazy ani sieci ten plik nie dotyka.
 setupEnv();
 
+const { sameSelection, SELECTION_SHAPES, normalizePick } = await import('@/lib/picks/markets');
+
 const {
 	evaluateMarkets,
 	selectionScore,
@@ -57,20 +59,27 @@ function zModelu({ home = 0.7, draw = 0.2, away = 0.1, homeScores = 0.8, awaySco
 	};
 }
 
-const znajdz = (rynki, market, selection) =>
-	rynki.find((r) => r.market === market && r.selection === selection) ?? null;
+/**
+ * Selekcja szukana po POSTACI ZNORMALIZOWANEJ, nie po brzmieniu opisu.
+ *
+ * Testy sprawdzaly wczesniej dokladny tekst („Gosc powyzej 0.5"), wiec pilnowaly slow
+ * zamiast zachowania — i przechodzily na zielono przy opisie, ktorego parser typow
+ * nie rozpoznawal. Brzmienie ma wlasny test ponizej: round-trip przez `normalizePick`.
+ */
+const znajdz = (rynki, klucz) =>
+	rynki.find((r) => sameSelection(r.normalized, SELECTION_SHAPES[klucz].normalized)) ?? null;
 
 describe('przewaga nad normą jako próg wejścia', () => {
 	test('typ poniżej dolnej granicy nie wchodzi do raportu', () => {
 		// 58% to więcej niż rzut monetą, ale mniej niż wymagane 60.
 		const rynki = evaluateMarkets(mecz({ home: 58, draw: 22, away: 20 }));
 
-		assert.equal(znajdz(rynki, 'Wynik meczu', 'home'), null);
+		assert.equal(znajdz(rynki, 'home'), null);
 	});
 
 	test('typ powyżej progu wchodzi z normą i przewagą przy sobie', () => {
 		const rynki = evaluateMarkets(mecz({ home: 66, draw: 20, away: 14 }));
-		const wpis = znajdz(rynki, 'Wynik meczu', 'home');
+		const wpis = znajdz(rynki, 'home');
 
 		assert.equal(wpis.pModel, 66);
 		assert.equal(wpis.base, 43.8);
@@ -81,7 +90,7 @@ describe('przewaga nad normą jako próg wejścia', () => {
 		const rynki = evaluateMarkets(mecz({ home: 95, draw: 3, away: 2 }));
 
 		assert.equal(
-			znajdz(rynki, 'Wynik meczu', 'home'),
+			znajdz(rynki, 'home'),
 			null,
 			'95% z prognozy dostawcy to błąd danych, nie pewniak'
 		);
@@ -98,8 +107,8 @@ describe('przewaga nad normą jako próg wejścia', () => {
 			modelPrediction: zModelu({ homeScores: 0.85, awayScores: 0.78 }),
 		});
 
-		assert.equal(znajdz(rynki, 'Gole drużyny', 'Gospodarz powyżej 0.5'), null);
-		assert.equal(znajdz(rynki, 'Gole drużyny', 'Gość powyżej 0.5'), null);
+		assert.equal(znajdz(rynki, 'homeScores'), null);
+		assert.equal(znajdz(rynki, 'awayScores'), null);
 	});
 
 	test('gol gościa wyraźnie powyżej normy przechodzi', () => {
@@ -107,7 +116,7 @@ describe('przewaga nad normą jako próg wejścia', () => {
 			...mecz(),
 			modelPrediction: zModelu({ awayScores: 0.86 }),
 		});
-		const wpis = znajdz(rynki, 'Gole drużyny', 'Gość powyżej 0.5');
+		const wpis = znajdz(rynki, 'awayScores');
 
 		assert.equal(wpis?.pModel, 86);
 		assert.equal(wpis?.lift, 16);
@@ -117,12 +126,12 @@ describe('przewaga nad normą jako próg wejścia', () => {
 		// 1X = 45+25 = 70: zaledwie +1 pkt nad normą 69%. X2 = 30+25 = 55: poniżej dolnej granicy.
 		const rynki = evaluateMarkets(mecz({ home: 45, draw: 25, away: 30 }));
 
-		assert.equal(znajdz(rynki, 'Podwójna szansa', '1X'), null, '+1 pkt nad normą to nie typ');
-		assert.equal(znajdz(rynki, 'Podwójna szansa', 'X2'), null);
+		assert.equal(znajdz(rynki, '1X'), null, '+1 pkt nad normą to nie typ');
+		assert.equal(znajdz(rynki, 'X2'), null);
 
 		// X2 = 45+25 = 70 przy normie 56%: +14 pkt, wchodzi.
 		const odwrotnie = evaluateMarkets(mecz({ home: 30, draw: 25, away: 45 }));
-		assert.equal(znajdz(odwrotnie, 'Podwójna szansa', 'X2')?.lift, 14);
+		assert.equal(znajdz(odwrotnie, 'X2')?.lift, 14);
 	});
 });
 
@@ -185,7 +194,7 @@ describe('prawdopodobieństwa z własnego modelu', () => {
 			modelPrediction: zModelu({ home: 0.74, draw: 0.16, away: 0.1 }),
 		});
 
-		assert.equal(znajdz(rynki, 'Wynik meczu', 'home').pModel, 74);
+		assert.equal(znajdz(rynki, 'home').pModel, 74);
 	});
 
 	test('zgodność z prognozą dostawcy podnosi wsparcie do dwóch', () => {
@@ -196,7 +205,7 @@ describe('prawdopodobieństwa z własnego modelu', () => {
 			modelPrediction: zModelu({ home: 0.7, draw: 0.2, away: 0.1 }),
 		});
 
-		assert.equal(znajdz(rynki, 'Wynik meczu', 'home').support, 2);
+		assert.equal(znajdz(rynki, 'home').support, 2);
 	});
 
 	test('rozbieżność z dostawcą zostawia wsparcie na jednym rachunku', () => {
@@ -208,7 +217,7 @@ describe('prawdopodobieństwa z własnego modelu', () => {
 			modelPrediction: zModelu({ home: 0.7, draw: 0.2, away: 0.1 }),
 		});
 
-		assert.equal(znajdz(rynki, 'Wynik meczu', 'home').support, 1);
+		assert.equal(znajdz(rynki, 'home').support, 1);
 	});
 
 	test('model wystawia typ na to, czy drużyna strzeli — jedyny potwierdzony rynek bramkowy', () => {
@@ -218,16 +227,16 @@ describe('prawdopodobieństwa z własnego modelu', () => {
 			modelPrediction: zModelu({ homeScores: 0.88, awayScores: 0.88 }),
 		});
 
-		assert.equal(znajdz(rynki, 'Gole drużyny', 'Gość powyżej 0.5')?.pModel, 88);
-		assert.equal(znajdz(rynki, 'Gole drużyny', 'Gospodarz powyżej 0.5'), null);
+		assert.equal(znajdz(rynki, 'awayScores')?.pModel, 88);
+		assert.equal(znajdz(rynki, 'homeScores'), null);
 	});
 
 	test('bez modelu działa ścieżka zapasowa na procentach dostawcy', () => {
 		const rynki = evaluateMarkets(mecz({ home: 68, draw: 20, away: 12 }));
 
-		assert.equal(znajdz(rynki, 'Wynik meczu', 'home').pModel, 68);
+		assert.equal(znajdz(rynki, 'home').pModel, 68);
 		assert.equal(
-			znajdz(rynki, 'Gole drużyny', 'Gospodarz powyżej 0.5'),
+			znajdz(rynki, 'homeScores'),
 			null,
 			'bez modelu nie mamy skąd wziąć tej liczby'
 		);
@@ -365,9 +374,9 @@ describe('sufit rynkowy w selekcji raportu', () => {
 		const implied = { home: 60, draw: 22, away: 18, '1X': 82, X2: 40, homeScores: 92, awayScores: 93 };
 		const po = applyMarketCeiling(rynki, implied);
 
-		assert.equal(znajdz(po, 'Gole drużyny', 'Gość powyżej 0.5'), null, 'rynek 93% — odcięte');
-		assert.equal(znajdz(po, 'Wynik meczu', 'home')?.marketProbability, 60);
-		assert.equal(znajdz(po, 'Podwójna szansa', '1X')?.marketProbability, 82);
+		assert.equal(znajdz(po, 'awayScores'), null, 'rynek 93% — odcięte');
+		assert.equal(znajdz(po, 'home')?.marketProbability, 60);
+		assert.equal(znajdz(po, '1X')?.marketProbability, 82);
 	});
 
 	test('wpis selekcji nie niesie liczby rynkowej do promptu ani do typu', () => {
@@ -478,5 +487,64 @@ describe('budżet prognoz rozłożony po ligach', () => {
 
 	test('pusta pula nie wywraca podziału', () => {
 		assert.deepEqual(spreadAcrossLeagues([], { budget: 40, tierOf }), []);
+	});
+});
+
+/**
+ * Opis selekcji musi wracać przez parser do tej samej selekcji.
+ *
+ * TO JEST TEST NA KONKRETNĄ AWARIĘ. Raport wystawiał „Gole drużyny: Gość powyżej 0.5" —
+ * poprawną selekcję, której `normalizePick` nie miał jak rozpoznać, bo gałąź goli drużyny
+ * szuka NAZWY ZESPOŁU, a nie słowa „gość". Czytelnik widział pełnoprawny typ, a statystyka
+ * go nie liczyła. Drugi objaw tej samej przyczyny był tylko brzydki: „Wynik meczu: away".
+ *
+ * Model językowy przepisuje `selection` znak w znak, więc to, co tu napiszemy, trafia
+ * jednocześnie przed oczy czytelnika i z powrotem do parsera. Ten test pilnuje obu ról.
+ */
+describe('opisy selekcji są jednocześnie czytelne i rozpoznawalne', () => {
+	const NAZWY = { homeName: 'Heerenveen', awayName: 'AZ Alkmaar' };
+
+	for (const [klucz, ksztalt] of Object.entries(SELECTION_SHAPES)) {
+		test(`${klucz} wraca przez normalizePick do swojej selekcji`, () => {
+			const selection = ksztalt.label(NAZWY);
+			const wrocil = normalizePick({ market: ksztalt.market, selection, ...NAZWY });
+
+			assert.notEqual(wrocil, null, `parser nie rozpoznał: „${ksztalt.market}: ${selection}"`);
+			assert.equal(sameSelection(wrocil, ksztalt.normalized), true, selection);
+		});
+	}
+
+	test('działa też bez nazw drużyn — wtedy opis mówi o stronach', () => {
+		for (const [klucz, ksztalt] of Object.entries(SELECTION_SHAPES)) {
+			const selection = ksztalt.label({});
+			const wrocil = normalizePick({ market: ksztalt.market, selection, ...NAZWY });
+			assert.equal(sameSelection(wrocil, ksztalt.normalized), true, `${klucz}: ${selection}`);
+		}
+	});
+
+	test('drużyny dzielące człon nazwy nie gubią typu', () => {
+		/*
+		 * „Manchester City powyżej 0.5 gola" w meczu z Manchesterem United trafiało dawniej
+		 * w obie strony przez samo słowo „manchester", więc parser oddawał null i typ znikał
+		 * ze statystyki. Teraz wygrywa dopasowanie mocniejsze — pełna nazwa nad jednym słowem.
+		 */
+		const derby = { homeName: 'Manchester City', awayName: 'Manchester United' };
+
+		assert.deepEqual(
+			normalizePick({ market: 'Gole drużyny', selection: 'Manchester City powyżej 0.5 gola', ...derby }),
+			{ type: 'teamGoals', side: 'home', dir: 'over', line: 0.5 }
+		);
+		assert.deepEqual(
+			normalizePick({ market: 'Gole drużyny', selection: 'Manchester United powyżej 0.5 gola', ...derby }),
+			{ type: 'teamGoals', side: 'away', dir: 'over', line: 0.5 }
+		);
+	});
+
+	test('prawdziwa dwuznaczność nadal daje null, zamiast zgadywać', () => {
+		const derby = { homeName: 'Manchester City', awayName: 'Manchester United' };
+		assert.equal(
+			normalizePick({ market: 'Gole drużyny', selection: 'Manchester powyżej 0.5 gola', ...derby }),
+			null
+		);
 	});
 });

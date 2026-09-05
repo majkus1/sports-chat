@@ -228,7 +228,7 @@ describe('wiązanie odpowiedzi z modelem', () => {
 		assert.deepEqual(zwiazane.picks, []);
 		assert.equal('model' in zwiazane, false, 'nie ma czym się podpisać');
 		// 1X = 50 + 30 = 80 przy normie 69,3 to +11 pkt, najwięcej z czterech wariantów.
-		assert.equal(zwiazane.leaning.selection, '1X (gospodarz lub remis)');
+		assert.equal(zwiazane.leaning.selection, '1X (Machida Zelvia lub remis)');
 		assert.equal(zwiazane.leaning.lift, 11);
 	});
 });
@@ -340,7 +340,7 @@ describe('skłonność, gdy żaden typ nie przeszedł progu', () => {
 		);
 
 		// X2 = 34 + 35 = 69 przy normie 56,2 to +13 pkt — najwięcej z czterech wariantów.
-		assert.equal(zwiazane.leaning.selection, 'X2 (gość lub remis)');
+		assert.equal(zwiazane.leaning.selection, 'X2 (Kawasaki Frontale lub remis)');
 		assert.equal(zwiazane.leaning.probability, 69);
 		assert.equal(zwiazane.leaning.lift, 13);
 	});
