@@ -10,13 +10,18 @@ import { CONSENT_EVENT, readConsent, writeConsent } from '@/lib/consent';
 /**
  * Baner zgody na ciasteczka.
  *
- * Zgody wymaga wyłącznie to, co nie jest niezbędne do działania serwisu. Tu jest to
- * jedna rzecz: skrypt logowania Google, ładowany z serwerów Google. Reszta — token
- * sesji, motyw, zapamiętane zgody — jest niezbędna albo ustawiana na wyraźne życzenie,
- * więc nie pytamy o nią, tylko o niej informujemy.
+ * Zgody wymaga wyłącznie to, co nie jest niezbędne do działania serwisu. Tu są to dwa
+ * skrypty ładowane z serwerów Google: logowanie kontem Google i Google Analytics. Reszta —
+ * token sesji, motyw, zapamiętane zgody — jest niezbędna albo ustawiana na wyraźne
+ * życzenie, więc nie pytamy o nią, tylko o niej informujemy.
  *
- * Odmowa naprawdę działa: bez zgody `GoogleAuthButton` nie wstrzykuje skryptu, a konto
- * zakłada się mailem. Baner, którego wybór niczego nie zmienia, byłby fikcją.
+ * Odmowa naprawdę działa: bez zgody `GoogleAuthButton` nie wstrzykuje skryptu logowania,
+ * a `Analytics` nie wstrzykuje skryptu pomiaru. Baner, którego wybór niczego nie zmienia,
+ * byłby fikcją.
+ *
+ * Dwa przyciski zamiast listy przełączników — celowo. Obie kategorie to skrypty Google
+ * o tym samym charakterze, a odmowa jest równie łatwa jak zgoda, co jest warunkiem RODO.
+ * Gdy dojdzie kategoria innego rodzaju, ten wybór trzeba będzie rozbić.
  */
 export default function CookieBanner() {
 	const t = useTranslations('common');
@@ -33,8 +38,8 @@ export default function CookieBanner() {
 
 	if (!visible) return null;
 
-	const decide = (google) => {
-		writeConsent({ google });
+	const decide = (all) => {
+		writeConsent({ google: all, analytics: all });
 		setVisible(false);
 	};
 

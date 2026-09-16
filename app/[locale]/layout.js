@@ -18,6 +18,7 @@ import ThemeScript from '@/components/theme/ThemeScript';
 import { LOCALES, SITE_URL, siteFor } from '@/lib/seo/config';
 import AgeGate from '@/components/consent/AgeGate';
 import CookieBanner from '@/components/consent/CookieBanner';
+import Analytics from '@/components/consent/Analytics';
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -57,6 +58,16 @@ export async function generateMetadata({ params }) {
     },
     twitter: { card: 'summary_large_image' },
     robots: { index: true, follow: true },
+    /*
+     * Potwierdzenie własności dla Google Search Console — meta tag w <head>.
+     *
+     * Wartość z env, nie z kodu: repozytorium jest publiczne, a choć sam token nie jest
+     * sekretem (i tak stoi w HTML-u każdej strony), trzymanie go poza kodem pozwala
+     * podmienić usługę bez wdrożenia. Bez zmiennej tag po prostu się nie renderuje.
+     */
+    ...(process.env.GOOGLE_SITE_VERIFICATION
+      ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } }
+      : {}),
     // Motyw jasny i ciemny mają różne kolory paska adresu na urządzeniach mobilnych.
     other: { 'theme-color': '#173b45' },
   };
@@ -97,6 +108,8 @@ export default async function LocaleLayout({ children, params }) {
                           więc ich miejsce jest w układzie, a nie w pojedynczych widokach. */}
                       <AgeGate />
                       <CookieBanner />
+                      {/* Analityka montuje skrypt dopiero po zgodzie z banera wyżej. */}
+                      <Analytics />
                     </AnalysisProvider>
                   </UnreadProvider>
                 </SocketProvider>
