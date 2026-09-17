@@ -14,7 +14,7 @@ const UsageLogSchema = new mongoose.Schema(
 		/** Dla niezalogowanych — jedyny sposób powiązania zużycia z kimkolwiek. */
 		ip: { type: String, default: null },
 
-		kind: { type: String, required: true, enum: ['analysis', 'aiChat', 'report'], index: true },
+		kind: { type: String, required: true, enum: ['analysis', 'aiChat', 'report', 'aiNews'], index: true },
 		plan: { type: String, default: null },
 
 		provider: { type: String, default: null },

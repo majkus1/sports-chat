@@ -122,7 +122,7 @@ export async function POST(request) {
 			}),
 			messages: [...history, { role: 'user', content: question }],
 			tools: TOOLS,
-			execute: makeExecutor({ userId: session.userId, language }),
+			execute: makeExecutor({ userId: session.userId, user, language }),
 			maxTokens: MAX_TOKENS_CHAT,
 			/*
 			 * Pełny model, nie szybki. Czat meczu idzie na szybkim, bo tam pytanie i kontekst

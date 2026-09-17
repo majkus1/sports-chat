@@ -29,19 +29,25 @@ import { cn } from '@/lib/utils';
  * w ogóle wolno spytać, a to jest cała wartość tej strony.
  */
 
-const STARTERS = ['assistant_starter_1', 'assistant_starter_2', 'assistant_starter_3', 'assistant_starter_4'];
+const STARTERS = [
+	'assistant_starter_1',
+	'assistant_starter_2',
+	'assistant_starter_5',
+	'assistant_starter_3',
+	'assistant_starter_4',
+];
 const THINKING_STEPS = ['assistant_step_1', 'assistant_step_2', 'assistant_step_3'];
 
 /**
  * Minimalny render odpowiedzi: pogrubienie, odnośniki, listy, akapity.
  *
  * Nie pełny markdown — tylko to, o co prosi prompt. Odnośniki wewnętrzne idą przez `Link`,
- * żeby nawigacja była bez przeładowania; zewnętrznych asystent nie tworzy, a gdyby próbował,
- * renderujemy je jako tekst.
+ * żeby nawigacja była bez przeładowania. Zewnętrzne (źródła wiadomości) otwierają się
+ * w nowej karcie z `rel="noopener"` — asystent nie tworzy innych odnośników zewnętrznych.
  */
 function renderInline(text, keyPrefix) {
 	const out = [];
-	const re = /\*\*(.+?)\*\*|\[([^\]]+)\]\((\/[^)\s]+)\)/g;
+	const re = /\*\*(.+?)\*\*|\[([^\]]+)\]\(((?:\/|https?:\/\/)[^)\s]+)\)/g;
 	let last = 0;
 	let m;
 	let i = 0;
@@ -49,6 +55,18 @@ function renderInline(text, keyPrefix) {
 		if (m.index > last) out.push(text.slice(last, m.index));
 		if (m[1] !== undefined) {
 			out.push(<strong key={`${keyPrefix}-b${i}`}>{m[1]}</strong>);
+		} else if (/^https?:\/\//.test(m[3])) {
+			out.push(
+				<a
+					key={`${keyPrefix}-l${i}`}
+					href={m[3]}
+					target="_blank"
+					rel="noopener noreferrer"
+					className="font-semibold text-accent underline"
+				>
+					{m[2]}
+				</a>
+			);
 		} else {
 			// Odnośnik z prefiksem języka („/pl/mecz/1") — `Link` sam dodaje prefiks, więc go zdejmujemy.
 			const href = m[3].replace(/^\/(pl|en)(?=\/|$)/, '') || '/';

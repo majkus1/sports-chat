@@ -194,6 +194,11 @@ export default function PricingClient() {
 										value={plan.limits.report}
 										unlimitedLabel={t('pricing_unlimited')}
 									/>
+									<LimitRow
+										label={t('pricing_ai_news')}
+										value={plan.limits.aiNews}
+										unlimitedLabel={t('pricing_unlimited')}
+									/>
 									<li className="flex items-center gap-2 text-sm">
 										{plan.features.includes('live_analysis') ? (
 											<Check size={14} className="shrink-0 text-accent" aria-hidden="true" />

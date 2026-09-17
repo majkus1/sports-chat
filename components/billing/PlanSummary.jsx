@@ -22,6 +22,7 @@ const KINDS = [
 	['analysis', 'quota_analysis'],
 	['aiChat', 'quota_ai_chat'],
 	['report', 'quota_report'],
+	['aiNews', 'quota_ai_news'],
 	['analysisView', 'quota_analysis_view'],
 ];
 
