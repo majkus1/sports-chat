@@ -1,4 +1,5 @@
 import { fixturesByDate } from '@/lib/football/endpoints';
+import { localDate } from '@/lib/time';
 
 /**
  * Mecze w danym dniu — stronicowane po stronie serwera.
@@ -19,12 +20,8 @@ export async function GET(request) {
 	const { searchParams } = new URL(request.url);
 	const dateParam = searchParams.get('date');
 
-	const today = new Date();
-	const fallback = `${today.getFullYear()}-${(today.getMonth() + 1)
-		.toString()
-		.padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
-
-	const date = /^\d{4}-\d{2}-\d{2}$/.test(dateParam || '') ? dateParam : fallback;
+	// Bez parametru — dzisiejsza data w czasie polskim, nie w czasie serwera (UTC).
+	const date = /^\d{4}-\d{2}-\d{2}$/.test(dateParam || '') ? dateParam : localDate();
 
 	const page = Math.max(1, Number(searchParams.get('page')) || 1);
 	const pageSize = Math.min(

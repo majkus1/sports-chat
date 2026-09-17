@@ -9,6 +9,7 @@ import { MODEL_CHAT, MAX_TOKENS_CHAT } from '@/lib/ai/config';
 import { assistantSystemPrompt, ASSISTANT_PROMPT_VERSION } from '@/lib/ai/prompts/assistant';
 import { TOOLS, makeExecutor } from '@/lib/assistant/tools';
 import { MAX_CHAT_MSG_LEN } from '@/lib/chatConstraints';
+import { localDate } from '@/lib/time';
 
 export const maxDuration = 120;
 
@@ -118,7 +119,7 @@ export async function POST(request) {
 			system: assistantSystemPrompt({
 				language,
 				locale,
-				today: new Date().toISOString().slice(0, 10),
+				today: localDate(),
 			}),
 			messages: [...history, { role: 'user', content: question }],
 			tools: TOOLS,
