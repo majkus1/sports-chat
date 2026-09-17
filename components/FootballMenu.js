@@ -51,6 +51,7 @@ export default function FootballMenu({ onResultsClick }) {
 		{ href: '/pilka-nozna/live', label: t('onlive'), key: 'live' },
 		{ onClick: onResultsClick, label: t('results'), key: 'results', isButton: true },
 		{ href: '/pilka-nozna/ai-agent', label: t('ai_agent_title'), key: 'ai-agent' },
+		{ href: '/pilka-nozna/asystent', label: t('assistant_menu'), key: 'asystent' },
 		{ href: '/pilka-nozna/kolejka', label: t('round_menu'), key: 'kolejka' },
 		{ href: '/pilka-nozna/skutecznosc', label: t('accuracy_menu'), key: 'skutecznosc' },
 	];
