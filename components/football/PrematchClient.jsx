@@ -12,6 +12,7 @@ import LeagueHeading from '@/components/football/LeagueHeading';
 import { useGameDetailsModal } from '@/components/football/useGameDetailsModal';
 import FullScreenModal from '@/components/FullScreenModal';
 import Footer from '@/components/layout/Footer';
+import { Link } from '@/i18n/routing';
 import BeatLoader from 'react-spinners/BeatLoader';
 
 export default function PrematchClient() {
@@ -239,19 +240,44 @@ export default function PrematchClient() {
           </div>
         )}
 
+        {/*
+          * Pusta lista ma dwa różne powody i dwa różne komunikaty.
+          *
+          * Wieczorem „dziś" jest puste NIE dlatego, że nic nie grało, tylko dlatego, że
+          * wszystko już się zaczęło — lista przedmeczowa pokazuje wyłącznie mecze przed
+          * pierwszym gwizdkiem, a doba liczy się po polsku (wcześniej o tej porze stały tu
+          * mecze z jutra o 0:30, bo dzień kończył się w UTC). Komunikat „brak meczów dla
+          * wybranej daty" był wtedy nieprawdą i zostawiał człowieka bez drogi dalej.
+          * Stąd osobna wersja z przyciskiem na jutro i odnośnikiem do meczów na żywo.
+          */}
         {!isLoadingFixtures && Object.keys(groupedFixtures).length === 0 && (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '40px', 
-            color: 'var(--muted)',
-            fontFamily: 'Roboto Condensed, sans-serif',
-            fontSize: '16px',
-            background: 'var(--surface)',
-            borderRadius: '8px',
-            boxShadow: 'var(--shadow-soft)',
-            marginTop: '20px'
-          }}>
-            {t('no_matches')}
+          <div className="mt-5 rounded-[var(--radius-ui)] bg-surface px-6 py-10 text-center shadow-[var(--shadow-soft)]">
+            {selectedDate === getDateOptions()[0].formatted && !debouncedSearch ? (
+              <>
+                <p className="text-base font-semibold text-text">{t('no_matches_today_started')}</p>
+                <p className="mt-1.5 text-sm text-muted">{t('no_matches_today_hint')}</p>
+                <div className="mt-5 flex flex-wrap justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedDate(getDateOptions()[1].formatted);
+                      setCurrentPage(1);
+                    }}
+                    className="rounded-full border-0 bg-accent px-4 py-2 text-sm font-semibold text-accent-fg transition-colors hover:bg-accent-hover"
+                  >
+                    {t('no_matches_see_tomorrow', { date: getDateOptions()[1].display })}
+                  </button>
+                  <Link
+                    href="/pilka-nozna/live"
+                    className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-text no-underline transition-colors hover:border-accent"
+                  >
+                    {t('onlive')}
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <p className="text-base text-muted">{t('no_matches')}</p>
+            )}
           </div>
         )}
 
