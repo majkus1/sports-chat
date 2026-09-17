@@ -6,7 +6,7 @@ require('dotenv').config({ path: '.env.local' });
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const { startPickSettlementSchedule } = require('./lib/picks/scheduler.cjs');
+const { startPickSettlementSchedule, startMorningEmailSchedule } = require('./lib/picks/scheduler.cjs');
 const cors = require('cors');
 const helmet = require('helmet');
 const jwt = require('jsonwebtoken');
@@ -531,4 +531,6 @@ server.listen(PORT, () => {
    * a konfiguracja została w repozytorium.
    */
   startPickSettlementSchedule();
+  // Poranny mail o 8:00 czasu polskiego — ten sam mechanizm co rozliczanie, patrz scheduler.cjs.
+  startMorningEmailSchedule();
 });

@@ -213,6 +213,16 @@ export default function PricingClient() {
 											{t('pricing_live_analysis')}
 										</span>
 									</li>
+									<li className="flex items-center gap-2 text-sm">
+										{plan.features.includes('morning_email') ? (
+											<Check size={14} className="shrink-0 text-accent" aria-hidden="true" />
+										) : (
+											<Minus size={14} className="shrink-0 text-muted" aria-hidden="true" />
+										)}
+										<span className={plan.features.includes('morning_email') ? 'text-text' : 'text-muted'}>
+											{t('pricing_morning_email')}
+										</span>
+									</li>
 								</ul>
 
 								<div className="mt-auto pt-2">

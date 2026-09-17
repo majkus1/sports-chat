@@ -63,6 +63,22 @@ const UserSchema = new mongoose.Schema(
 		termsVersion: { type: String, default: null },
 		/** Pojedyncze funkcje przyznane poza planem. */
 		grantedFeatures: { type: [String], default: [] },
+
+		/**
+		 * Poranny mail — typy modelu na dziś i rozliczenie wczoraj, o 8:00 czasu polskiego.
+		 *
+		 * ZGODA WPROST, DOMYŚLNIE WYŁĄCZONE. To treść marketingowa w rozumieniu RODO także dla
+		 * płacących, więc: włącza sam użytkownik, `enabledAt` dokumentuje kiedy, a `unsubscribeToken`
+		 * pozwala wyłączyć jednym kliknięciem z maila, bez logowania. `lastSentOn` (YYYY-MM-DD)
+		 * chroni przed drugą wysyłką tego samego dnia, gdyby zadanie uruchomiło się ponownie.
+		 */
+		morningEmail: {
+			enabled: { type: Boolean, default: false },
+			enabledAt: { type: Date, default: null },
+			locale: { type: String, enum: ['pl', 'en'], default: 'pl' },
+			unsubscribeToken: { type: String, default: null },
+			lastSentOn: { type: String, default: null },
+		},
 	},
 	{ timestamps: true }
 )

@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import { Bell, BellOff, Gauge, Search, Star, Target, X } from 'lucide-react'
 import AccuracyPanel from '@/components/stats/AccuracyPanel'
 import PlanSummary from '@/components/billing/PlanSummary'
+import MorningEmailToggle from '@/components/billing/MorningEmailToggle'
 import { Link } from '@/i18n/routing'
 import { fetchWithAuthRefresh } from '@/lib/authFetch'
 import { initialsFromName } from '@/components/ui/Avatar'
@@ -206,6 +207,10 @@ export default function UserPanel() {
               {t('plan_and_limits')}
             </h3>
             <PlanSummary />
+            {/* Poranny mail — zgoda powstaje tylko tutaj, domyślnie wyłączona. */}
+            <div className="mt-4 border-t border-border pt-4">
+              <MorningEmailToggle />
+            </div>
           </section>
 
           {/* Skuteczność moich typów — filtrowana po rodzaju, w wersji kompaktowej. */}
