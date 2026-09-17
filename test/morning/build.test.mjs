@@ -127,6 +127,23 @@ describe('poranny mail', () => {
 		assert.ok(wynik.text.includes('To szacunki, nie pewniki'));
 	});
 
+	test('mail z samym rozliczeniem nie pyta o wiadomości sprzed meczów, które już były', () => {
+		const tylkoWczoraj = buildMorningEmail({
+			...BAZA,
+			yesterday: { model: [{ home: 'A', away: 'B', selection: '1X', status: 'won' }], mine: [] },
+			today: [],
+			favorites: [],
+			round: null,
+		});
+		assert.equal(tylkoWczoraj.text.includes('Zapytaj asystenta'), false);
+		assert.equal(tylkoWczoraj.text.includes('po kliknięciu meczu'), false);
+		assert.ok(tylkoWczoraj.text.includes('To szacunki, nie pewniki.'));
+
+		const zDzis = buildMorningEmail({ ...BAZA, yesterday: { model: [], mine: [] }, today: [typ(1)], favorites: [], round: null });
+		assert.ok(zDzis.text.includes('Zapytaj asystenta'));
+		assert.ok(zDzis.text.includes('po kliknięciu meczu'));
+	});
+
 	test('nazwy drużyn są w HTML-u bezpieczne', () => {
 		const wynik = buildMorningEmail({
 			...BAZA,
