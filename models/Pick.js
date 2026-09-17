@@ -127,6 +127,9 @@ const PickSchema = new mongoose.Schema(
 
 		/** Sekcje pakietu danych faktycznie obecne przy generowaniu. */
 		sectionsPresent: { type: [String], default: [] },
+		/** Rozegrane mecze obu drużyn w sezonie w chwili typu — próg `MIN_PLAYED` musi być sprawdzalny po fakcie. */
+		playedHome: { type: Number, default: null },
+		playedAway: { type: Number, default: null },
 
 		/*
 		 * Czy typ wchodzi do publicznej statystyki skuteczności.
