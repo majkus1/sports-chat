@@ -23,9 +23,14 @@ const PickSchema = new mongoose.Schema(
 		author: { type: String, enum: ['ai', 'user'], default: 'ai', index: true },
 
 		/** Kiedy typ powstaje względem meczu — decyduje o filtrach w statystykach. */
-		kind: { type: String, enum: ['prematch', 'live', 'report'], required: true, index: true },
+		/**
+		 * `round` — typ modelu wystawiony do Kolejki tygodniowej, gdzie model gra przeciwko
+		 * użytkownikom na tych samych dwunastu meczach. Osobny rodzaj, bo powstaje z innego
+		 * powodu (gra, nie analiza) i jest rozliczany osobno w rankingu kolejki.
+		 */
+		kind: { type: String, enum: ['prematch', 'live', 'report', 'round'], required: true, index: true },
 
-		source: { type: String, enum: ['analysis', 'report', 'user'], required: true },
+		source: { type: String, enum: ['analysis', 'report', 'user', 'round'], required: true },
 		/** Dokument źródłowy; może już nie istnieć (analiza live kasuje się z TTL). */
 		sourceId: { type: mongoose.Schema.Types.ObjectId, default: null },
 

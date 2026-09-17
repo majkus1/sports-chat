@@ -1,0 +1,79 @@
+import connectToDb from '@/lib/db';
+import User from '@/models/User';
+import { getAuthenticatedUser } from '@/lib/auth';
+import { hasFeature } from '@/lib/billing/entitlements';
+import { fixturesByDate } from '@/lib/football/endpoints';
+import { normalizeFixture } from '@/lib/football/normalize';
+import { LEAGUE_TIERS } from '@/lib/football/leagues';
+import { modelHintsFor } from '@/lib/model/hints';
+
+/**
+ * Podpowiedzi modelu dla listy meczów z jednego dnia.
+ *
+ * Osobna trasa, nie pole w `/api/football/fixtures` — celowo. Lista ma się pokazać
+ * natychmiast z terminarza, a plakietki dojść chwilę później; przy zimnym cache'u modeli
+ * pierwsze liczenie dnia dopasowuje kilkanaście lig i trwa sekundy. Wpięcie tego w trasę
+ * terminarza opóźniałoby całą listę o rzecz, która jest dodatkiem.
+ *
+ * ODPOWIEDŹ ZALEŻY OD PLANU, ALE LICZY SIĘ RAZ. Rachunek jest wspólny i trzymany w pamięci
+ * procesu dziesięć minut; plan decyduje wyłącznie o tym, ile z wyniku wychodzi na zewnątrz.
+ * Darmowy dostaje sam fakt („model ma tu typ"), płatny — selekcję i przewagę. Dzięki temu
+ * darmowy użytkownik widzi, ILE model ma do powiedzenia, a nie CO — i to jest właściwy
+ * powód, żeby zajrzeć do cennika.
+ */
+
+/** Dziesięć minut: terminarz dnia zmienia się rzadko, a model ligi i tak trzyma się sześć godzin. */
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const cache = new Map();
+
+async function hintsForDate(date) {
+	const cached = cache.get(date);
+	if (cached && cached.expiresAt > Date.now()) return cached.hints;
+
+	const now = Date.now();
+	const fixtures = (await fixturesByDate(date))
+		.map(normalizeFixture)
+		.filter(Boolean)
+		// Tylko obsługiwane ligi i mecze jeszcze nierozpoczęte — dla trwających liczy się
+		// co innego (model w trakcie meczu), a to jest lista przedmeczowa.
+		.filter((f) => LEAGUE_TIERS.has(f.league?.id) && Date.parse(f.date) > now);
+
+	const hints = await modelHintsFor(fixtures);
+	cache.set(date, { hints, expiresAt: Date.now() + CACHE_TTL_MS });
+	return hints;
+}
+
+export async function GET(request) {
+	const { searchParams } = new URL(request.url);
+	const date = searchParams.get('date');
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) {
+		return Response.json({ error: 'invalid_date' }, { status: 400 });
+	}
+
+	// Plan ustalamy tą samą drogą co reszta tras; niezalogowany = darmowy.
+	const session = await getAuthenticatedUser();
+	let user = null;
+	if (session?.userId) {
+		await connectToDb();
+		user = await User.findById(session.userId)
+			.select('plan planStatus planValidUntil role grantedFeatures')
+			.lean();
+	}
+	const full = hasFeature(user, 'model_hints');
+
+	try {
+		const hints = await hintsForDate(date);
+		const out = {};
+		for (const [fixtureId, hint] of hints) {
+			out[fixtureId] = full
+				? hint
+				: // Sam fakt, bez liczb — patrz komentarz na górze.
+					{ locked: true };
+		}
+		return Response.json({ hints: out, full });
+	} catch (error) {
+		console.warn('[model-hints] nie udało się policzyć podpowiedzi:', error.message);
+		// Brak plakietek nie jest błędem listy — lista ma działać bez nich.
+		return Response.json({ hints: {}, full });
+	}
+}

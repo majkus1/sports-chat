@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { BarChart3, ChevronRight, Swords } from 'lucide-react';
+import { BarChart3, ChevronRight, Lock, Sparkles, Swords } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 
@@ -39,6 +39,55 @@ function WidgetButton({ title, onClick, children }) {
 	);
 }
 
+/**
+ * Plakietka modelu: „X2 +18" albo kłódka, gdy plan nie obejmuje liczb.
+ *
+ * Skrót idzie konwencją kuponową (1, X2, G1…), a pełne zdanie — selekcja, procent, o ile
+ * ponad normę — w podpowiedzi po najechaniu, bo w wierszu nie ma na nie miejsca. Przewaga
+ * stoi obok skrótu, nie procent: to ona mówi, czy ten mecz odstaje od przeciętnego.
+ *
+ * Wariant z kłódką jest odnośnikiem do cennika i ma włączone zdarzenia wskaźnika, tak jak
+ * przyciski widgetów — inaczej kliknięcie przechwyciłby odnośnik pokrywający cały kafelek.
+ */
+function ModelHint({ hint, t }) {
+	if (!hint) return null;
+
+	const baza = 'inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-[11px] font-bold uppercase tracking-wide';
+
+	if (hint.locked) {
+		return (
+			<Link
+				href="/cennik"
+				title={t('model_hint_locked')}
+				aria-label={t('model_hint_locked')}
+				onClick={(event) => event.stopPropagation()}
+				className={cn(
+					baza,
+					'pointer-events-auto border border-dashed border-border-strong text-muted no-underline',
+					'transition-colors hover:border-accent hover:text-accent'
+				)}
+			>
+				<Sparkles size={12} aria-hidden="true" />
+				<Lock size={10} aria-hidden="true" />
+			</Link>
+		);
+	}
+
+	const opis = t('model_hint_title', {
+		selection: hint.selection,
+		probability: hint.probability,
+		lift: hint.lift,
+	});
+
+	return (
+		<span title={opis} aria-label={opis} className={cn(baza, 'bg-accent text-accent-fg tabular-nums')}>
+			<Sparkles size={12} aria-hidden="true" />
+			{hint.label}
+			<span className="font-semibold opacity-90">+{hint.lift}</span>
+		</span>
+	);
+}
+
 function formatTime(value, locale) {
 	return new Date(value).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
 }
@@ -51,7 +100,14 @@ function formatDate(value, locale) {
 	});
 }
 
-export default function FixtureRow({ fixture, locale, isLive = false, onH2H, onTeamStats }) {
+export default function FixtureRow({
+	fixture,
+	locale,
+	isLive = false,
+	onH2H,
+	onTeamStats,
+	modelHint = null,
+}) {
 	const t = useTranslations('common');
 
 	const home = fixture.teams?.home;
@@ -114,6 +170,9 @@ export default function FixtureRow({ fixture, locale, isLive = false, onH2H, onT
 							: formatDate(fixture.fixture.date, locale)}
 					</div>
 				</div>
+
+				{/* Plakietka modelu przed widgetami: to ona niesie informację, widgety są narzędziami. */}
+				<ModelHint hint={modelHint} t={t} />
 
 				{hasTeamIds && (
 					<div className="pointer-events-auto flex shrink-0 items-center gap-1.5">

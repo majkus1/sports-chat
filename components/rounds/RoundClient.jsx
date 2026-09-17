@@ -2,7 +2,7 @@
 
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { CalendarClock, Check, Lock, Trophy } from 'lucide-react';
+import { CalendarClock, Check, Lock, Sparkles, Trophy } from 'lucide-react';
 import BallIcon from '@/components/icons/BallIcon';
 import NavBar from '@/components/NavBar';
 import FootballMenu from '@/components/FootballMenu';
@@ -59,6 +59,8 @@ export default function RoundClient() {
 	// a „typowanie zamknięte" sugerowałoby, że na wyniki wciąż się czeka.
 	const isSettled = round?.status === 'settled';
 	const pickByFixture = Object.fromEntries((data?.myPicks || []).map((p) => [p.fixtureId, p]));
+	// Typy modelu przychodzą z serwera dopiero po zamknięciu kolejki — wcześniej lista jest pusta.
+	const modelByFixture = Object.fromEntries((data?.modelPicks || []).map((p) => [p.fixtureId, p]));
 
 	const submit = async (fixtureId, market, selection) => {
 		setBusyFixture(fixtureId);
@@ -180,6 +182,28 @@ export default function RoundClient() {
 														)}
 													</div>
 
+													{/*
+													 * Typ modelu przy meczu — widoczny wyłącznie po zamknięciu kolejki, żeby gra
+													 * nie sprowadzała się do przepisania go. Obok typu użytkownika, żeby dało się
+													 * porównać oba na jednym ekranie.
+													 */}
+													{modelByFixture[f.fixtureId] && (
+														<p className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
+															<Sparkles size={12} aria-hidden="true" className="text-accent" />
+															<span className="font-semibold text-text">{t('round_model_name')}:</span>
+															<span>{modelByFixture[f.fixtureId].selection}</span>
+															{Number.isFinite(modelByFixture[f.fixtureId].probability) && (
+																<span className="tabular-nums">· {modelByFixture[f.fixtureId].probability}%</span>
+															)}
+															{modelByFixture[f.fixtureId].status === 'won' && (
+																<Badge variant="win">{t('accuracy_won')}</Badge>
+															)}
+															{modelByFixture[f.fixtureId].status === 'lost' && (
+																<Badge variant="loss">{t('accuracy_lost')}</Badge>
+															)}
+														</p>
+													)}
+
 													{isAuthed && isOpen && !mine && (
 														<div className="flex flex-wrap gap-2">
 															{resultMarket.options.map((o) => (
@@ -217,16 +241,29 @@ export default function RoundClient() {
 									) : (
 										<div className="flex flex-col gap-2">
 											{data.leaderboard.map((e) => (
-												<Card key={e.userId} className={e.isMe ? 'border-accent' : undefined}>
+												<Card
+													key={e.userId}
+													className={cn(e.isMe && 'border-accent', e.isModel && 'border-dashed border-accent/60')}
+													title={e.isModel ? t('round_model_hint') : undefined}
+												>
 													<CardContent className="flex items-center gap-3 px-4 py-2.5">
 														<span className="w-5 shrink-0 text-center font-display font-bold tabular-nums text-muted">
 															{e.rank}
 														</span>
-														<span className="person-avatar shrink-0" aria-hidden="true">
-															{initialsFromName(e.username)}
-														</span>
+														{e.isModel ? (
+															<span
+																className="person-avatar inline-flex shrink-0 items-center justify-center bg-accent-soft text-accent"
+																aria-hidden="true"
+															>
+																<Sparkles size={14} />
+															</span>
+														) : (
+															<span className="person-avatar shrink-0" aria-hidden="true">
+																{initialsFromName(e.username)}
+															</span>
+														)}
 														<span className="min-w-0 flex-1 truncate text-sm font-semibold text-text">
-															{e.username}
+															{e.isModel ? t('round_model_name') : e.username}
 														</span>
 														<span className="shrink-0 text-sm tabular-nums text-text">
 															<strong>{e.won}</strong>

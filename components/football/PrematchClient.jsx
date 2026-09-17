@@ -17,6 +17,11 @@ import BeatLoader from 'react-spinners/BeatLoader';
 export default function PrematchClient() {
   const locale = useLocale();
   const [fixtures, setFixtures] = useState([]);
+  /*
+   * Podpowiedzi modelu przychodzą osobnym żądaniem, po liście — żeby lista nie czekała na
+   * rachunek. Mapa `fixtureId → podpowiedź`; brak wpisu = model nie ma nic do powiedzenia.
+   */
+  const [modelHints, setModelHints] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [isResultsModalOpen, setIsResultsModalOpen] = useState(false);
   const [isH2HModalOpen, setIsH2HModalOpen] = useState(false);
@@ -134,6 +139,23 @@ export default function PrematchClient() {
     };
     loadFixtures();
   }, [selectedDate, currentPage, debouncedSearch]);
+
+  // Plakietki modelu dla całego dnia — jedno żądanie na datę, niezależne od strony i frazy.
+  useEffect(() => {
+    let cancelled = false;
+    setModelHints({});
+    axios
+      .get(`/api/football/model-hints?date=${selectedDate}`)
+      .then((response) => {
+        if (!cancelled) setModelHints(response.data?.hints || {});
+      })
+      .catch(() => {
+        /* lista działa bez plakietek — brak podpowiedzi to nie błąd */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDate]);
 
   const totalPages = paging.totalPages;
 
@@ -255,6 +277,7 @@ export default function PrematchClient() {
                   key={fixture.fixture.id}
                   fixture={fixture}
                   locale={locale}
+                  modelHint={modelHints[String(fixture.fixture.id)] || null}
                   onH2H={(f) => {
                     setSelectedH2HTeamIds(`${f.teams.home.id}-${f.teams.away.id}`);
                     setIsH2HModalOpen(true);

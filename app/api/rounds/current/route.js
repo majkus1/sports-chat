@@ -1,7 +1,7 @@
 import connectToDb from '@/lib/db';
 import Pick from '@/models/Pick';
 import { getAuthenticatedUser } from '@/lib/auth';
-import { ensureCurrentRound, refreshRoundStatus, roundLeaderboard } from '@/lib/rounds/service';
+import { ensureCurrentRound, refreshRoundStatus, roundLeaderboard, roundModelPicks } from '@/lib/rounds/service';
 
 /**
  * Bieżąca kolejka tygodniowa wraz z rankingiem i własnymi typami.
@@ -36,6 +36,13 @@ export async function GET() {
 	const leaderboard = await roundLeaderboard(round.key);
 	const me = session ? String(session.userId) : null;
 
+	/*
+	 * Typy modelu wychodzą na zewnątrz DOPIERO PO ZAMKNIĘCIU kolejki. Wcześniej gra
+	 * sprowadzałaby się do przepisania ich — patrz `recordModelPicks` w serwisie kolejki.
+	 * W rankingu model widać od początku, ale tylko jako licznik.
+	 */
+	const modelPicks = round.status === 'open' ? [] : await roundModelPicks(round.key);
+
 	return Response.json(
 		{
 			round: {
@@ -58,11 +65,20 @@ export async function GET() {
 				status: p.status,
 				comment: p.comment,
 			})),
+			modelPicks: modelPicks.map((p) => ({
+				fixtureId: p.fixtureId,
+				market: p.market,
+				selection: p.selection,
+				probability: p.probability,
+				lift: p.lift,
+				status: p.status,
+			})),
 			leaderboard: leaderboard.map((row, index) => ({
 				...row,
-				userId: String(row.userId),
+				// Wiersz modelu nie ma konta — stały identyfikator, żeby lista miała klucz.
+				userId: row.isModel ? 'model' : String(row.userId),
 				rank: index + 1,
-				isMe: me === String(row.userId),
+				isMe: !row.isModel && me === String(row.userId),
 			})),
 		},
 		{ headers: { 'Cache-Control': 'no-store' } }
