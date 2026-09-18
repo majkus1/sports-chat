@@ -12,6 +12,7 @@ import { UserContext } from '@/context/UserContext';
 import { Link } from '@/i18n/routing';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import AutoGrowTextarea from '@/components/ui/AutoGrowTextarea';
 import { MAX_CHAT_MSG_LEN } from '@/lib/chatConstraints';
 import { cn } from '@/lib/utils';
 
@@ -505,7 +506,8 @@ export default function AssistantClient() {
 											}}
 											className="flex items-end gap-2"
 										>
-											<textarea
+											{/* Rośnie z treścią: dwie linie na start, do ośmiu, potem przewijanie. Enter wysyła, Shift+Enter łamie linię. */}
+											<AutoGrowTextarea
 												value={value}
 												onChange={(e) => setValue(e.target.value)}
 												onKeyDown={(e) => {
@@ -514,11 +516,12 @@ export default function AssistantClient() {
 														ask(value);
 													}
 												}}
-												rows={1}
+												minRows={2}
+												maxRows={8}
 												maxLength={MAX_CHAT_MSG_LEN}
 												placeholder={t('assistant_placeholder')}
 												disabled={isSending}
-												className="min-h-[44px] flex-1 resize-none rounded-[var(--radius-ui)] border border-border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted focus:border-accent focus:outline-2 focus:outline-offset-2 focus:outline-ring"
+												className="flex-1 rounded-[var(--radius-ui)] border border-border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted focus:border-accent focus:outline-2 focus:outline-offset-2 focus:outline-ring"
 											/>
 											<Button
 												type="submit"
