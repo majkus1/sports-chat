@@ -664,6 +664,11 @@
 	.content-league {
 		margin-right: 290px;
 	}
+	// Strony, które same zagospodarowują prawą kolumnę (lista meczów z panelem
+	// „Model widzi"), nie potrzebują marginesu po dawnym panelu bocznym.
+	.content-league--wide {
+		margin-right: 20px;
+	}
 	.content {
 		align-items: start;
 		margin-left: 20px;

@@ -20,6 +20,12 @@ import { hintsForDate } from '@/lib/model/hints';
  * powód, żeby zajrzeć do cennika.
  */
 
+/**
+ * Ile typów idzie do panelu „Model widzi". Tyle samo co w porannym mailu — to ta sama
+ * piątka, żeby użytkownik nie widział rano jednego, a na stronie innego zestawu.
+ */
+const TOP = 5;
+
 export async function GET(request) {
 	const { searchParams } = new URL(request.url);
 	const date = searchParams.get('date');
@@ -39,7 +45,7 @@ export async function GET(request) {
 	const full = hasFeature(user, 'model_hints');
 
 	try {
-		const { byId } = await hintsForDate(date);
+		const { byId, list } = await hintsForDate(date);
 		const out = {};
 		for (const [fixtureId, hint] of byId) {
 			out[fixtureId] = full
@@ -47,10 +53,20 @@ export async function GET(request) {
 				: // Sam fakt, bez liczb — patrz komentarz na górze.
 					{ locked: true };
 		}
-		return Response.json({ hints: out, full });
+		// Lista jest posortowana po przewadze; panel dostaje mecz, godzinę i ligę zawsze,
+		// a selekcję z liczbami — według planu, tak samo jak plakietki.
+		const top = list.slice(0, TOP).map((w) => ({
+			fixtureId: w.fixtureId,
+			home: w.home,
+			away: w.away,
+			league: w.league,
+			kickoff: w.kickoff,
+			hint: full ? w.hint : { locked: true },
+		}));
+		return Response.json({ hints: out, top, count: list.length, full });
 	} catch (error) {
 		console.warn('[model-hints] nie udało się policzyć podpowiedzi:', error.message);
 		// Brak plakietek nie jest błędem listy — lista ma działać bez nich.
-		return Response.json({ hints: {}, full });
+		return Response.json({ hints: {}, top: [], count: 0, full });
 	}
 }

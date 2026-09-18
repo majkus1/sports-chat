@@ -137,7 +137,14 @@ export default function FixtureRow({
 				)}
 			/>
 
-			<div className="pointer-events-none relative z-20 flex items-center gap-3 px-3.5 py-2.5">
+			{/*
+			 * Dwa układy w jednym: na telefonie nazwy drużyn jedna pod drugą, a plakietka
+			 * i przyciski w osobnym rzędzie pod nimi; od `sm` wszystko w jednej linii.
+			 * Wcześniej jedna linia była zawsze — i przy plakietce modelu plus dwóch
+			 * przyciskach z nazw zostawało „U. – Seps…". Nazwy są tu najważniejsze,
+			 * więc to one dostają całą szerokość, a narzędzia schodzą niżej.
+			 */}
+			<div className="pointer-events-none relative z-20 flex flex-wrap items-center gap-x-3 gap-y-2 px-3.5 py-2.5 sm:flex-nowrap">
 				{/* Znacznik czasu albo minuta meczu — stała szerokość trzyma nazwy w jednej osi. */}
 				<div className="w-12 shrink-0 text-center">
 					{isLive ? (
@@ -153,47 +160,58 @@ export default function FixtureRow({
 				</div>
 
 				<div className="min-w-0 flex-1">
-					<div className="flex items-center gap-2 text-sm font-semibold text-text">
+					<div className="flex flex-col gap-0.5 text-sm font-semibold text-text sm:flex-row sm:items-center sm:gap-2">
 						<span className="truncate">{home?.name}</span>
 						{isLive ? (
-							<span className="shrink-0 rounded bg-live px-1.5 py-0.5 text-xs font-bold tabular-nums text-white">
+							<span className="hidden shrink-0 rounded bg-live px-1.5 py-0.5 text-xs font-bold tabular-nums text-white sm:inline">
 								{fixture.goals?.home ?? 0}:{fixture.goals?.away ?? 0}
 							</span>
 						) : (
-							<span className="shrink-0 text-xs text-muted">–</span>
+							<span className="hidden shrink-0 text-xs text-muted sm:inline">–</span>
 						)}
 						<span className="truncate">{away?.name}</span>
 					</div>
-					<div className="mt-0.5 truncate text-xs text-muted">
+					{/* Data jest zbędna na telefonie (dzień wybiera zakładka wyżej); stan meczu na żywo — nie. */}
+					<div className={cn('mt-0.5 truncate text-xs text-muted', !isLive && 'hidden sm:block')}>
 						{isLive
 							? fixture.fixture?.status?.long
 							: formatDate(fixture.fixture.date, locale)}
 					</div>
 				</div>
 
-				{/* Plakietka modelu przed widgetami: to ona niesie informację, widgety są narzędziami. */}
-				<ModelHint hint={modelHint} t={t} />
-
-				{hasTeamIds && (
-					<div className="pointer-events-auto flex shrink-0 items-center gap-1.5">
-						<WidgetButton title={t('widget_h2h_title')} onClick={() => onH2H(fixture)}>
-							<Swords size={12} aria-hidden="true" />
-							H2H
-						</WidgetButton>
-						<WidgetButton
-							title={t('widget_team_stats_title')}
-							onClick={() => onTeamStats(fixture)}
-						>
-							<BarChart3 size={13} aria-hidden="true" />
-						</WidgetButton>
-					</div>
+				{/* Wynik na żywo na telefonie: obok nazw ustawionych w kolumnę, nie między nimi. */}
+				{isLive && (
+					<span className="shrink-0 rounded bg-live px-1.5 py-0.5 text-sm font-bold tabular-nums text-white sm:hidden">
+						{fixture.goals?.home ?? 0}:{fixture.goals?.away ?? 0}
+					</span>
 				)}
 
-				<ChevronRight
-					size={16}
-					aria-hidden="true"
-					className="shrink-0 text-border-strong transition-[color,transform] duration-150 group-hover:translate-x-0.5 group-hover:text-accent"
-				/>
+				{/* Drugi rząd na telefonie, wcięty pod nazwy; od `sm` ciąg dalszy tej samej linii. */}
+				<div className="flex basis-full items-center gap-1.5 pl-[calc(3rem+0.75rem)] sm:shrink-0 sm:basis-auto sm:pl-0">
+					{/* Plakietka modelu przed widgetami: to ona niesie informację, widgety są narzędziami. */}
+					<ModelHint hint={modelHint} t={t} />
+
+					{hasTeamIds && (
+						<div className="pointer-events-auto flex shrink-0 items-center gap-1.5">
+							<WidgetButton title={t('widget_h2h_title')} onClick={() => onH2H(fixture)}>
+								<Swords size={12} aria-hidden="true" />
+								H2H
+							</WidgetButton>
+							<WidgetButton
+								title={t('widget_team_stats_title')}
+								onClick={() => onTeamStats(fixture)}
+							>
+								<BarChart3 size={13} aria-hidden="true" />
+							</WidgetButton>
+						</div>
+					)}
+
+					<ChevronRight
+						size={16}
+						aria-hidden="true"
+						className="ml-auto shrink-0 text-border-strong transition-[color,transform] duration-150 group-hover:translate-x-0.5 group-hover:text-accent sm:ml-0"
+					/>
+				</div>
 			</div>
 		</div>
 	);

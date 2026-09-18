@@ -12,6 +12,8 @@ import LeagueHeading from '@/components/football/LeagueHeading';
 import { useGameDetailsModal } from '@/components/football/useGameDetailsModal';
 import FullScreenModal from '@/components/FullScreenModal';
 import Footer from '@/components/layout/Footer';
+import Pagination from '@/components/ui/Pagination';
+import ModelPicksPanel from '@/components/football/ModelPicksPanel';
 import { Link } from '@/i18n/routing';
 import BeatLoader from 'react-spinners/BeatLoader';
 
@@ -23,6 +25,7 @@ export default function PrematchClient() {
    * rachunek. Mapa `fixtureId → podpowiedź`; brak wpisu = model nie ma nic do powiedzenia.
    */
   const [modelHints, setModelHints] = useState({});
+  const [modelTop, setModelTop] = useState({ picks: [], count: 0, full: false });
   const [searchTerm, setSearchTerm] = useState('');
   const [isResultsModalOpen, setIsResultsModalOpen] = useState(false);
   const [isH2HModalOpen, setIsH2HModalOpen] = useState(false);
@@ -145,10 +148,17 @@ export default function PrematchClient() {
   useEffect(() => {
     let cancelled = false;
     setModelHints({});
+    setModelTop({ picks: [], count: 0, full: false });
     axios
       .get(`/api/football/model-hints?date=${selectedDate}`)
       .then((response) => {
-        if (!cancelled) setModelHints(response.data?.hints || {});
+        if (cancelled) return;
+        setModelHints(response.data?.hints || {});
+        setModelTop({
+          picks: response.data?.top || [],
+          count: response.data?.count || 0,
+          full: Boolean(response.data?.full),
+        });
       })
       .catch(() => {
         /* lista działa bez plakietek — brak podpowiedzi to nie błąd */
@@ -172,7 +182,7 @@ export default function PrematchClient() {
     <>
       <NavBar />
 
-      <div className="content-league">
+      <div className="content-league content-league--wide">
         <h1 className='h1-football'>
           <BallIcon className="icon-sport" />
           {t('footbal')}
@@ -214,6 +224,21 @@ export default function PrematchClient() {
             style={{ flex: 1 }}
           />
         </div>
+
+        {/*
+          * Siatka: na telefonie panel „Model widzi" leży nad listą (kolejność w DOM),
+          * na szerokim ekranie idzie do prawej kolumny i zostaje w widoku przy przewijaniu.
+          */}
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-6">
+        <ModelPicksPanel
+          picks={modelTop.picks}
+          count={modelTop.count}
+          full={modelTop.full}
+          dateLabel={getDateOptions().find((d) => d.formatted === selectedDate)?.display || selectedDate}
+          locale={locale}
+          className="mb-4 mt-4 lg:sticky lg:top-28 lg:col-start-2 lg:row-start-1 lg:mb-0 lg:mt-0"
+        />
+        <div className="min-w-0 lg:col-start-1 lg:row-start-1">
 
         {isLoadingFixtures && (
           <div style={{ 
@@ -323,152 +348,22 @@ export default function PrematchClient() {
             );
           })}
 
-        {/* Pagination Info — zakres liczony z metadanych serwera */}
-        {!isLoadingFixtures && paging.total > 0 && (
-          <div style={{
-            textAlign: 'center',
-            marginTop: '20px',
-            marginBottom: '10px',
-            color: 'var(--muted)',
-            fontFamily: 'Roboto Condensed, sans-serif',
-            fontSize: '14px'
-          }}>
-            {t('showing')} {(currentPage - 1) * paging.pageSize + 1}-{Math.min(currentPage * paging.pageSize, paging.total)} {t('of')} {paging.total} {t('matches')}
-          </div>
+        {!isLoadingFixtures && (
+          <Pagination
+            page={currentPage}
+            totalPages={totalPages}
+            total={paging.total}
+            pageSize={paging.pageSize}
+            onChange={(n) => {
+              setCurrentPage(n);
+              // Przycisk jest pod listą — bez tego nowa strona otwiera się od dołu.
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className="mb-8 mt-5"
+          />
         )}
-
-        {/* Pagination Controls */}
-        {!isLoadingFixtures && totalPages > 1 && (
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: '15px',
-            marginTop: '20px',
-            marginBottom: '30px',
-            flexWrap: 'wrap'
-          }}>
-            {/* Previous Button */}
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              style={{
-                padding: '10px 20px',
-                border: '2px solid var(--brand)',
-                background: currentPage === 1 ? 'var(--surface-2)' : 'var(--brand)',
-                color: currentPage === 1 ? 'var(--muted)' : 'var(--brand-fg)',
-                borderRadius: '6px',
-                cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                fontFamily: 'Roboto Condensed, sans-serif',
-                fontSize: '14px',
-                fontWeight: '600',
-                transition: 'all 0.2s ease',
-                textTransform: 'uppercase',
-                opacity: currentPage === 1 ? 0.5 : 1
-              }}
-              onMouseEnter={(e) => {
-                if (currentPage !== 1) {
-                  e.currentTarget.style.background = 'var(--brand-hover)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (currentPage !== 1) {
-                  e.currentTarget.style.background = 'var(--brand)';
-                }
-              }}
-            >
-              {t('prev_page')}
-            </button>
-
-            {/* Page Numbers */}
-            <div style={{
-              display: 'flex',
-              gap: '8px',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              justifyContent: 'center'
-            }}>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = currentPage - 2 + i;
-                }
-
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
-                    style={{
-                      padding: '10px 16px',
-                      border: currentPage === pageNum ? '2px solid var(--brand)' : '2px solid var(--border)',
-                      background: currentPage === pageNum ? 'var(--brand)' : 'var(--surface)',
-                      color: currentPage === pageNum ? 'var(--brand-fg)' : 'var(--text)',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontFamily: 'Roboto Condensed, sans-serif',
-                      fontSize: '14px',
-                      fontWeight: currentPage === pageNum ? '700' : '400',
-                      transition: 'all 0.2s ease',
-                      minWidth: '44px'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (currentPage !== pageNum) {
-                        e.currentTarget.style.background = 'var(--surface-2)';
-                        e.currentTarget.style.borderColor = 'var(--brand)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (currentPage !== pageNum) {
-                        e.currentTarget.style.background = 'var(--surface)';
-                        e.currentTarget.style.borderColor = 'var(--border)';
-                      }
-                    }}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Next Button */}
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              style={{
-                padding: '10px 20px',
-                border: '2px solid var(--brand)',
-                background: currentPage === totalPages ? 'var(--surface-2)' : 'var(--brand)',
-                color: currentPage === totalPages ? 'var(--muted)' : 'var(--brand-fg)',
-                borderRadius: '6px',
-                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-                fontFamily: 'Roboto Condensed, sans-serif',
-                fontSize: '14px',
-                fontWeight: '600',
-                transition: 'all 0.2s ease',
-                textTransform: 'uppercase',
-                opacity: currentPage === totalPages ? 0.5 : 1
-              }}
-              onMouseEnter={(e) => {
-                if (currentPage !== totalPages) {
-                  e.currentTarget.style.background = 'var(--brand-hover)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (currentPage !== totalPages) {
-                  e.currentTarget.style.background = 'var(--brand)';
-                }
-              }}
-            >
-              {t('next_page')}
-            </button>
-          </div>
-        )}
+        </div>
+        </div>
       </div>
 
       {/* Ta strona nie przechodzi jeszcze przez AppShell, więc stopkę dokładamy tutaj —
