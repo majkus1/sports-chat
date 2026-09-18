@@ -10,6 +10,7 @@ z korektą Dixona-Colesa, wszystkie rynki wyprowadzone z jednej macierzy.
 | `dixonColes.js` | macierz prawdopodobieństw wyniku i wyprowadzone z niej rynki |
 | `ratings.js` | szacowanie sił drużyn, przewagi boiska i korekty `rho` z historycznych wyników |
 | `backtest.mjs` | sprawdzenie modelu na meczach, których nie widział podczas uczenia |
+| `goalsExperiment.mjs` | eksperyment „pod gole": czy kalibracja i strzały ratują rynki 2,5 gola i BTTS (bez klucza API) |
 
 ## Stan: PODPIĘTY DO PRODUKCJI — raporty i analizy pojedynczych meczów
 
@@ -49,6 +50,38 @@ Gdzie liczy:
 
 Typ liczy się do skuteczności tylko wtedy, gdy przewyższa normę swojej selekcji o margines
 z `lib/picks/policy.js` — sam wysoki procent nie wystarcza.
+
+## Rynki goli: wynik eksperymentu (wrzesień 2026)
+
+`goalsExperiment.mjs` — 11 lig z football-data.co.uk, sezony 2021–2026, ocena chronologiczna
+na 7862 meczach od lipca 2024 (druga liczba w ostatniej kolumnie: sam ostatni sezon, 4140 meczów).
+Brier, mniej = lepiej.
+
+| wariant | powyżej 2,5 | BTTS | t wobec stałej (2,5) |
+|---|---|---|---|
+| stała ligowa | 0,2479 | 0,2477 | — |
+| Dixon-Coles surowy (dziś) | 0,2487 | 0,2498 | −0,6 / −2,4 |
+| DC skalibrowany regresją | 0,2445 | 0,2464 | **6,3 / 2,8** |
+| + gole i strzały drużyn z 10 meczów | **0,2436** | 0,2461 | **6,5 / 3,7** |
+| rynek (Pinnacle, zamknięcie) | 0,2390 | — | sufit |
+
+Trzy wnioski, z pomiaru:
+
+1. **Model nie przegrywał z braku informacji, tylko z nadmiaru pewności.** Ta sama macierz
+   Dixona-Colesa po przepuszczeniu przez regresję logistyczną (stała ligowa + logit DC) bije
+   stałą istotnie w „powyżej 2,5". Bez żadnych nowych danych.
+2. **Strzały dokładają mało do średniej, ale dużo do typów.** Po polityce (≥60 %, ≥12 pkt nad
+   stałą) sam skalibrowany DC daje ~30–50 typów „powyżej 2,5" na sezon z trafnością 69–72 %;
+   z golami i strzałami ~100 na sezon z trafnością **72–75 %** przy prognozie 66 % — model
+   jest tu raczej ostrożny niż zuchwały. Surowy DC wystawiłby 470 typów przy 63–65 %.
+3. **BTTS nie.** Skalibrowany bije stałą tylko na dłuższym oknie (t = 3,5; na ostatnim
+   sezonie 0,9–1,6) i po polityce zostaje kilka typów na sezon. Rynek zbyt bliski monety.
+
+Co z tego wynika dla produkcji: „powyżej 2,5" da się włączyć jako osobny rynek — jako warstwę
+kalibrującą nad DC z cechami drużyn, nie jako surowe `totalGoals`. Do cech potrzeba strzałów
+z ostatnich meczów: dla 11 lig z archiwum za darmo, dla reszty z `fixtures/statistics`
+u dostawcy (~150 zapytań dziennie, 2 % limitu). Eksperyment obejmuje wyłącznie czołowe ligi;
+przed włączeniem niższych trzeba ten sam pomiar powtórzyć na ich danych.
 
 ## Rynek bukmacherski: sufit i pomiar, nigdy baza
 
