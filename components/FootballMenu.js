@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { CircleHelp } from 'lucide-react';
 import { Link, usePathname } from '@/i18n/routing';
+import GuideModal from '@/components/football/GuideModal';
 
 /**
  * Nawigacja sekcji piłkarskiej.
@@ -44,6 +46,11 @@ export default function FootballMenu({ onResultsClick }) {
 	const t = useTranslations('common');
 	const pathname = usePathname();
 	const [isMenuExpanded, setIsMenuExpanded] = useState(false);
+	/*
+	 * Przewodnik jest stanem menu, nie strony: menu stoi na sześciu stronach, a modal ma
+	 * być wszędzie ten sam. Dzięki temu żadna z nich nie musi o nim wiedzieć.
+	 */
+	const [isGuideOpen, setIsGuideOpen] = useState(false);
 	const wrapperRef = useRef(null);
 
 	const menuItems = [
@@ -89,6 +96,24 @@ export default function FootballMenu({ onResultsClick }) {
 					</span>
 				))}
 
+				{/*
+				 * Przewodnik zawsze w pasie — także na telefonie, gdzie reszta chowa się pod „⋯".
+				 * Nowy użytkownik ma go zobaczyć bez rozwijania czegokolwiek; na wąskim ekranie
+				 * zostaje sama ikona, żeby nie zabierać miejsca dwóm pierwszym zakładkom.
+				 */}
+				<span className="football-menu-item">
+					<button
+						type="button"
+						className="pre-match-p guide-button"
+						onClick={() => setIsGuideOpen(true)}
+						aria-haspopup="dialog"
+						aria-label={t('guide_menu')}
+					>
+						<CircleHelp size={15} aria-hidden="true" />
+						<span className="guide-label">{t('guide_menu')}</span>
+					</button>
+				</span>
+
 				{secondaryItems.length > 0 && (
 					<>
 						{/* Ten sam zestaw dwa razy: w pasie na szerokim ekranie i w rozwijanym
@@ -127,7 +152,19 @@ export default function FootballMenu({ onResultsClick }) {
 				)}
 			</div>
 
+			<GuideModal open={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
+
 			<style>{`
+        /* Reguła .choose-time .pre-match-p z arkusza ma wyższą specyficzność — te muszą ją przebić. */
+        .choose-time .guide-button {
+          gap: 5px;
+          color: var(--accent);
+        }
+
+        .choose-time .guide-button:hover {
+          color: var(--accent-hover, var(--accent));
+        }
+
         .football-menu-wrapper {
           display: flex;
           gap: 22px;
@@ -175,6 +212,20 @@ export default function FootballMenu({ onResultsClick }) {
         @media (max-width: 768px) {
           .menu-dots-button {
             display: inline-flex;
+          }
+
+          /* Na telefonie zostaje sama ikona — ale w kółku, żeby dało się w nią trafić kciukiem. */
+          .guide-label {
+            display: none;
+          }
+
+          .choose-time .guide-button {
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border-radius: 999px;
+            background: var(--accent-soft);
           }
 
           .menu-desktop-items {

@@ -348,6 +348,7 @@
 		"sound_off": "Wyłącz dźwięk powiadomień",
 		"pricing_trial": "Nowe konto: 10 analiz, 30 pytań i 2 raporty na 7 dni",
 		"accuracy_menu": "Skuteczność",
+		"guide_menu": "Przewodnik",
 		"accuracy_title": "Skuteczność analiz AI — cały serwis",
 		"accuracy_intro": "Zbiorcza skuteczność typów wygenerowanych przez wszystkich użytkowników. Każdy typ jest po meczu rozliczany automatycznie na podstawie oficjalnego wyniku. Pokazujemy wszystko — trafienia, chybienia i typy pominięte. Swoje własne wyniki znajdziesz w panelu konta.",
 		"accuracy_mine": "Skuteczność moich typów",
