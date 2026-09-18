@@ -6,7 +6,8 @@ import { getAuthenticatedUser } from '@/lib/auth';
 import { checkQuota, consumeQuota, recordUsage } from '@/lib/billing/entitlements';
 import { checkSpendCap, recordSpend } from '@/lib/billing/spendGuard';
 import { buildFixtureBundle } from '@/lib/football/bundle';
-import { generateText, AiRefusalError } from '@/lib/ai';
+import { runTools, AiRefusalError } from '@/lib/ai';
+import { NEWS_TOOLS, makeExecutor } from '@/lib/assistant/tools';
 import {
 	ASSISTANT_SYSTEM_PROMPT,
 	CHAT_REPLY_PROMPT_VERSION,
@@ -119,9 +120,19 @@ export async function POST(request) {
 		const bundle = bundleResult.status === 'fulfilled' ? bundleResult.value : null;
 		const analysis = analysisResult.status === 'fulfilled' ? analysisResult.value : null;
 
-		const { text, meta } = await generateText({
+		/*
+		 * Jedno narzędzie: wiadomości z internetu. Wszystko inne (forma, tabela, składy,
+		 * zdarzenia, analiza) już siedzi w prompcie, więc model nie ma o co pytać — narzędzie
+		 * jest tylko dla rzeczy, których nie ma w danych: kontuzje z wczoraj, zmiana trenera,
+		 * transfer. Limit wyszukiwań pilnuje samo narzędzie (`aiNews`), osobno od limitu
+		 * pytań; plan bez wyszukiwań dostaje zdanie do przekazania, nie błąd.
+		 */
+		const { text, meta, toolCalls } = await runTools({
 			model: MODEL_CHAT,
 			system: ASSISTANT_SYSTEM_PROMPT,
+			tools: NEWS_TOOLS,
+			execute: makeExecutor({ userId: session.userId, user, language }),
+			maxRounds: 2,
 			messages: [
 				{
 					role: 'user',
@@ -177,7 +188,7 @@ export async function POST(request) {
 
 		return Response.json({
 			messages: appended,
-			meta: { promptVersion: CHAT_REPLY_PROMPT_VERSION },
+			meta: { promptVersion: CHAT_REPLY_PROMPT_VERSION, tools: toolCalls.map((c) => c.name) },
 		});
 	} catch (error) {
 		if (error instanceof AiRefusalError) {

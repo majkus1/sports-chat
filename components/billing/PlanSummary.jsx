@@ -17,13 +17,13 @@ import { Link } from '@/i18n/routing';
  * potem „ile mam kredytów", na końcu „ile zużyłem".
  */
 
-/** Limity opisujemy krótko — pełne nazwy z cennika nie mieszczą się w wierszu panelu. */
+/** Kolejność jak w cenniku; nazwy krótkie, bo wiersz panelu jest wąski. */
 const KINDS = [
 	['analysis', 'quota_analysis'],
-	['aiChat', 'quota_ai_chat'],
-	['report', 'quota_report'],
-	['aiNews', 'quota_ai_news'],
 	['analysisView', 'quota_analysis_view'],
+	['aiChat', 'quota_ai_chat'],
+	['aiNews', 'quota_ai_news'],
+	['report', 'quota_report'],
 ];
 
 /** Ile dni zostało do podanej daty; `null`, gdy termin nie obowiązuje. */

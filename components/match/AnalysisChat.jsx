@@ -6,6 +6,7 @@ import { Bot, Lock, Send, Sparkles } from 'lucide-react';
 import { UserContext } from '@/context/UserContext';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import Answer from '@/components/assistant/Answer';
 import AutoGrowTextarea from '@/components/ui/AutoGrowTextarea';
 import { MAX_CHAT_MSG_LEN } from '@/lib/chatConstraints';
 import { cn } from '@/lib/utils';
@@ -19,7 +20,7 @@ import { cn } from '@/lib/utils';
  */
 
 /** Podpowiedzi na start — bez nich puste pole nie mówi, o co w ogóle można zapytać. */
-const STARTER_KEYS = ['ai_chat_starter_1', 'ai_chat_starter_2', 'ai_chat_starter_3'];
+const STARTER_KEYS = ['ai_chat_starter_1', 'ai_chat_starter_4', 'ai_chat_starter_2', 'ai_chat_starter_3'];
 
 function Bubble({ message }) {
 	const isUser = message.role === 'user';
@@ -32,13 +33,33 @@ function Bubble({ message }) {
 			)}
 			<div
 				className={cn(
-					'max-w-[85%] whitespace-pre-wrap rounded-[var(--radius-ui)] px-3 py-2 text-sm leading-relaxed',
-					isUser ? 'bg-brand text-brand-fg' : 'bg-surface-2 text-text'
+					'max-w-[85%] rounded-[var(--radius-ui)] px-3 py-2 text-sm leading-relaxed',
+					isUser ? 'whitespace-pre-wrap bg-brand text-brand-fg' : 'bg-surface-2 text-text'
 				)}
 			>
-				{message.content}
+				{/* Odpowiedź może nieść odnośniki do źródeł wiadomości — ten sam render co u asystenta. */}
+				{isUser ? message.content : <Answer text={message.content} />}
 			</div>
 		</div>
+	);
+}
+
+/**
+ * Zwykła odpowiedź wraca w 2–4 s; z wyszukiwaniem wiadomości w 10–20 s. Po pięciu sekundach
+ * zmieniamy komunikat, żeby długie czekanie nie wyglądało na zawieszenie.
+ */
+function Thinking() {
+	const t = useTranslations('common');
+	const [dlugo, setDlugo] = useState(false);
+	useEffect(() => {
+		const id = setTimeout(() => setDlugo(true), 5000);
+		return () => clearTimeout(id);
+	}, []);
+	return (
+		<p className="flex items-center gap-2 text-xs text-muted" aria-live="polite">
+			<Bot size={14} aria-hidden="true" />
+			{t(dlugo ? 'ai_chat_thinking_long' : 'ai_chat_thinking')}
+		</p>
 	);
 }
 
@@ -171,12 +192,7 @@ export default function AnalysisChat({ fixtureId, language, className }) {
 						{messages.map((m, idx) => (
 							<Bubble key={idx} message={m} />
 						))}
-						{isSending && (
-							<p className="flex items-center gap-2 text-xs text-muted">
-								<Bot size={14} aria-hidden="true" />
-								{t('ai_chat_thinking')}
-							</p>
-						)}
+						{isSending && <Thinking />}
 						<div ref={endRef} />
 					</div>
 				)}

@@ -9,18 +9,73 @@ import BackLink from '@/components/layout/BackLink';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { PLAN_PASS_DAYS, PUBLIC_PLANS } from '@/lib/billing/plans';
+import { PLAN_PASS_DAYS, PUBLIC_PLANS, QUOTA_PERIODS } from '@/lib/billing/plans';
 import CreditPacks from '@/components/billing/CreditPacks';
 import PurchaseConsentDialog from '@/components/billing/PurchaseConsentDialog';
 import { cn } from '@/lib/utils';
 
-/** Limity są liczbami albo `null` (bez ograniczeń) — jedno i drugie trzeba pokazać. */
-function LimitRow({ label, value, unlimitedLabel }) {
+/**
+ * Pozycje cennika — te same w karcie planu i w słowniczku pod kartami.
+ *
+ * Pierwsza wersja pokazywała „Wyszukiwań wiadomości przez asystenta miesięcznie: 0" z zieloną
+ * fajką i bez słowa, czym to jest. Użytkownik nie wiedział, czy to funkcja asystenta, czy
+ * osobna usługa, a zero z fajką wyglądało jak coś, co ma. Teraz: krótka nazwa, okres przy
+ * liczbie, zero jako kreska, a znaczenie każdej pozycji jednym zdaniem w słowniczku niżej —
+ * raz, nie trzy razy w trzech kartach.
+ */
+const QUOTA_ROWS = [
+	['analysis', 'pricing_analyses', 'pricing_what_analyses'],
+	['analysisView', 'pricing_analysis_view', 'pricing_what_analysis_view'],
+	['aiChat', 'pricing_ai_chat', 'pricing_what_ai_chat'],
+	['aiNews', 'pricing_ai_news', 'pricing_what_ai_news'],
+	['report', 'pricing_reports', 'pricing_what_reports'],
+];
+const FEATURE_ROWS = [
+	['model_hints', 'pricing_model_hints', 'pricing_what_model_hints'],
+	['live_analysis', 'pricing_live_analysis', 'pricing_what_live_analysis'],
+	['morning_email', 'pricing_morning_email', 'pricing_what_morning_email'],
+];
+
+/** Limit: liczba z okresem, `null` jako „bez limitu", zero jako kreska — nie fajka przy zerze. */
+function LimitRow({ kind, label, value }) {
+	const t = useTranslations('common');
+	const none = value === 0;
 	return (
 		<li className="flex items-center gap-2 text-sm">
-			<Check size={14} className="shrink-0 text-accent" aria-hidden="true" />
-			<span className="text-muted">{label}:</span>
-			<span className="font-semibold text-text">{value === null ? unlimitedLabel : value}</span>
+			{none ? (
+				<Minus size={14} className="shrink-0 text-muted" aria-hidden="true" />
+			) : (
+				<Check size={14} className="shrink-0 text-accent" aria-hidden="true" />
+			)}
+			<span className={none ? 'text-muted' : 'text-text'}>{label}</span>
+			<span className={cn('ml-auto shrink-0 font-semibold', none ? 'text-muted' : 'text-text')}>
+				{none ? (
+					t('pricing_none')
+				) : value === null ? (
+					t('pricing_unlimited')
+				) : (
+					<>
+						{value}
+						<span className="font-normal text-muted">
+							{' '}
+							{t(QUOTA_PERIODS[kind] === 'day' ? 'pricing_per_day' : 'pricing_per_month')}
+						</span>
+					</>
+				)}
+			</span>
+		</li>
+	);
+}
+
+function FeatureRow({ label, on }) {
+	return (
+		<li className="flex items-center gap-2 text-sm">
+			{on ? (
+				<Check size={14} className="shrink-0 text-accent" aria-hidden="true" />
+			) : (
+				<Minus size={14} className="shrink-0 text-muted" aria-hidden="true" />
+			)}
+			<span className={on ? 'text-text' : 'text-muted'}>{label}</span>
 		</li>
 	);
 }
@@ -126,15 +181,15 @@ export default function PricingClient() {
 				</p>
 			)}
 
+			{/* Analizy rozliczają się miesięcznie — „dziś" w tym zdaniu było nieprawdą. */}
 			{entitlements?.isLoggedIn && (
 				<p className="mt-4 text-sm text-muted">
-					{t('pricing_current_usage', {
-						used: entitlements.usage?.analysis?.used ?? 0,
-						limit:
-							entitlements.usage?.analysis?.limit === null
-								? '∞'
-								: (entitlements.usage?.analysis?.limit ?? 0),
-					})}
+					{entitlements.usage?.analysis?.limit === null
+						? t('pricing_current_usage_unlimited', { used: entitlements.usage?.analysis?.used ?? 0 })
+						: t('pricing_current_usage', {
+								used: entitlements.usage?.analysis?.used ?? 0,
+								limit: entitlements.usage?.analysis?.limit ?? 0,
+							})}
 				</p>
 			)}
 
@@ -168,61 +223,12 @@ export default function PricingClient() {
 
 							<CardContent className="flex flex-1 flex-col gap-4">
 								<ul className="[&>li+li]:mt-2">
-									<LimitRow
-										label={t('pricing_analyses')}
-										value={plan.limits.analysis}
-										unlimitedLabel={t('pricing_unlimited')}
-									/>
-									{/*
-									 * Czytanie cudzych analiz było jedyną pozycją widoczną w panelu konta,
-									 * a nieobecną w cenniku — więc użytkownik spotykał ten limit dopiero,
-									 * gdy go wyczerpał, i nie miał gdzie sprawdzić, czym się różnią plany.
-									 * To realna różnica: darmowy ma dzienny sufit, płatne nie mają żadnego.
-									 */}
-									<LimitRow
-										label={t('pricing_analysis_view')}
-										value={plan.limits.analysisView}
-										unlimitedLabel={t('pricing_unlimited')}
-									/>
-									<LimitRow
-										label={t('pricing_ai_chat')}
-										value={plan.limits.aiChat}
-										unlimitedLabel={t('pricing_unlimited')}
-									/>
-									<LimitRow
-										label={t('pricing_reports')}
-										value={plan.limits.report}
-										unlimitedLabel={t('pricing_unlimited')}
-									/>
-									<LimitRow
-										label={t('pricing_ai_news')}
-										value={plan.limits.aiNews}
-										unlimitedLabel={t('pricing_unlimited')}
-									/>
-									<li className="flex items-center gap-2 text-sm">
-										{plan.features.includes('live_analysis') ? (
-											<Check size={14} className="shrink-0 text-accent" aria-hidden="true" />
-										) : (
-											<Minus size={14} className="shrink-0 text-muted" aria-hidden="true" />
-										)}
-										<span
-											className={
-												plan.features.includes('live_analysis') ? 'text-text' : 'text-muted'
-											}
-										>
-											{t('pricing_live_analysis')}
-										</span>
-									</li>
-									<li className="flex items-center gap-2 text-sm">
-										{plan.features.includes('morning_email') ? (
-											<Check size={14} className="shrink-0 text-accent" aria-hidden="true" />
-										) : (
-											<Minus size={14} className="shrink-0 text-muted" aria-hidden="true" />
-										)}
-										<span className={plan.features.includes('morning_email') ? 'text-text' : 'text-muted'}>
-											{t('pricing_morning_email')}
-										</span>
-									</li>
+									{QUOTA_ROWS.map(([kind, labelKey]) => (
+										<LimitRow key={kind} kind={kind} label={t(labelKey)} value={plan.limits[kind]} />
+									))}
+									{FEATURE_ROWS.map(([feature, labelKey]) => (
+										<FeatureRow key={feature} label={t(labelKey)} on={plan.features.includes(feature)} />
+									))}
 								</ul>
 
 								<div className="mt-auto pt-2">
@@ -263,16 +269,24 @@ export default function PricingClient() {
 			</div>
 
 			{/*
-			 * Skąd biorą się „cudze analizy" — jedno zdanie, bo bez niego cała pozycja jest
-			 * zagadką. Analiza meczu powstaje raz i widzą ją wszyscy; kto wchodzi później,
-			 * czyta gotową, nie zużywając własnej puli. Bez tego zdania wygląda to na drugi,
-			 * niezrozumiały limit, a jest odwrotnie: to sposób, żeby limitu nie ruszać.
+			 * Słowniczek: każda pozycja z kart jednym zdaniem — co to jest, gdzie to działa
+			 * i co się liczy do limitu. Tu, nie w kartach, bo w kartach byłoby trzy razy.
 			 */}
-			<p className="mt-6 max-w-2xl text-xs leading-relaxed text-muted">
-				{t('quota_shared_note')}
-			</p>
+			<section className="mt-8" aria-labelledby="pricing-glossary">
+				<h2 id="pricing-glossary" className="font-display text-lg font-bold uppercase tracking-wide text-text">
+					{t('pricing_glossary_title')}
+				</h2>
+				<dl className="mt-3 grid gap-x-8 gap-y-4 sm:grid-cols-2">
+					{[...QUOTA_ROWS, ...FEATURE_ROWS].map(([key, labelKey, whatKey]) => (
+						<div key={key}>
+							<dt className="text-sm font-semibold text-text">{t(labelKey)}</dt>
+							<dd className="mt-0.5 text-sm leading-relaxed text-muted">{t(whatKey)}</dd>
+						</div>
+					))}
+				</dl>
+			</section>
 
-			<p className="mt-3 max-w-2xl text-xs leading-relaxed text-muted">
+			<p className="mt-6 max-w-2xl text-xs leading-relaxed text-muted">
 				{t('pricing_one_off_note')}
 			</p>
 
