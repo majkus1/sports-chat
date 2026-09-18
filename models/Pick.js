@@ -170,6 +170,16 @@ const PickSchema = new mongoose.Schema(
 		},
 		voidReason: { type: String, default: null },
 
+		/**
+		 * Ten sam mecz i ta sama selekcja zapisane po raz drugi — z innego miejsca (raport,
+		 * potem analiza) albo pod innym brzmieniem („home" i „Dinamo Zagreb (gospodarze)").
+		 * Klucz unikalności rozróżnia rodzaj i tekst, więc oba rekordy istnieją; ale to jedna
+		 * prognoza na jedno zdarzenie i liczy się raz. Duplikat zostaje widoczny przy swojej
+		 * analizie, wskazuje oryginał i ma `countsToStats: false`. We wrześniu 2026 takich było
+		 * 12 na 123 rozliczone — dziesięć procent statystyki liczone podwójnie.
+		 */
+		duplicateOf: { type: mongoose.Schema.Types.ObjectId, ref: 'Pick', default: null },
+
 		settledAt: { type: Date, default: null },
 		finalScore: {
 			home: { type: Number, default: null },
