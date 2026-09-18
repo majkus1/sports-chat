@@ -83,6 +83,14 @@ const PickSchema = new mongoose.Schema(
 
 		homeName: { type: String, default: null },
 		awayName: { type: String, default: null },
+		/*
+		 * Identyfikatory drużyn u dostawcy — obok nazw, nie zamiast. Nazwa jest do czytania
+		 * i do parsera selekcji; identyfikator do ŁĄCZENIA typów tej samej drużyny w czasie
+		 * („jak model radzi sobie z Legią przez sezon"), bo nazwy dostawca potrafi zmienić.
+		 * Zapisywane od września 2026; starsze typy mają tu `null`.
+		 */
+		homeId: { type: Number, default: null, index: true },
+		awayId: { type: Number, default: null, index: true },
 		leagueName: { type: String, default: null },
 		kickoff: { type: Date, default: null, index: true },
 

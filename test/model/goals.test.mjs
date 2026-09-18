@@ -21,17 +21,18 @@ const { WINDOW } = await import('@/lib/model/goalsCalibration');
 
 describe('strzały z odpowiedzi dostawcy', () => {
 	const raw = [
-		{ team: { id: 10 }, statistics: [{ type: 'Total Shots', value: 14 }, { type: 'Shots on Goal', value: 6 }, { type: 'Ball Possession', value: '61%' }] },
+		{ team: { id: 10 }, statistics: [{ type: 'Total Shots', value: 14 }, { type: 'Shots on Goal', value: 6 }, { type: 'Ball Possession', value: '61%' }, { type: 'expected_goals', value: '1.83' }] },
 		{ team: { id: 20 }, statistics: [{ type: 'Total Shots', value: '9' }, { type: 'Shots on Goal', value: null }] },
 	];
 
-	test('przypisuje po identyfikatorze drużyny, nie po kolejności', () => {
-		assert.deepEqual(parseShots(raw, { homeId: 20, awayId: 10 }), { hs: 9, hst: null, as: 14, ast: 6 });
+	test('przypisuje po identyfikatorze drużyny, nie po kolejności; xG gdy jest', () => {
+		assert.deepEqual(parseShots(raw, { homeId: 20, awayId: 10 }), { hs: 9, hst: null, hxg: null, as: 14, ast: 6, axg: 1.83 });
 	});
 
 	test('brak statystyk to same null — rekord i tak powstaje', () => {
-		assert.deepEqual(parseShots([], { homeId: 1, awayId: 2 }), { hs: null, as: null, hst: null, ast: null });
-		assert.deepEqual(parseShots(null, { homeId: 1, awayId: 2 }), { hs: null, as: null, hst: null, ast: null });
+		const pusto = { hs: null, as: null, hst: null, ast: null, hxg: null, axg: null };
+		assert.deepEqual(parseShots([], { homeId: 1, awayId: 2 }), pusto);
+		assert.deepEqual(parseShots(null, { homeId: 1, awayId: 2 }), pusto);
 	});
 });
 

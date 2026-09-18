@@ -175,6 +175,8 @@ export async function POST(request) {
 						// rozpoznać nazwę drużyny w selekcji typu.
 						homeName: String(pick.match || '').split(/\s+vs\s+/i)[0]?.trim() || null,
 						awayName: String(pick.match || '').split(/\s+vs\s+/i)[1]?.trim() || null,
+						homeId: candidates.find((c) => String(c.fixtureId) === String(pick.fixtureId))?.homeId ?? null,
+						awayId: candidates.find((c) => String(c.fixtureId) === String(pick.fixtureId))?.awayId ?? null,
 						leagueName: pick.league ?? null,
 						kickoff: pick.kickoffUtc,
 					}),

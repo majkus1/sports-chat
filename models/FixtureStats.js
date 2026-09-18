@@ -9,9 +9,10 @@ import mongoose from 'mongoose';
  * wyrzucał i płacilibyśmy za nie w kółko. Tu leżą na stałe: mecz rozegrany nie zmienia
  * swoich statystyk.
  *
- * Cztery liczby, nie cały pakiet: eksperyment (`lib/model/goalsExperiment.mjs`) mierzył
- * strzały i strzały celne, i tylko te weszły do regresji. Reszty statystyk nie trzymamy, bo
- * niczego niezmierzonego nie użyjemy.
+ * Cztery liczby do regresji plus xG na zapas: eksperyment (`lib/model/goalsExperiment.mjs`)
+ * mierzył strzały i strzały celne, i tylko te weszły do regresji. xG zbieramy, bo nie da się
+ * go zmierzyć bez historii, a historia powstaje tylko wtedy, gdy się ją zapisuje. Reszty
+ * statystyk nie trzymamy.
  *
  * `null` w polu strzałów to informacja: dostawca nie ma statystyk tego meczu (niższe ligi,
  * mecze sprzed lat). Rekord i tak zostaje, żeby zbieracz nie pytał o ten mecz drugi raz.
@@ -30,6 +31,14 @@ const FixtureStatsSchema = new mongoose.Schema(
 		/** Strzały celne gospodarzy / gości (Shots on Goal). */
 		hst: { type: Number, default: null },
 		ast: { type: Number, default: null },
+		/**
+		 * Gole oczekiwane (xG) gospodarzy / gości — dostawca podaje je dla części lig od ~2023.
+		 * DZIŚ NIEUŻYWANE PRZEZ MODEL: nie mamy ich w archiwum, na którym uczyła się regresja,
+		 * więc nie da się zmierzyć, czy pomagają. Zbieramy od razu (to ta sama odpowiedź, zero
+		 * dodatkowych zapytań), żeby za kilka miesięcy był materiał do eksperymentu.
+		 */
+		hxg: { type: Number, default: null },
+		axg: { type: Number, default: null },
 		fetchedAt: { type: Date, default: Date.now },
 	},
 	{ timestamps: false }
