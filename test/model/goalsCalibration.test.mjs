@@ -90,7 +90,7 @@ describe('wektor cech', () => {
 	});
 	test('zapisana regresja pasuje do wektora', () => {
 		for (const w of ['goals', 'shots']) {
-			const params = calibration.variants[w];
+			const params = calibration.markets.over25[w];
 			assert.deepEqual(params.features, FEATURE_NAMES[w]);
 			assert.equal(params.mean.length, FEATURE_NAMES[w].length);
 			assert.equal(params.w.length, FEATURE_NAMES[w].length + 1);
@@ -113,7 +113,7 @@ describe('zapisana regresja', () => {
 
 	test('podnosi prognozę dla bramkowych i obniża dla zachowawczych — w obu wariantach', () => {
 		for (const w of ['goals', 'shots']) {
-			const params = calibration.variants[w];
+			const params = calibration.markets.over25[w];
 			const wysoko = applyCalibration(
 				params,
 				featureVector(w, { league: lg, dcOver: 0.62, home: bramkowa, away: bramkowa })
@@ -137,14 +137,14 @@ describe('zapisana regresja', () => {
 			Array.from({ length: 10 }, () => mecz(lg.gf, lg.gf, lg.sf, lg.sf, lg.stf, lg.stf))
 		);
 		const p = applyCalibration(
-			calibration.variants.goals,
+			calibration.markets.over25.goals,
 			featureVector('goals', { league: lg, dcOver: 0.8, home: przecietna, away: przecietna })
 		);
 		assert.ok(p < 0.8 && p > lg.rate, String(p));
 	});
 
 	test('odrzuca wektor o złej długości', () => {
-		assert.equal(applyCalibration(calibration.variants.goals, [0, 0]), null);
+		assert.equal(applyCalibration(calibration.markets.over25.goals, [0, 0]), null);
 	});
 });
 

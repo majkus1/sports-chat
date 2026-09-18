@@ -124,7 +124,7 @@
 		"picks": "Tips",
 		"risks": "Risks",
 		"expected_goals": "Expected goals",
-		"goals_indicative": "Indicative figures — they describe the character of the match, not a forecast. We tested goal markets on 8715 played fixtures and they come out worse than a plain league average, which is why we place no picks here.",
+		"goals_indicative": "Expected total and “both teams to score” describe the character of the match — they are not picks; on thousands of fixtures nobody predicts them better than the league average. “Over 2.5” comes from a separate, tested calculation: when it clears the threshold, you will find it among the picks below.",
 		"data_quality_good": "Full data",
 		"data_quality_limited": "Limited data",
 		"data_quality_insufficient": "Insufficient data",

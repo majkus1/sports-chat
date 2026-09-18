@@ -97,7 +97,12 @@ Trzy wnioski, z pomiaru:
    inaczej `goals`. Oba były zmierzone: `goals` daje ~50 typów na sezon na 11 lig przy
    trafności 72 %, `shots` ~95 przy 74 %. Pierwszej nocy po wdrożeniu wszystko idzie na
    `goals`; w miarę zbierania strzałów ligi przechodzą na `shots` same.
-5. **Norma jest ligowa** i wędruje z typem (`baseRate`), nie z tabeli w polityce. Typ na sumę
+5. **Kafelki goli w analizie** (oczekiwana suma, „powyżej 2,5", „obie strzelą") pochodzą z tego
+   samego rachunku: przed meczem liczby skalibrowane (BTTS też — skalibrowany bije stałą,
+   t = 3,5 — ale WYŁĄCZNIE do opisu, typów z niego nie ma), w trakcie z macierzy dla reszty
+   meczu. `bindAnalysisToModel` nadpisuje to, co model językowy przepisał, więc kafelek
+   „Over 2.5: 68 %" i typ „Powyżej 2.5 gola: 68 %" to jedna liczba.
+6. **Norma jest ligowa** i wędruje z typem (`baseRate`), nie z tabeli w polityce. Typ na sumę
    goli BEZ normy — np. napisany przez model językowy z własnej głowy — dostaje
    `market_not_measured` i nie wchodzi do statystyki. To bezpiecznik: liczą się wyłącznie
    typy z kalibracji.

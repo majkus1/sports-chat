@@ -409,3 +409,64 @@ describe('sekcja promptu przy braku kandydatów', () => {
 		assert.equal(buildAnalysisModel({ leagueModel: null, fixture: mecz() }), null, 'bez modelu nie ma wersji');
 	});
 });
+
+/**
+ * Kafelki goli (oczekiwana suma, powyżej 2,5, obie strzelą) mają być JEDNYM rachunkiem
+ * z typami. Wcześniej pisał je model językowy i „Over 2.5: 61%" w kafelku potrafiło stać
+ * obok typu „Powyżej 2.5 gola: 68%" z modelu. Teraz przed meczem kafelki biorą wartości
+ * skalibrowane (gdy są), w trakcie — z macierzy dla reszty meczu; wiązanie nadpisuje to,
+ * co przepisał model językowy.
+ */
+describe('kafelki goli z tego samego rachunku co typy', () => {
+	const names = { homeName: 'Machida Zelvia', awayName: 'Kawasaki Frontale' };
+	const gole = { over25: { probability: 0.68, base: 0.53, variant: 'shots' }, btts: { probability: 0.57, base: 0.52, variant: 'shots' } };
+
+	test('przed meczem: skalibrowane liczby trafiają do kafelków i do selekcji', () => {
+		const model = buildAnalysisModel({ leagueModel: liga, fixture: mecz(), goals: gole });
+		assert.equal(model.goals.over25, 68);
+		assert.equal(model.goals.btts, 57);
+		assert.equal(model.goals.calibrated, true);
+		assert.ok(model.goals.expectedTotal > 1.5 && model.goals.expectedTotal < 5);
+		const selekcja = model.selections.find((s) => s.key === 'over25');
+		assert.ok(selekcja, 'brak selekcji powyżej 2,5');
+		assert.equal(selekcja.probability, model.goals.over25, 'kafelek i selekcja to ta sama liczba');
+		assert.equal(selekcja.base, 53);
+	});
+
+	test('bez kalibracji: kafelki z macierzy, oznaczone jako surowe, bez selekcji 2,5', () => {
+		const model = buildAnalysisModel({ leagueModel: liga, fixture: mecz() });
+		assert.equal(model.goals.calibrated, false);
+		assert.ok(model.goals.over25 > 0 && model.goals.over25 < 100);
+		assert.equal(model.selections.some((s) => s.key === 'over25'), false);
+	});
+
+	test('w trakcie: suma to wynik plus reszta, przy trzech golach „powyżej 2,5" jest pewne', () => {
+		const model = buildAnalysisModel({
+			leagueModel: liga,
+			fixture: mecz({ live: true, elapsed: 60, goals: { home: 2, away: 1 } }),
+			goals: gole,
+		});
+		assert.equal(model.goals.calibrated, false, 'kalibracja nie dotyczy meczu w trakcie');
+		assert.ok(model.goals.expectedTotal >= 3, String(model.goals.expectedTotal));
+		assert.equal(model.goals.over25, 100);
+		assert.equal(model.selections.some((s) => s.key === 'over25'), false);
+	});
+
+	test('wiązanie nadpisuje kafelki przepisane z błędem przez model językowy', () => {
+		const model = buildAnalysisModel({ leagueModel: liga, fixture: mecz(), goals: gole });
+		const zwiazane = bindAnalysisToModel(
+			{ picks: [], goals: { expectedTotal: 3.9, over25: 61, btts: 70 }, probabilities: { home: 50, draw: 25, away: 25 } },
+			model,
+			names
+		);
+		assert.deepEqual(zwiazane.goals, { expectedTotal: model.goals.expectedTotal, over25: 68, btts: 57 });
+	});
+
+	test('sekcja promptu podaje gole do przepisania', () => {
+		const model = buildAnalysisModel({ leagueModel: liga, fixture: mecz(), goals: gole });
+		const tekst = formatModelSection(model).join('\n');
+		assert.match(tekst, /powyżej 2,5 — 68%/);
+		assert.match(tekst, /obie strzelą — 57%/);
+		assert.match(tekst, /Przepisz DOKŁADNIE do "goals"/);
+	});
+});
