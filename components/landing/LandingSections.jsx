@@ -1,6 +1,9 @@
 import {
 	ArrowRight,
+	BarChart3,
+	Bot,
 	FileText,
+	Mail,
 	MessagesSquare,
 	Radio,
 	Sparkles,
@@ -26,7 +29,7 @@ import { cn } from '@/lib/utils';
  * sekcja jako `section` z własnym `h2` i powiązaniem przez `aria-labelledby`.
  */
 
-const ICONS = { FileText, Radio, Sparkles, MessagesSquare, Target, Trophy, Users };
+const ICONS = { BarChart3, Bot, FileText, Mail, Radio, Sparkles, MessagesSquare, Target, Trophy, Users };
 
 /** Przycisk-odnośnik. Klasy zamiast komponentu `Button`, żeby nie wciągać klienta bez potrzeby. */
 function CtaLink({ href, children, variant = 'primary', className }) {
@@ -87,7 +90,9 @@ export function Hero({ content }) {
 						{content.primaryCta}
 						<ArrowRight size={18} aria-hidden="true" />
 					</CtaLink>
-					<CtaLink href="/cennik" variant="outline">
+					{/* Drugi przycisk prowadzi do metody, nie do cennika: ktoś, kto jeszcze nie wie,
+					    co dostaje, nie kupi — najpierw ma zrozumieć, skąd biorą się liczby. */}
+					<CtaLink href="/jak-to-dziala" variant="outline">
 						{content.secondaryCta}
 					</CtaLink>
 				</div>

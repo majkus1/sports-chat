@@ -47,12 +47,12 @@ export async function generateMetadata({ params }) {
 		 */
 		title:
 			locale === 'en'
-				? 'Sports Chat — AI match analysis and live football chat'
-				: 'Czat Sportowy — analizy AI i czat na żywo przy meczach',
+				? 'Sports Chat — today’s football picks backed by numbers and AI match analysis'
+				: 'Czat Sportowy — typy na dziś z pokryciem w liczbach i analizy meczów AI',
 		description:
 			locale === 'en'
-				? 'AI-written match analyses, live chat in every match room and picks with public accuracy stats. Start free, no card required.'
-				: 'Analizy meczów tworzone przez AI, czat na żywo przy każdym spotkaniu i typowanie ze statystyką skuteczności. Zacznij za darmo, bez karty.',
+				? 'A numbers model marks the matches where it sees an edge — result, double chance, a team to score, over 2.5 goals. The AI explains why; every pick is settled in public. Free, no card.'
+				: 'Model liczbowy oznacza mecze, w których widzi przewagę: wynik, podwójna szansa, gol drużyny, powyżej 2,5 gola. AI tłumaczy dlaczego, każdy typ rozliczamy publicznie. Za darmo, bez karty.',
 	});
 }
 
