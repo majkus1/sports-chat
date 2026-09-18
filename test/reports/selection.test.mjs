@@ -639,3 +639,45 @@ describe('podział budżetu między mecze ocenione i nieocenione', () => {
 		assert.deepEqual(allocateBudget({ pewne: [], niepewne: [], budget: 40, reserved: 10, tierOf }), []);
 	});
 });
+
+/**
+ * „Powyżej 2,5 gola" — jedyny rynek sumy goli, i tylko po kalibracji.
+ *
+ * Eksperyment (README modelu) pokazał, że surowa macierz przegrywa tu ze stałą, a regresja
+ * z cechami drużyn bije ją istotnie. Wynik kalibracji przychodzi w `predictFixture` jako
+ * `over25` z NORMĄ LIGOWĄ — bez tej normy typ nie ma jak zmierzyć przewagi i nie powstaje.
+ */
+describe('powyżej 2,5 gola z kalibracji', () => {
+	test('wchodzi z normą ligową, gdy przewaga sięga progu', () => {
+		const rynki = evaluateMarkets({
+			modelPrediction: { ...zModelu(), over25: { probability: 0.68, base: 0.53, variant: 'shots' } },
+		});
+		const typ = znajdz(rynki, 'over25');
+		assert.notEqual(typ, null);
+		assert.equal(typ.market, 'Suma goli');
+		assert.equal(typ.selection, 'Powyżej 2.5 gola');
+		assert.equal(typ.pModel, 68);
+		assert.equal(typ.base, 53, 'norma ligowa, nie tabelaryczna');
+		assert.equal(typ.lift, 15);
+	});
+
+	test('norma ligowa decyduje: ten sam procent w lidze bramkowej nie przechodzi', () => {
+		const rynki = evaluateMarkets({
+			modelPrediction: { ...zModelu(), over25: { probability: 0.65, base: 0.58, variant: 'goals' } },
+		});
+		assert.equal(znajdz(rynki, 'over25'), null);
+	});
+
+	test('bez wyniku kalibracji rynku nie ma — macierz go nie zastępuje', () => {
+		const rynki = evaluateMarkets({ modelPrediction: { ...zModelu(), over25: null } });
+		assert.equal(rynki.filter((r) => r.market === 'Suma goli').length, 0);
+	});
+
+	test('mecz z samym „powyżej 2,5" przechodzi odsiew raportu', () => {
+		const prognoza = {
+			...zModelu({ home: 0.4, draw: 0.3, away: 0.3, homeScores: 0.7, awayScores: 0.6 }),
+			over25: { probability: 0.7, base: 0.52 },
+		};
+		assert.equal(modelCanYield(prognoza), true);
+	});
+});

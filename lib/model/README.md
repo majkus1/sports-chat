@@ -11,6 +11,10 @@ z korektą Dixona-Colesa, wszystkie rynki wyprowadzone z jednej macierzy.
 | `ratings.js` | szacowanie sił drużyn, przewagi boiska i korekty `rho` z historycznych wyników |
 | `backtest.mjs` | sprawdzenie modelu na meczach, których nie widział podczas uczenia |
 | `goalsExperiment.mjs` | eksperyment „pod gole": czy kalibracja i strzały ratują rynki 2,5 gola i BTTS (bez klucza API) |
+| `goalsCalibration.js` | cechy, regresja i jej zastosowanie dla „powyżej 2,5" — jedno źródło dla eksperymentu i produkcji |
+| `goalsCalibrationData.js` | GENEROWANY: współczynniki regresji (`--emit` eksperymentu) |
+| `goals.js` | produkcja: skalibrowane „powyżej 2,5" dla pary drużyn z terminarza i `FixtureStats` |
+| `fixtureStats.js` | nocny zbieracz strzałów z `fixtures/statistics` do kolekcji `FixtureStats` |
 
 ## Stan: PODPIĘTY DO PRODUKCJI — raporty i analizy pojedynczych meczów
 
@@ -77,11 +81,35 @@ Trzy wnioski, z pomiaru:
 3. **BTTS nie.** Skalibrowany bije stałą tylko na dłuższym oknie (t = 3,5; na ostatnim
    sezonie 0,9–1,6) i po polityce zostaje kilka typów na sezon. Rynek zbyt bliski monety.
 
-Co z tego wynika dla produkcji: „powyżej 2,5" da się włączyć jako osobny rynek — jako warstwę
-kalibrującą nad DC z cechami drużyn, nie jako surowe `totalGoals`. Do cech potrzeba strzałów
-z ostatnich meczów: dla 11 lig z archiwum za darmo, dla reszty z `fixtures/statistics`
-u dostawcy (~150 zapytań dziennie, 2 % limitu). Eksperyment obejmuje wyłącznie czołowe ligi;
-przed włączeniem niższych trzeba ten sam pomiar powtórzyć na ich danych.
+### Jak to działa na produkcji (od września 2026)
+
+„Powyżej 2,5 gola" jest siódmą selekcją w `SELECTION_SHAPES` — jedyną z sumy goli i tylko
+„powyżej". Liczy ją `goals.js`, nie macierz:
+
+1. **Stała ligowa i średnie ligowe** — z terminarza ligi (bieżący i poprzedni sezon), tego
+   samego, na którym uczy się model sił drużyn. Zero dodatkowych zapytań.
+2. **Gole za i przeciw z ostatnich 10 meczów** każdej drużyny — z tego samego terminarza.
+3. **Strzały i strzały celne** — z kolekcji `FixtureStats`, którą co noc o 3:00 napełnia
+   `fixtureStats.js` (`/api/cron/fixture-stats`, budżet 1200 zapytań; pierwsze napełnienie
+   ~3 000 meczów w kilka nocy, potem ~150 dziennie). Mecz bez statystyk u dostawcy też jest
+   zapisywany (z `null`), żeby nie pytać o niego drugi raz.
+4. **Wariant per mecz**: `shots`, gdy obie drużyny mają strzały w ≥ 6 z ostatnich 10 meczów,
+   inaczej `goals`. Oba były zmierzone: `goals` daje ~50 typów na sezon na 11 lig przy
+   trafności 72 %, `shots` ~95 przy 74 %. Pierwszej nocy po wdrożeniu wszystko idzie na
+   `goals`; w miarę zbierania strzałów ligi przechodzą na `shots` same.
+5. **Norma jest ligowa** i wędruje z typem (`baseRate`), nie z tabeli w polityce. Typ na sumę
+   goli BEZ normy — np. napisany przez model językowy z własnej głowy — dostaje
+   `market_not_measured` i nie wchodzi do statystyki. To bezpiecznik: liczą się wyłącznie
+   typy z kalibracji.
+
+Regresję odtwarza się jedną komendą (patrz nagłówek `goalsExperiment.mjs`, `--emit`); plik
+`goalsCalibrationData.js` jest generowany i trafia do repozytorium, żeby produkcja nie
+uczyła niczego w locie. Warto ją przeliczać raz na sezon.
+
+Zastrzeżenie, które zostaje: pomiar obejmuje wyłącznie czołowe ligi z archiwum. Ligi niższe
+i pozaeuropejskie dostają tę samą regresję (cechy są względem ligi, więc przenoszą się), ale
+ich trafność trzeba sprawdzić po pierwszych rozliczonych typach w panelu skuteczności —
+rynek „Suma goli" ma tam osobny wiersz.
 
 ## Rynek bukmacherski: sufit i pomiar, nigdy baza
 

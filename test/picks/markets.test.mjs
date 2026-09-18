@@ -111,13 +111,19 @@ describe('nazwy kanoniczne', () => {
 			dir: 'over',
 			line: 0.5,
 		});
+		assert.deepEqual(rozpoznaj(CANONICAL_MARKETS.totalGoals, 'Powyżej 2.5 gola'), {
+			type: 'totalGoals',
+			dir: 'over',
+			line: 2.5,
+		});
 	});
 
-	test('są trzy i tylko te trzy — prompt wypisuje je z tego samego źródła', () => {
+	test('są cztery i tylko te cztery — prompt wypisuje je z tego samego źródła', () => {
 		assert.deepEqual(Object.keys(CANONICAL_MARKETS).sort(), [
 			'doubleChance',
 			'matchWinner',
 			'teamGoals',
+			'totalGoals',
 		]);
 	});
 });

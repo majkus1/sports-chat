@@ -35,11 +35,29 @@ const typ = (market, selection) =>
 	normalizePick({ market, selection, homeName: 'Lech Poznań', awayName: 'Legia Warszawa' });
 
 describe('rynki, w których nie prognozujemy', () => {
-	test('suma goli nie wchodzi do statystyki, nawet przy wysokiej pewności', () => {
+	/*
+	 * „Powyżej 2,5" ma normę LIGOWĄ, którą przynosi typ z kalibracji (`baseRate`). Bez niej —
+	 * czyli gdy typ napisał model językowy z własnej głowy — nie ma jak zmierzyć przewagi
+	 * i typ nie wchodzi. To jest bezpiecznik, nie usterka.
+	 */
+	test('suma goli bez normy ligowej nie wchodzi do statystyki, nawet przy wysokiej pewności', () => {
 		const wynik = meetsPolicy(typ('Suma goli', 'Powyżej 2.5 gola'), 91);
 
 		assert.equal(wynik.ok, false);
-		assert.equal(wynik.reason, 'market_not_predictable');
+		assert.equal(wynik.reason, 'market_not_measured');
+	});
+
+	test('„powyżej 2,5" z normą ligową od modelu przechodzi próg przewagi', () => {
+		assert.equal(meetsPolicy(typ('Suma goli', 'Powyżej 2.5 gola'), 66, { base: 52 }).ok, true);
+		assert.equal(meetsPolicy(typ('Suma goli', 'Powyżej 2.5 gola'), 62, { base: 52 }).ok, false);
+	});
+
+	test('„poniżej 2,5" i inne progi sumy goli zostają zakazane, nawet z normą', () => {
+		for (const [selekcja] of [['Poniżej 2.5 gola'], ['Powyżej 1.5 gola'], ['Powyżej 3.5 gola']]) {
+			const wynik = meetsPolicy(typ('Suma goli', selekcja), 90, { base: 50 });
+			assert.equal(wynik.ok, false, selekcja);
+			assert.equal(wynik.reason, 'market_not_predictable', selekcja);
+		}
 	});
 
 	test('„obie strzelą" też nie', () => {
@@ -180,7 +198,7 @@ describe('norma warunkowa — mecz w trakcie', () => {
 	});
 
 	test('norma warunkowa nie ratuje rynku zakazanego', () => {
-		assert.equal(meetsPolicy(typ('Suma goli', 'Powyżej 2.5 gola'), 90, { base: 50 }).ok, false);
+		assert.equal(meetsPolicy(typ('Obie strzelą', 'Tak'), 90, { base: 50 }).ok, false);
 	});
 });
 
