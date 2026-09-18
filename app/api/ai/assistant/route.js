@@ -1,5 +1,6 @@
 import connectToDb from '@/lib/db';
 import AiConversation from '@/models/AiConversation';
+import AssistantConversation, { MAX_PER_USER, titleFrom } from '@/models/AssistantConversation';
 import User from '@/models/User';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { checkQuota, consumeQuota, recordUsage } from '@/lib/billing/entitlements';
@@ -21,15 +22,16 @@ export const maxDuration = 120;
  * potrzebuje — patrz `lib/assistant/tools.js`. Reszta jest wspólna: sesja, limit pytań
  * (`aiChat`), próg wydatków, zapis rozmowy, dziennik użycia.
  *
- * WĄTEK ROZMOWY. `AiConversation` wymaga `fixtureId`, bo powstał dla rozmów o meczu.
- * Asystent nie ma meczu, więc używa stałej wartości `'assistant'` w tym polu — jeden wątek
- * na użytkownika i język, ten sam mechanizm przycinania i wygasania. Świadomie bez zmiany
- * schematu: pole jest napisem, a osobna kolekcja dla jednej różnicy byłaby przesadą.
+ * ROZMOWY JAK W CHATGPT. Wiele rozmów na użytkownika (`AssistantConversation`), każda
+ * z tytułem z pierwszego pytania; lista, otwieranie, nowa rozmowa, usuwanie. Pierwsza
+ * wersja trzymała jeden wątek w `AiConversation` pod sztucznym `fixtureId` — przy pierwszym
+ * wejściu po zmianie taki wątek jest przenoszony do nowej kolekcji jako zwykła rozmowa,
+ * żeby nikt nie stracił historii.
  */
 
-const THREAD_ID = 'assistant';
+const LEGACY_THREAD_ID = 'assistant';
 const CONTEXT_SIZE = 12;
-const KEEP_MESSAGES = 40;
+const KEEP_MESSAGES = 60;
 
 const MESSAGES = {
 	pl: {
@@ -50,20 +52,65 @@ function readLanguage(body) {
 	return body?.language === 'en' ? 'en' : 'pl';
 }
 
-/** Historia rozmowy do pokazania po wejściu na stronę. */
+const OBJECT_ID = /^[a-f0-9]{24}$/;
+
+/**
+ * Stary jednowątkowy zapis → zwykła rozmowa w nowej kolekcji. Raz, przy pierwszym wejściu.
+ * Bez tego zmiana modelu danych kasowałaby ludziom historię, którą właśnie obiecujemy.
+ */
+async function migrateLegacyThread(userId, language) {
+	const legacy = await AiConversation.findOne({ userId, fixtureId: LEGACY_THREAD_ID, language }).lean();
+	if (!legacy?.messages?.length) return;
+	const pierwsze = legacy.messages.find((m) => m.role === 'user')?.content;
+	await AssistantConversation.create({
+		userId,
+		language,
+		title: titleFrom(pierwsze || (language === 'en' ? 'Earlier conversation' : 'Wcześniejsza rozmowa')),
+		messages: legacy.messages.slice(-KEEP_MESSAGES),
+	});
+	await AiConversation.deleteOne({ _id: legacy._id });
+}
+
+/** Lista rozmów (bez `id`) albo jedna rozmowa z wiadomościami (`?id=`). */
 export async function GET(request) {
 	const session = await getAuthenticatedUser();
 	if (!session) return Response.json({ error: 'unauthorized' }, { status: 401 });
 
 	const { searchParams } = new URL(request.url);
 	const language = searchParams.get('language') === 'en' ? 'en' : 'pl';
+	const id = searchParams.get('id');
 
 	await connectToDb();
-	const thread = await AiConversation.findOne({ userId: session.userId, fixtureId: THREAD_ID, language })
-		.select('messages')
+
+	if (id) {
+		if (!OBJECT_ID.test(id)) return Response.json({ error: 'not_found' }, { status: 404 });
+		const rozmowa = await AssistantConversation.findOne({ _id: id, userId: session.userId })
+			.select('title messages updatedAt')
+			.lean();
+		if (!rozmowa) return Response.json({ error: 'not_found' }, { status: 404 });
+		return Response.json({
+			id: String(rozmowa._id),
+			title: rozmowa.title,
+			updatedAt: rozmowa.updatedAt,
+			messages: rozmowa.messages.slice(-KEEP_MESSAGES),
+		});
+	}
+
+	await migrateLegacyThread(session.userId, language);
+	const lista = await AssistantConversation.find({ userId: session.userId, language })
+		.select('title updatedAt messages')
+		.sort({ updatedAt: -1 })
+		.limit(MAX_PER_USER)
 		.lean();
 
-	return Response.json({ messages: (thread?.messages || []).slice(-KEEP_MESSAGES) });
+	return Response.json({
+		conversations: lista.map((r) => ({
+			id: String(r._id),
+			title: r.title,
+			updatedAt: r.updatedAt,
+			messageCount: r.messages.length,
+		})),
+	});
 }
 
 export async function POST(request) {
@@ -79,6 +126,7 @@ export async function POST(request) {
 
 	const question = String(body?.question || '').trim();
 	const language = readLanguage(body);
+	const conversationId = OBJECT_ID.test(String(body?.conversationId || '')) ? String(body.conversationId) : null;
 	const locale = language;
 	const t = MESSAGES[language];
 
@@ -107,10 +155,13 @@ export async function POST(request) {
 			);
 		}
 
-		const thread = await AiConversation.findOne({ userId: session.userId, fixtureId: THREAD_ID, language })
-			.select('messages')
-			.lean();
-		const history = (thread?.messages || [])
+		// Rozmowa musi należeć do pytającego — obcy identyfikator to „nie ma takiej", nie cudza historia.
+		const rozmowa = conversationId
+			? await AssistantConversation.findOne({ _id: conversationId, userId: session.userId }).select('messages').lean()
+			: null;
+		if (conversationId && !rozmowa) return Response.json({ error: 'not_found' }, { status: 404 });
+
+		const history = (rozmowa?.messages || [])
 			.slice(-CONTEXT_SIZE)
 			.map((m) => ({ role: m.role, content: m.content }));
 
@@ -142,14 +193,30 @@ export async function POST(request) {
 			{ role: 'assistant', content: text, at: new Date(now.getTime() + 1) },
 		];
 
-		await AiConversation.updateOne(
-			{ userId: session.userId, fixtureId: THREAD_ID, language },
-			{
-				$push: { messages: { $each: appended, $slice: -KEEP_MESSAGES } },
-				$set: { expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
-			},
-			{ upsert: true }
-		);
+		let zapisana;
+		if (rozmowa) {
+			zapisana = await AssistantConversation.findOneAndUpdate(
+				{ _id: conversationId, userId: session.userId },
+				{ $push: { messages: { $each: appended, $slice: -KEEP_MESSAGES } } },
+				{ new: true, projection: { title: 1 } }
+			).lean();
+		} else {
+			zapisana = await AssistantConversation.create({
+				userId: session.userId,
+				language,
+				title: titleFrom(question),
+				messages: appended,
+			});
+			// Sufit rozmów na użytkownika: najstarsze odpadają, żeby historia nie rosła bez końca.
+			const nadmiar = await AssistantConversation.find({ userId: session.userId })
+				.sort({ updatedAt: -1 })
+				.skip(MAX_PER_USER)
+				.select('_id')
+				.lean();
+			if (nadmiar.length) {
+				await AssistantConversation.deleteMany({ _id: { $in: nadmiar.map((r) => r._id) } });
+			}
+		}
 
 		// Licznik i dziennik dopiero po udanej odpowiedzi — nieudana nie kosztuje.
 		await consumeQuota({ kind: 'aiChat', user, userId: session.userId, usingCredit: quota.usingCredit });
@@ -166,6 +233,8 @@ export async function POST(request) {
 		});
 
 		return Response.json({
+			conversationId: String(zapisana._id),
+			title: zapisana.title,
 			messages: appended,
 			// Które narzędzia poszły w ruch — interfejs pokazuje to jako „sprawdziłem…".
 			tools: toolCalls.map((c) => c.name),
@@ -180,15 +249,16 @@ export async function POST(request) {
 	}
 }
 
-/** Wyczyszczenie wątku — „zacznij od nowa" w interfejsie. */
+/** Usunięcie jednej rozmowy (`?id=`). */
 export async function DELETE(request) {
 	const session = await getAuthenticatedUser();
 	if (!session) return Response.json({ error: 'unauthorized' }, { status: 401 });
 
 	const { searchParams } = new URL(request.url);
-	const language = searchParams.get('language') === 'en' ? 'en' : 'pl';
+	const id = searchParams.get('id');
+	if (!OBJECT_ID.test(String(id || ''))) return Response.json({ error: 'not_found' }, { status: 404 });
 
 	await connectToDb();
-	await AiConversation.deleteOne({ userId: session.userId, fixtureId: THREAD_ID, language });
-	return Response.json({ ok: true });
+	const wynik = await AssistantConversation.deleteOne({ _id: id, userId: session.userId });
+	return Response.json({ ok: wynik.deletedCount === 1 });
 }

@@ -2,7 +2,7 @@
 
 import { useContext, useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { Bot, Lock, RotateCcw, Send, Sparkles } from 'lucide-react';
+import { Bot, ChevronDown, Lock, MessageSquare, Plus, Send, Sparkles, Trash2 } from 'lucide-react';
 import BallIcon from '@/components/icons/BallIcon';
 import NavBar from '@/components/NavBar';
 import FootballMenu from '@/components/FootballMenu';
@@ -27,6 +27,11 @@ import { cn } from '@/lib/utils';
  *
  * Podpowiedzi na start są ważniejsze niż w czacie meczu: puste pole nie mówi, o co
  * w ogóle wolno spytać, a to jest cała wartość tej strony.
+ *
+ * HISTORIA JAK W CHATGPT. Rozmowy są zapisywane osobno, z tytułem z pierwszego pytania;
+ * lista stoi obok czatu (na telefonie — pod przyciskiem nad czatem). „Nowa rozmowa"
+ * zaczyna pustą; wejście na stronę też zaczyna pustą, a nie ostatnią — bo najczęściej
+ * przychodzi się z nowym pytaniem, a stare rozmowy są o kliknięcie dalej.
  */
 
 const STARTERS = [
@@ -154,40 +159,179 @@ function Thinking() {
 	);
 }
 
+/** Względny czas na liście rozmów: „dziś", „wczoraj", data. */
+function kiedy(iso, locale, t) {
+	const d = new Date(iso);
+	const dzis = new Date();
+	const tenSamDzien = (a, b) => a.toDateString() === b.toDateString();
+	if (tenSamDzien(d, dzis)) return t('assistant_today');
+	const wczoraj = new Date(dzis.getTime() - 86_400_000);
+	if (tenSamDzien(d, wczoraj)) return t('assistant_yesterday');
+	return d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit' });
+}
+
+/** Lista rozmów: nowa, otwórz, usuń (z jednym potwierdzeniem w miejscu). */
+function ConversationList({ conversations, activeId, onNew, onOpen, onDelete, locale }) {
+	const t = useTranslations('common');
+	const [doUsuniecia, setDoUsuniecia] = useState(null);
+
+	return (
+		<div className="flex flex-col gap-2">
+			<button
+				type="button"
+				onClick={onNew}
+				className="inline-flex items-center justify-center gap-2 rounded-[var(--radius-ui)] border-0 bg-accent px-3 py-2.5 text-sm font-semibold text-accent-fg transition-colors hover:bg-accent-hover"
+			>
+				<Plus size={15} aria-hidden="true" />
+				{t('assistant_new_chat')}
+			</button>
+
+			{conversations.length === 0 ? (
+				<p className="px-1 py-2 text-xs text-muted">{t('assistant_no_history')}</p>
+			) : (
+				<ul className="flex max-h-[60vh] flex-col gap-1 overflow-y-auto">
+					{conversations.map((c) => {
+						const aktywna = c.id === activeId;
+						const pytaOUsuniecie = doUsuniecia === c.id;
+						return (
+							<li key={c.id} className="group">
+								{pytaOUsuniecie ? (
+									<div className="flex items-center justify-between gap-2 rounded-[var(--radius-ui)] bg-surface-2 px-3 py-2 text-xs">
+										<span className="text-text">{t('assistant_delete_confirm')}</span>
+										<span className="flex shrink-0 gap-1">
+											<button
+												type="button"
+												onClick={() => {
+													setDoUsuniecia(null);
+													onDelete(c.id);
+												}}
+												className="rounded-full border-0 bg-loss px-2.5 py-1 text-xs font-semibold text-white"
+											>
+												{t('assistant_delete')}
+											</button>
+											<button
+												type="button"
+												onClick={() => setDoUsuniecia(null)}
+												className="rounded-full border border-border bg-transparent px-2.5 py-1 text-xs text-text"
+											>
+												{t('assistant_cancel')}
+											</button>
+										</span>
+									</div>
+								) : (
+									<div
+										className={cn(
+											'flex items-center gap-2 rounded-[var(--radius-ui)] px-3 py-2 transition-colors',
+											aktywna ? 'bg-accent-soft' : 'hover:bg-surface-2'
+										)}
+									>
+										<button
+											type="button"
+											onClick={() => onOpen(c.id)}
+											className="min-w-0 flex-1 border-0 bg-transparent p-0 text-left"
+											aria-current={aktywna ? 'true' : undefined}
+										>
+											<span className={cn('block truncate text-sm', aktywna ? 'font-semibold text-text' : 'text-text')}>
+												{c.title}
+											</span>
+											<span className="block text-[11px] text-muted">{kiedy(c.updatedAt, locale, t)}</span>
+										</button>
+										<button
+											type="button"
+											onClick={() => setDoUsuniecia(c.id)}
+											aria-label={t('assistant_delete')}
+											title={t('assistant_delete')}
+											className="shrink-0 rounded-md border-0 bg-transparent p-1 text-muted opacity-60 transition-opacity hover:text-loss hover:opacity-100 group-hover:opacity-100"
+										>
+											<Trash2 size={14} aria-hidden="true" />
+										</button>
+									</div>
+								)}
+							</li>
+						);
+					})}
+				</ul>
+			)}
+		</div>
+	);
+}
+
 export default function AssistantClient() {
 	const t = useTranslations('common');
 	const locale = useLocale();
 	const { isAuthed } = useContext(UserContext);
 
+	const [conversations, setConversations] = useState([]);
+	const [activeId, setActiveId] = useState(null);
 	const [messages, setMessages] = useState([]);
 	const [value, setValue] = useState('');
 	const [isSending, setIsSending] = useState(false);
+	const [isOpening, setIsOpening] = useState(false);
 	const [error, setError] = useState(null);
 	const [limitReached, setLimitReached] = useState(false);
+	const [listOpen, setListOpen] = useState(false);
 	const [isResultsModalOpen, setIsResultsModalOpen] = useState(false);
 	const endRef = useRef(null);
 
+	const loadList = async () => {
+		try {
+			const res = await fetch(`/api/ai/assistant?language=${locale}`, { credentials: 'include' });
+			if (!res.ok) return;
+			const data = await res.json();
+			setConversations(data.conversations || []);
+		} catch {
+			/* brak listy to nie błąd — czat działa bez niej */
+		}
+	};
+
 	useEffect(() => {
-		if (!isAuthed) return undefined;
-		let cancelled = false;
-		(async () => {
-			try {
-				const res = await fetch(`/api/ai/assistant?language=${locale}`, { credentials: 'include' });
-				if (!res.ok) return;
-				const data = await res.json();
-				if (!cancelled) setMessages(data.messages || []);
-			} catch {
-				/* brak historii to nie błąd */
-			}
-		})();
-		return () => {
-			cancelled = true;
-		};
+		if (!isAuthed) return;
+		loadList();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [isAuthed, locale]);
 
 	useEffect(() => {
 		endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 	}, [messages, isSending]);
+
+	const startNew = () => {
+		setActiveId(null);
+		setMessages([]);
+		setError(null);
+		setListOpen(false);
+	};
+
+	const openConversation = async (id) => {
+		if (id === activeId) return;
+		setIsOpening(true);
+		setError(null);
+		setListOpen(false);
+		try {
+			const res = await fetch(`/api/ai/assistant?language=${locale}&id=${id}`, { credentials: 'include' });
+			if (!res.ok) {
+				setError(t('assistant_error'));
+				return;
+			}
+			const data = await res.json();
+			setActiveId(data.id);
+			setMessages(data.messages || []);
+		} catch {
+			setError(t('assistant_error'));
+		} finally {
+			setIsOpening(false);
+		}
+	};
+
+	const deleteConversation = async (id) => {
+		// Z ekranu znika od razu; serwer dogania. Nieudane usunięcie wróci przy odświeżeniu listy.
+		setConversations((prev) => prev.filter((c) => c.id !== id));
+		if (id === activeId) startNew();
+		try {
+			await fetch(`/api/ai/assistant?id=${id}`, { method: 'DELETE', credentials: 'include' });
+		} catch {
+			loadList();
+		}
+	};
 
 	const ask = async (question) => {
 		const q = question.trim();
@@ -201,7 +345,7 @@ export default function AssistantClient() {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ question: q, language: locale }),
+				body: JSON.stringify({ question: q, language: locale, conversationId: activeId }),
 			});
 			const data = await res.json().catch(() => ({}));
 			if (res.status === 429) {
@@ -215,6 +359,23 @@ export default function AssistantClient() {
 			}
 			const odpowiedz = (data.messages || []).find((m) => m.role === 'assistant');
 			if (odpowiedz) setMessages((prev) => [...prev, odpowiedz]);
+			// Nowa rozmowa dostaje identyfikator i trafia na górę listy; istniejąca — tylko na górę.
+			if (data.conversationId) {
+				setActiveId(data.conversationId);
+				setConversations((prev) => {
+					const bez = prev.filter((c) => c.id !== data.conversationId);
+					const stara = prev.find((c) => c.id === data.conversationId);
+					return [
+						{
+							id: data.conversationId,
+							title: data.title || stara?.title || q,
+							updatedAt: new Date().toISOString(),
+							messageCount: (stara?.messageCount || 0) + 2,
+						},
+						...bez,
+					];
+				});
+			}
 		} catch {
 			setError(t('assistant_error'));
 		} finally {
@@ -222,16 +383,16 @@ export default function AssistantClient() {
 		}
 	};
 
-	const reset = async () => {
-		setMessages([]);
-		setError(null);
-		setLimitReached(false);
-		try {
-			await fetch(`/api/ai/assistant?language=${locale}`, { method: 'DELETE', credentials: 'include' });
-		} catch {
-			/* wątek i tak zniknął z ekranu */
-		}
-	};
+	const lista = (
+		<ConversationList
+			conversations={conversations}
+			activeId={activeId}
+			onNew={startNew}
+			onOpen={openConversation}
+			onDelete={deleteConversation}
+			locale={locale}
+		/>
+	);
 
 	return (
 		<>
@@ -244,26 +405,14 @@ export default function AssistantClient() {
 
 				<FootballMenu onResultsClick={() => setIsResultsModalOpen(true)} />
 
-				<div className="mx-auto w-full max-w-3xl">
-					<div className="flex flex-wrap items-center gap-3">
-						<h2 className="font-display text-2xl font-bold uppercase tracking-wide text-text">
-							{t('assistant_title')}
-						</h2>
-						{messages.length > 0 && (
-							<button
-								type="button"
-								onClick={reset}
-								className="ml-auto inline-flex items-center gap-1.5 border-0 bg-transparent text-xs text-muted hover:text-text"
-							>
-								<RotateCcw size={13} aria-hidden="true" />
-								{t('assistant_reset')}
-							</button>
-						)}
-					</div>
+				<div className="mx-auto w-full max-w-5xl">
+					<h2 className="font-display text-2xl font-bold uppercase tracking-wide text-text">
+						{t('assistant_title')}
+					</h2>
 					<p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{t('assistant_intro')}</p>
 
 					{!isAuthed ? (
-						<Card className="mt-6">
+						<Card className="mt-6 max-w-3xl">
 							<CardContent className="flex flex-col items-center gap-3 px-5 py-8 text-center">
 								<span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-muted">
 									<Lock size={18} aria-hidden="true" />
@@ -273,83 +422,120 @@ export default function AssistantClient() {
 							</CardContent>
 						</Card>
 					) : (
-						<Card className="mt-6">
-							<CardContent className="flex flex-col gap-4 px-5 py-5">
-								{messages.length === 0 && (
-									<div className="flex flex-col gap-3">
-										<p className="text-sm text-text">{t('assistant_empty')}</p>
-										<div className="flex flex-wrap gap-2">
-											{STARTERS.map((key) => (
-												<button
-													key={key}
-													type="button"
-													onClick={() => ask(t(key))}
-													disabled={isSending}
-													className="rounded-full border border-border bg-transparent px-3.5 py-2 text-sm text-text transition-colors hover:border-accent hover:bg-accent-soft"
-												>
-													{t(key)}
-												</button>
-											))}
+						<div className="mt-6 grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start">
+							{/* Lista rozmów: na dużym ekranie obok, na telefonie pod przyciskiem. */}
+							<aside className="hidden lg:block">
+								<Card>
+									<CardContent className="px-3 py-3">
+										<p className="mb-2 flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-muted">
+											<MessageSquare size={13} aria-hidden="true" />
+											{t('assistant_history')}
+										</p>
+										{lista}
+									</CardContent>
+								</Card>
+							</aside>
+
+							<div className="lg:hidden">
+								<button
+									type="button"
+									onClick={() => setListOpen((v) => !v)}
+									aria-expanded={listOpen}
+									className="flex w-full items-center justify-between rounded-[var(--radius-ui)] border border-border bg-surface px-3.5 py-2.5 text-sm font-semibold text-text"
+								>
+									<span className="inline-flex items-center gap-2">
+										<MessageSquare size={15} aria-hidden="true" className="text-accent" />
+										{t('assistant_history')} ({conversations.length})
+									</span>
+									<ChevronDown size={16} aria-hidden="true" className={cn('transition-transform', listOpen && 'rotate-180')} />
+								</button>
+								{listOpen && (
+									<Card className="mt-2">
+										<CardContent className="px-3 py-3">{lista}</CardContent>
+									</Card>
+								)}
+							</div>
+
+							<Card>
+								<CardContent className="flex flex-col gap-4 px-5 py-5">
+									{isOpening && <Thinking />}
+
+									{!isOpening && messages.length === 0 && (
+										<div className="flex flex-col gap-3">
+											<p className="text-sm text-text">{t('assistant_empty')}</p>
+											<div className="flex flex-wrap gap-2">
+												{STARTERS.map((key) => (
+													<button
+														key={key}
+														type="button"
+														onClick={() => ask(t(key))}
+														disabled={isSending}
+														className="rounded-full border border-border bg-transparent px-3.5 py-2 text-sm text-text transition-colors hover:border-accent hover:bg-accent-soft"
+													>
+														{t(key)}
+													</button>
+												))}
+											</div>
 										</div>
-									</div>
-								)}
+									)}
 
-								{messages.length > 0 && (
-									<div className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto pr-1">
-										{messages.map((m, idx) => (
-											<Bubble key={idx} message={m} />
-										))}
-										{isSending && <Thinking />}
-										<div ref={endRef} />
-									</div>
-								)}
-								{messages.length === 0 && isSending && <Thinking />}
+									{!isOpening && messages.length > 0 && (
+										<div className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto pr-1">
+											{messages.map((m, idx) => (
+												<Bubble key={idx} message={m} />
+											))}
+											{isSending && <Thinking />}
+											<div ref={endRef} />
+										</div>
+									)}
+									{messages.length === 0 && isSending && <Thinking />}
 
-								{error && <p className="text-sm text-loss">{error}</p>}
-								{limitReached && (
-									<Link href="/cennik" className="text-sm font-semibold text-accent underline">
-										{t('see_plans')}
-									</Link>
-								)}
+									{error && <p className="text-sm text-loss">{error}</p>}
+									{limitReached && (
+										<Link href="/cennik" className="text-sm font-semibold text-accent underline">
+											{t('see_plans')}
+										</Link>
+									)}
 
-								{!limitReached && (
-									<form
-										onSubmit={(e) => {
-											e.preventDefault();
-											ask(value);
-										}}
-										className="flex items-end gap-2"
-									>
-										<textarea
-											value={value}
-											onChange={(e) => setValue(e.target.value)}
-											onKeyDown={(e) => {
-												if (e.key === 'Enter' && !e.shiftKey) {
-													e.preventDefault();
-													ask(value);
-												}
+									{!limitReached && (
+										<form
+											onSubmit={(e) => {
+												e.preventDefault();
+												ask(value);
 											}}
-											rows={1}
-											maxLength={MAX_CHAT_MSG_LEN}
-											placeholder={t('assistant_placeholder')}
-											disabled={isSending}
-											className="min-h-[44px] flex-1 resize-none rounded-[var(--radius-ui)] border border-border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted focus:border-accent focus:outline-2 focus:outline-offset-2 focus:outline-ring"
-										/>
-										<Button
-											type="submit"
-											variant="accent"
-											size="icon"
-											disabled={isSending || !value.trim()}
-											aria-label={t('sent')}
+											className="flex items-end gap-2"
 										>
-											<Send size={16} aria-hidden="true" />
-										</Button>
-									</form>
-								)}
+											<textarea
+												value={value}
+												onChange={(e) => setValue(e.target.value)}
+												onKeyDown={(e) => {
+													if (e.key === 'Enter' && !e.shiftKey) {
+														e.preventDefault();
+														ask(value);
+													}
+												}}
+												rows={1}
+												maxLength={MAX_CHAT_MSG_LEN}
+												placeholder={t('assistant_placeholder')}
+												disabled={isSending}
+												className="min-h-[44px] flex-1 resize-none rounded-[var(--radius-ui)] border border-border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted focus:border-accent focus:outline-2 focus:outline-offset-2 focus:outline-ring"
+											/>
+											<Button
+												type="submit"
+												variant="accent"
+												size="icon"
+												disabled={isSending || !value.trim()}
+												aria-label={t('sent')}
+											>
+												<Send size={16} aria-hidden="true" />
+											</Button>
+										</form>
+									)}
 
-								<p className="text-xs leading-relaxed text-muted">{t('assistant_footnote')}</p>
-							</CardContent>
-						</Card>
+									<p className="text-xs leading-relaxed text-muted">{t('assistant_footnote')}</p>
+								</CardContent>
+							</Card>
+						</div>
 					)}
 				</div>
 			</div>
