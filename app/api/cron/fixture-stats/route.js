@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import connectToDb from '@/lib/db';
 import { collectFixtureStats } from '@/lib/model/fixtureStats';
+import { settleForecasts } from '@/lib/model/forecastLog';
 
 export const maxDuration = 300;
 
@@ -32,12 +33,19 @@ export async function POST(request) {
 
 	try {
 		await connectToDb();
+		// Dziennik prognoz najpierw: wczorajsze mecze dostają wynik (jedno zapytanie na 20 meczów).
+		let forecasts = null;
+		try {
+			forecasts = await settleForecasts();
+		} catch (error) {
+			console.warn('[forecast-log] rozliczenie nie powiodło się:', error.message);
+		}
 		const summary = await collectFixtureStats({
 			...(Number.isInteger(budget) && budget > 0 ? { budget } : {}),
 			...(leagues.length ? { leagues } : {}),
 		});
-		console.log('[fixture-stats] przebieg:', JSON.stringify(summary));
-		return Response.json({ ok: true, ...summary });
+		console.log('[fixture-stats] przebieg:', JSON.stringify({ ...summary, forecasts }));
+		return Response.json({ ok: true, ...summary, forecasts });
 	} catch (error) {
 		console.error('[fixture-stats] przebieg nie powiódł się:', error.message);
 		return Response.json({ error: 'fixture_stats_failed' }, { status: 500 });

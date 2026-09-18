@@ -15,6 +15,8 @@ z korektą Dixona-Colesa, wszystkie rynki wyprowadzone z jednej macierzy.
 | `goalsCalibrationData.js` | GENEROWANY: współczynniki regresji (`--emit` eksperymentu) |
 | `goals.js` | produkcja: skalibrowane „powyżej 2,5" dla pary drużyn z terminarza i `FixtureStats` |
 | `fixtureStats.js` | nocny zbieracz strzałów z `fixtures/statistics` do kolekcji `FixtureStats` |
+| `forecastLog.js` | dziennik prognoz: każdy mecz policzony przez model (`ModelForecast`), z wynikiem dopisanym w nocy |
+| `forecastCheck.mjs` | pomiar na dzienniku: kalibracja, Brier wobec stałej, warianty 2,5, ligi, plakietki |
 
 ## Stan: PODPIĘTY DO PRODUKCJI — raporty i analizy pojedynczych meczów
 
@@ -115,6 +117,25 @@ Zastrzeżenie, które zostaje: pomiar obejmuje wyłącznie czołowe ligi z archi
 i pozaeuropejskie dostają tę samą regresję (cechy są względem ligi, więc przenoszą się), ale
 ich trafność trzeba sprawdzić po pierwszych rozliczonych typach w panelu skuteczności —
 rynek „Suma goli" ma tam osobny wiersz.
+
+## Dziennik prognoz — jak model będzie się sprawdzał i uczył
+
+Typy (`Pick`) to kilkadziesiąt rozliczonych na miesiąc: za mało, żeby w rozsądnym czasie
+sprawdzić kalibrację, i za mało, żeby czegokolwiek się nauczyć. Od września 2026 KAŻDA
+prognoza modelu (lista, panel, mail, asystent — to jedno `hintsForDate`) trafia do
+`ModelForecast`: wszystkie rynki, wariant „powyżej 2,5", plakietka, a w nocy wynik. Pierwsza
+prognoza w oknie 48 h przed meczem zostaje; kolejne policzenia niczego nie nadpisują.
+To ~3 000 prognoz miesięcznie przy zerowym koszcie zapytań (wyniki idą po 20 na zapytanie).
+
+Kolejność działań, z progami:
+
+1. **Po ~2 000 prognoz z wynikiem (ok. 2 miesiące)** — `forecastCheck.mjs`: czy „66 %"
+   trafia w 66 %, czy `shots` bije `goals`, które ligi są na minusie. Decyzje: korekta
+   nadmiernej pewności (dziś wiemy, że powyżej 70 % model jest ~10 pkt za pewny siebie),
+   wyłączenie lig, gdzie zysk nad stałą jest ujemny.
+2. **Po ~10 000 (ok. pół roku)** — przeliczenie regresji „powyżej 2,5" na własnych danych
+   (z `FixtureStats`, w tym xG tam, gdzie dostawca je daje) i porównanie z archiwum.
+3. **Cechy per drużyna** — dopiero gdy będzie ≥ 100 prognoz na drużynę; wcześniej to szum.
 
 ## Rynek bukmacherski: sufit i pomiar, nigdy baza
 
