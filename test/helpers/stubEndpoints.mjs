@@ -137,3 +137,8 @@ export async function teamRecentFixtures() {
 export async function teamStatistics() {
 	return null;
 }
+
+/** Lista sezonów rozgrywek (pula reprezentacji) — w atrapie pusta, pula po prostu nie powstaje. */
+export async function leagueSeasons() {
+	return [];
+}

@@ -203,8 +203,8 @@ export async function POST(request) {
 							leagueTier: leagueTier(kandydat?.leagueId),
 							// Kandydat przechodzi selekcję tylko z kompletem tych sekcji.
 							sectionsPresent: kandydat ? ['form', 'prediction'] : [],
-							playedHome: kandydat?.formHome?.played?.total ?? null,
-							playedAway: kandydat?.formAway?.played?.total ?? null,
+							playedHome: kandydat?.playedHome ?? kandydat?.formHome?.played?.total ?? null,
+							playedAway: kandydat?.playedAway ?? kandydat?.formAway?.played?.total ?? null,
 						};
 					},
 				});

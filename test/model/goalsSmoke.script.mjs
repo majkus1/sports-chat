@@ -6,9 +6,16 @@
  * czekać 10 s na połączenie — a `goalsContext` ma to przełknąć i policzyć wariant `goals`.
  */
 import mongoose from 'mongoose';
-import { setupEnv } from '../helpers/setup.mjs';
+import dotenv from 'dotenv';
 
-setupEnv();
+/*
+ * BEZ `setupEnv()`. Ta funkcja rejestruje alias `@/` programowo, a taki hak uruchamia się
+ * PRZED hakami z wiersza poleceń — `@/lib/football/endpoints` rozwiązywał się wtedy do
+ * prawdziwego modułu i atrapa (`stubLoader.mjs`) była pomijana: test po cichu pytał
+ * prawdziwe API. Alias i atrapę podaje proces nadrzędny flagami `--experimental-loader`.
+ */
+dotenv.config({ path: '.env.local' });
+dotenv.config({ path: '.env' });
 mongoose.set('bufferCommands', false);
 
 const { predictFixture } = await import('@/lib/model');

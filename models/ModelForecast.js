@@ -33,6 +33,8 @@ const ModelForecastSchema = new mongoose.Schema(
 		forecastAt: { type: Date, required: true },
 		leadHours: { type: Number, default: null },
 		modelVersion: { type: String, default: null, index: true },
+		/** Pula łączona (`europe`, `international`) albo `null` dla modelu jednej ligi. */
+		pool: { type: String, default: null, index: true },
 		matchesUsed: { type: Number, default: null },
 
 		/** Średnie bramkowe Dixona-Colesa — z nich wynika cała macierz. */

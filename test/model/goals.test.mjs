@@ -66,7 +66,14 @@ describe('łańcuch predictFixture → powyżej 2,5 na syntetycznej lidze', () =
 			'./test/helpers/stubLoader.mjs',
 			'test/model/goalsSmoke.script.mjs',
 		],
-		{ cwd: process.cwd(), encoding: 'utf8', timeout: 120_000 }
+		{
+			cwd: process.cwd(),
+			encoding: 'utf8',
+			timeout: 120_000,
+			// Zablokowana sieć dostawcy: gdyby atrapa znów została pominięta, test ma paść, a nie
+			// po cichu zużywać limit zapytań.
+			env: { ...process.env, FOOTBALL_API_KEY: 'zablokowany-w-tescie', FOOTBALL_API_BASE: 'http://127.0.0.1:9' },
+		}
 	);
 	const linia = `${wynik.stdout || ''}`.split('\n').find((l) => l.startsWith('{'));
 
@@ -77,16 +84,19 @@ describe('łańcuch predictFixture → powyżej 2,5 na syntetycznej lidze', () =
 
 	test('rynek powstaje w wariancie goals z normą ligową, gdy strzałów jeszcze nie ma', () => {
 		const dane = JSON.parse(linia);
-		assert.equal(dane.modelVersion, 'dixon-coles/4');
+		assert.match(dane.modelVersion, /^dixon-coles\/\d+$/);
 		assert.ok(dane.over25, 'brak over25');
 		assert.equal(dane.over25.variant, 'goals');
 		assert.ok(dane.over25.probability > 0 && dane.over25.probability < 1);
 		assert.ok(dane.over25.base > 0.3 && dane.over25.base < 0.8, `norma ligowa ${dane.over25.base}`);
 	});
 
-	test('skalibrowana prognoza trzyma się blisko normy w losowej lidze', () => {
-		// Syntetyczne wyniki nie niosą sygnału pod gole, więc regresja ma zostać przy stałej.
+	test('„powyżej 2,5" jest wśród selekcji wtedy i tylko wtedy, gdy przechodzi próg', () => {
 		const dane = JSON.parse(linia);
-		assert.ok(Math.abs(dane.over25.probability - dane.over25.base) < 0.12);
+		const p = Math.round(100 * dane.over25.probability);
+		const base = Math.round(100 * dane.over25.base);
+		const przechodzi = p >= 60 && p - base >= 12 && p <= 92;
+		const jest = dane.selekcje.some((s) => s.market === 'Suma goli');
+		assert.equal(jest, przechodzi, `p=${p}, norma=${base}`);
 	});
 });

@@ -15,6 +15,8 @@ z korektą Dixona-Colesa, wszystkie rynki wyprowadzone z jednej macierzy.
 | `goalsCalibrationData.js` | GENEROWANY: współczynniki regresji (`--emit` eksperymentu) |
 | `goals.js` | produkcja: skalibrowane „powyżej 2,5" dla pary drużyn z terminarza i `FixtureStats` |
 | `fixtureStats.js` | nocny zbieracz strzałów z `fixtures/statistics` do kolekcji `FixtureStats` |
+| `pools.js` | pule łączone: puchary europejskie (kluby na ligach + pucharach) i reprezentacje (wszystkie rozgrywki z 4 lat) |
+| `poolBacktest.mjs` | backtest pul na meczach pucharowych i reprezentacyjnych (cache odpowiedzi na dysku) |
 | `forecastLog.js` | dziennik prognoz: każdy mecz policzony przez model (`ModelForecast`), z wynikiem dopisanym w nocy |
 | `forecastCheck.mjs` | pomiar na dzienniku: kalibracja, Brier wobec stałej, warianty 2,5, ligi, plakietki |
 
@@ -117,6 +119,47 @@ Zastrzeżenie, które zostaje: pomiar obejmuje wyłącznie czołowe ligi z archi
 i pozaeuropejskie dostają tę samą regresję (cechy są względem ligi, więc przenoszą się), ale
 ich trafność trzeba sprawdzić po pierwszych rozliczonych typach w panelu skuteczności —
 rynek „Suma goli" ma tam osobny wiersz.
+
+## Pule łączone — puchary i reprezentacje (od września 2026)
+
+Model jednej ligi nie umie ocenić Ligi Mistrzów (drużyna ma osiem meczów z rywalami z innych
+lig) ani Ligi Narodów (sześć meczów na dwa lata). Te rozgrywki były wyłączone — akurat te,
+którymi interesuje się najwięcej ludzi. `pools.js` ocenia drużyny na WSZYSTKICH ich meczach:
+
+- **`europe`** — 21 lig krajowych Europy + Liga Mistrzów, Liga Europy, Liga Konferencji,
+  Superpuchar. Ligi łączą się przez mecze pucharowe. Liczy puchary europejskie i puchary
+  krajowe (tylko gdy obie drużyny są w puli). Ligi krajowe nadal liczy model swojej ligi.
+- **`international`** — mundial, Euro, Liga Narodów, eliminacje (5 kontynentów + Euro),
+  turnieje kontynentalne, towarzyskie (waga 0,5). Okno 4 lata, wolniejsze wygaszanie
+  (połowa po ~460 dniach), turnieje finałowe bez przewagi gospodarza.
+
+Drużyna z mniej niż 8 (kluby) / 6 (reprezentacje) meczami w oknie jest nieznana — bez prognozy.
+„Rozegrane" dla progu `MIN_PLAYED` to mecze w puli z ostatniego roku, nie w tych rozgrywkach.
+
+Backtest `international` (943 mecze po lipcu 2025, 60 % pokrycia):
+
+| rozgrywki | n | log loss model | częstości |
+|---|---|---|---|
+| razem | 943 | **0,852** | 1,053 (t = 11,8) |
+| mundial 2026 | 104 | 0,806 | 1,058 |
+| Liga Narodów | 30 | 0,799 | 1,065 |
+| eliminacje MŚ Europa | 156 | 0,730 | 1,041 |
+| towarzyskie | 439 | 0,935 | 1,041 |
+
+Typy po polityce: 696, obiecane 77,8 %, trafiło 79,3 %. Uwaga przy czytaniu: w meczach
+reprezentacji różnice sił są ogromne (Hiszpania – San Marino), więc przewaga nad częstościami
+jest większa niż w ligach — to nie znaczy, że model jest tu „lepszy", tylko że łatwiej go
+pobić bazowej linii. Kalibracja typów (obiecane ≈ trafione) jest tu ważniejszą miarą.
+
+Pula `europe` nie była jeszcze mierzona tym skryptem (wcześniejszy przebieg na jednej wspólnej
+puli dawał w Lidze Mistrzów +0,079 log lossu nad częstościami). Uruchomienie na serwerze:
+
+```bash
+node --experimental-loader ./test/helpers/alias.mjs lib/model/poolBacktest.mjs --pool=europe
+```
+
+Jeśli werdykt wyjdzie negatywny, pulę wyłącza się usunięciem jej z `POOLS` (rozgrywki wracają
+do stanu „bez prognoz"). Dziennik prognoz (`ModelForecast.pool`) mierzy obie pule na żywo.
 
 ## Dziennik prognoz — jak model będzie się sprawdzał i uczył
 

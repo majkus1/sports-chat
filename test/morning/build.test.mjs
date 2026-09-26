@@ -33,6 +33,15 @@ const typ = (i, over = {}) => ({
 	...over,
 });
 
+const warte = (i) => ({
+	fixtureId: String(2000 + i),
+	home: `Real ${i}`,
+	away: `Inter ${i}`,
+	league: 'UEFA Champions League',
+	kickoffLocal: '21:00',
+	probabilities: { home: 48, draw: 26, away: 26 },
+});
+
 describe('poranny mail', () => {
 	test('pusty dzień nie daje maila', () => {
 		const wynik = buildMorningEmail({ ...BAZA, yesterday: { model: [], mine: [] }, today: [], favorites: [], round: null });
@@ -109,6 +118,9 @@ describe('poranny mail', () => {
 		const dane = {
 			yesterday: { model: [{ home: 'A', away: 'B', selection: '1X', status: 'won' }], mine: [] },
 			today: [typ(1)],
+			tomorrow: [typ(8)],
+			featured: [warte(1)],
+			accuracy: { won: 30, total: 42, base: 55.4 },
 			favorites: [],
 			round: { closesLocal: '16:00', picked: 0, total: 12 },
 		};
@@ -154,5 +166,60 @@ describe('poranny mail', () => {
 		});
 		assert.ok(wynik.html.includes('&lt;b&gt;Zły&lt;/b&gt; &amp; Spółka'));
 		assert.equal(wynik.html.includes('<b>Zły</b>'), false);
+	});
+
+	/*
+	 * Mail ma przychodzić CODZIENNIE z czymś konkretnym — także we wtorek z samą Ligą
+	 * Mistrzów bez typów. Te testy pilnują, że dzień bez typów i rozliczeń nadal daje treść.
+	 */
+	test('dzień bez typów, ale z ważnymi meczami: mail idzie, szanse podpisane jako bez typu', () => {
+		const wynik = buildMorningEmail({ ...BAZA, yesterday: { model: [], mine: [] }, today: [], favorites: [], round: null, featured: [warte(1), warte(2)] });
+		assert.ok(wynik);
+		assert.equal(wynik.subject, 'Dziś 2 mecze wartych uwagi');
+		assert.ok(wynik.text.includes('Warte uwagi dziś — bez typu'));
+		assert.ok(wynik.text.includes('model: gospodarze 48% · remis 26% · goście 26%'));
+		assert.ok(wynik.text.includes('/pl/mecz/2001'));
+		assert.ok(wynik.text.includes('nie widzi przewagi wystarczającej na typ'));
+	});
+
+	test('mało typów na dziś — dochodzą jutrzejsze, łącznie najwyżej pięć', () => {
+		const wynik = buildMorningEmail({
+			...BAZA,
+			yesterday: { model: [], mine: [] },
+			today: [typ(1), typ(2)],
+			tomorrow: [5, 6, 7, 8, 9].map((i) => typ(i)),
+			favorites: [],
+			round: null,
+		});
+		assert.ok(wynik.text.includes('Jutro model widzi'));
+		assert.equal((wynik.text.match(/\/pl\/mecz\/\d+/g) || []).length, 5);
+		assert.equal(wynik.subject, 'Model widzi 2 typy na dziś');
+	});
+
+	test('dużo typów na dziś — jutra nie pokazujemy', () => {
+		const wynik = buildMorningEmail({
+			...BAZA,
+			yesterday: { model: [], mine: [] },
+			today: [1, 2, 3].map((i) => typ(i)),
+			tomorrow: [typ(9)],
+			favorites: [],
+			round: null,
+		});
+		assert.equal(wynik.text.includes('Jutro model widzi'), false);
+	});
+
+	test('tylko jutro: temat mówi o jutrze', () => {
+		const wynik = buildMorningEmail({ ...BAZA, yesterday: { model: [], mine: [] }, today: [], tomorrow: [typ(1), typ(2), typ(3), typ(4), typ(5)], favorites: [], round: null });
+		assert.equal(wynik.subject, 'Jutro model widzi 5 typów');
+	});
+
+	test('skuteczność z 30 dni: linia z normą; przy małej próbie jej nie ma', () => {
+		const zSkutecznoscia = buildMorningEmail({ ...BAZA, yesterday: { model: [], mine: [] }, today: [], favorites: [], round: null, accuracy: { won: 30, total: 42, base: 55.4 } });
+		assert.ok(zSkutecznoscia);
+		assert.ok(zSkutecznoscia.text.includes('30 z 42 typów trafionych (71%)'));
+		assert.ok(zSkutecznoscia.text.includes('dałoby 55%'));
+		assert.equal(zSkutecznoscia.subject, 'Skuteczność modelu: 71% w 30 dni');
+		const malaProba = buildMorningEmail({ ...BAZA, yesterday: { model: [], mine: [] }, today: [], favorites: [], round: null, accuracy: { won: 5, total: 6, base: 50 } });
+		assert.equal(malaProba, null);
 	});
 });
