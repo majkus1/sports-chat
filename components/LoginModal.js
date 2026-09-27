@@ -8,7 +8,7 @@ import AuthField from '@/components/auth/AuthField';
 import { Button } from '@/components/ui/Button';
 import { useAlert } from '@/context/AlertContext';
 
-export default function LoginModal({ isOpen, onRequestClose, onLogin }) {
+export default function LoginModal({ isOpen, onRequestClose, onLogin, onNeedRegister }) {
 	const [usernameInput, setUsernames] = useState('');
 	const [password, setPassword] = useState('');
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,7 +58,8 @@ export default function LoginModal({ isOpen, onRequestClose, onLogin }) {
 	return (
 		<div className="overlay">
 			<AuthCard title={t('logging')}>
-				<GoogleAuthButton onSuccessClose={onRequestClose} onLogin={onLogin} />
+				{/* Bez zgody na regulamin: Google tu tylko loguje. Nowa osoba trafia do rejestracji. */}
+				<GoogleAuthButton onSuccessClose={onRequestClose} onNeedRegister={onNeedRegister} />
 
 				<AuthDivider label={t('or')} />
 

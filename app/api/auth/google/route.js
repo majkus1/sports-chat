@@ -1,81 +1,59 @@
 import { OAuth2Client } from 'google-auth-library';
 import connectToDb from '@/lib/db';
-import User from '@/models/User';
 import {
   signAccessToken,
   signRefreshToken,
   setAuthCookiesRouteHandler,
   hashRefreshToken,
 } from '@/lib/auth';
-import { TERMS_VERSION } from '@/lib/legal/operator';
+import { googleSignIn } from '@/lib/auth/googleSignIn';
 import { sendWelcomeEmail } from '@/lib/onboarding/welcome';
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+/*
+ * Kody błędów zamiast zdań — interfejs tłumaczy je sam (pl/en).
+ *
+ * `google_terms_required` to nie awaria: nowa osoba kliknęła Google w oknie LOGOWANIA,
+ * gdzie nie ma zgody na regulamin. Interfejs przenosi ją wtedy do okna rejestracji.
+ */
+const STATUS = {
+  google_invalid_token: 400,
+  google_email_not_verified: 400,
+  google_terms_required: 409,
+  google_account_conflict: 409,
+};
+
 export async function POST(request) {
   try {
     await connectToDb();
-    
-    const body = await request.json();
-    const { credential } = body || {};
-    
-    if (!credential) {
-      return Response.json({ error: 'Missing credential' }, { status: 400 });
+
+    const body = await request.json().catch(() => null);
+    const { credential, acceptedTerms } = body || {};
+
+    if (!credential || typeof credential !== 'string') {
+      return Response.json({ error: 'google_invalid_token' }, { status: 400 });
     }
 
-    const ticket = await client.verifyIdToken({
-      idToken: credential,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
-    const p = ticket.getPayload();
-
-    if (!p?.email || !p?.sub) {
-      return Response.json({ error: 'Invalid Google token' }, { status: 400 });
-    }
-    if (p.email_verified === false) {
-      return Response.json({ error: 'Email not verified by Google' }, { status: 400 });
-    }
-
-    let user = await User.findOne({ $or: [{ googleId: p.sub }, { email: p.email.toLowerCase() }] });
-
-    if (!user) {
-      const base = (p.name || p.email.split('@')[0]).replace(/\s+/g, '').slice(0, 20) || `user${p.sub.slice(-6)}`;
-      let candidate = base;
-      let i = 0;
-
-      while (await User.findOne({ username: candidate })) {
-        i += 1;
-        candidate = `${base}${i}`;
-      }
-
-      user = await User.create({
-        email: p.email.toLowerCase(),
-        username: candidate,
-        password: null,
-        googleId: p.sub,
-        image: p.picture || null,
-        isEmailVerified: true, // Google already verifies email
-        /*
-         * Akceptacja regulaminu zapisuje się także tutaj.
-         *
-         * Konto przez Google powstaje w tym samym oknie rejestracji, w którym trzeba było
-         * zaznaczyć zgodę — bez niej przycisk Google się nie renderuje. Gdyby ślad zostawał
-         * tylko przy rejestracji mailem, połowa kont nie miałaby żadnego.
-         */
-        termsAcceptedAt: new Date(),
-        termsVersion: TERMS_VERSION,
+    let p;
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID,
       });
-      // Nowe konto — jednorazowy mail powitalny. Bez `await`: logowanie nie czeka na pocztę.
-      sendWelcomeEmail(user._id);
-    } else {
-      const update = {};
-      if (!user.googleId) update.googleId = p.sub;
-      if (!user.image && p.picture) update.image = p.picture;
-      if (!user.isEmailVerified) update.isEmailVerified = true; // Ensure Google users are verified
-      if (Object.keys(update).length) {
-        await User.updateOne({ _id: user._id }, { $set: update });
-      }
+      p = ticket.getPayload();
+    } catch {
+      return Response.json({ error: 'google_invalid_token' }, { status: 400 });
     }
+
+    const result = await googleSignIn(p, { acceptedTerms: acceptedTerms === true });
+    if (result.error) {
+      return Response.json({ error: result.error }, { status: STATUS[result.error] ?? 400 });
+    }
+    const { user, created } = result;
+
+    // Nowe konto — jednorazowy mail powitalny. Bez `await`: logowanie nie czeka na pocztę.
+    if (created) sendWelcomeEmail(user._id);
 
     const accessToken = signAccessToken({
       userId: user.id,
@@ -89,12 +67,11 @@ export async function POST(request) {
 
     await setAuthCookiesRouteHandler({ accessToken, refreshToken });
 
-    return Response.json({ ok: true, username: user.username }, { status: 200 });
+    return Response.json({ ok: true, username: user.username, created }, { status: 200 });
   } catch (err) {
     if (process.env.NODE_ENV === 'development') {
       console.error('google auth error:', err);
     }
-    return Response.json({ error: 'Authentication failed' }, { status: 500 });
+    return Response.json({ error: 'google_failed' }, { status: 500 });
   }
 }
-

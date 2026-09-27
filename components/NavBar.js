@@ -208,7 +208,14 @@ export default function NavBar({ onLanguageChange }) {
                               />
                             ) : (
                               <>
-                                <LoginModal isOpen={isLoginModalOpen} onLogin={handleLogin} />
+                                <LoginModal
+                                  isOpen={isLoginModalOpen}
+                                  onLogin={handleLogin}
+                                  onNeedRegister={() => {
+                                    setLoginModalOpen(false);
+                                    setRegisterModalOpen(true);
+                                  }}
+                                />
 
                                 {/* Akcje poboczne jako odnośniki, nie kafle: dwa pełne
                                     przyciski pod formularzem konkurowały z „Zaloguj się"

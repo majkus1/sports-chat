@@ -5,12 +5,29 @@ import { useAlert } from '@/context/AlertContext';
 import { useTheme } from '@/context/ThemeContext';
 import { CONSENT_EVENT, hasConsent, writeConsent } from '@/lib/consent';
 
-export default function GoogleAuthButton({ onSuccessClose }) {
+/*
+ * Znane kody błędów z `/api/auth/google` — każdy ma własny komunikat (pl/en).
+ * Nieznany kod albo awaria sieci to ogólne „nie udało się".
+ */
+const GOOGLE_ERRORS = new Set(['google_terms_required', 'google_account_conflict', 'google_email_not_verified']);
+
+/**
+ * @param {object} props
+ * @param {boolean} [props.acceptedTerms] zgoda na regulamin zaznaczona w oknie rejestracji —
+ *   bez niej serwer nie założy nowego konta, tylko zaloguje do istniejącego
+ * @param {() => void} [props.onNeedRegister] nowa osoba kliknęła Google w oknie logowania —
+ *   przełącz na okno rejestracji
+ */
+export default function GoogleAuthButton({ onSuccessClose, acceptedTerms = false, onNeedRegister }) {
   const { refreshUser } = useContext(UserContext);
   const t = useTranslations('common');
   const { showAlert } = useAlert();
   const { theme } = useTheme();
   const googleDivRef = useRef(null);
+
+  // Najświeższe wartości dla wywołania zwrotnego Google — bez ponownego rysowania przycisku.
+  const latest = useRef({ acceptedTerms, onNeedRegister });
+  latest.current = { acceptedTerms, onNeedRegister };
 
   /*
    * Skrypt Google ładujemy dopiero po zgodzie na ciasteczka zewnętrzne.
@@ -47,12 +64,17 @@ export default function GoogleAuthButton({ onSuccessClose }) {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include',
-              body: JSON.stringify({ credential: resp.credential }),
+              body: JSON.stringify({ credential: resp.credential, acceptedTerms: latest.current.acceptedTerms === true }),
             });
 
             if (!r.ok) {
-              const msg = await r.text().catch(() => 'Google login failed');
-              showAlert(msg || 'Google login failed', 'error');
+              const { error } = await r.json().catch(() => ({}));
+              if (error === 'google_terms_required' && latest.current.onNeedRegister) {
+                showAlert(t('google_terms_required'), 'info', 7000);
+                latest.current.onNeedRegister();
+                return;
+              }
+              showAlert(t(GOOGLE_ERRORS.has(error) ? error : 'google_failed'), 'error', 7000);
               return;
             }
             const ok = await refreshUser();
@@ -68,7 +90,7 @@ export default function GoogleAuthButton({ onSuccessClose }) {
             if (process.env.NODE_ENV === 'development') {
               console.error(e);
             }
-            showAlert('Google login error', 'error');
+            showAlert(t('google_failed'), 'error');
           }
         },
         ux_mode: 'popup',

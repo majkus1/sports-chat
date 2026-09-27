@@ -99,7 +99,7 @@ export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 					</label>
 
 					{acceptedTerms ? (
-						<GoogleAuthButton onSuccessClose={onRequestClose} onLogin={onRegister} />
+						<GoogleAuthButton onSuccessClose={onRequestClose} acceptedTerms={acceptedTerms} />
 					) : (
 						<p className="mt-3 rounded-[var(--radius-ui)] bg-surface-2 px-3 py-2 text-xs text-muted">
 							{t('register_accept_hint')}
