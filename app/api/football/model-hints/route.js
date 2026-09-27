@@ -3,7 +3,7 @@ import User from '@/models/User';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { hasFeature } from '@/lib/billing/entitlements';
 import { hintsForDate } from '@/lib/model/hints';
-import { getDailyPick } from '@/lib/daily/service';
+import { getDailyPick, topWithDaily } from '@/lib/daily/service';
 import { localDate } from '@/lib/time';
 
 /**
@@ -58,23 +58,30 @@ export async function GET(request) {
 		} catch {
 			dzienny = null;
 		}
-		const odkryty = (fixtureId) => full || (dzienny && String(dzienny.fixtureId) === String(fixtureId));
+		const dziennyId = dzienny ? String(dzienny.fixtureId) : null;
+		const jestDzienny = (fixtureId) => dziennyId !== null && dziennyId === String(fixtureId);
+		// Sam fakt, bez liczb — patrz komentarz na górze.
+		const pokaz = (fixtureId, hint) =>
+			full || jestDzienny(fixtureId) ? { ...hint, ...(jestDzienny(fixtureId) ? { daily: true } : {}) } : { locked: true };
+
 		const out = {};
-		for (const [fixtureId, hint] of byId) {
-			out[fixtureId] = odkryty(fixtureId)
-				? { ...hint, ...(dzienny && String(dzienny.fixtureId) === String(fixtureId) ? { daily: true } : {}) }
-				: // Sam fakt, bez liczb — patrz komentarz na górze.
-					{ locked: true };
-		}
-		// Lista jest posortowana po przewadze; panel dostaje mecz, godzinę i ligę zawsze,
-		// a selekcję z liczbami — według planu, tak samo jak plakietki.
-		const top = list.slice(0, TOP).map((w) => ({
+		for (const [fixtureId, hint] of byId) out[fixtureId] = pokaz(fixtureId, hint);
+
+		/*
+		 * Lista jest posortowana po przewadze; panel dostaje mecz, godzinę i ligę zawsze,
+		 * a selekcję z liczbami — według planu, tak samo jak plakietki.
+		 *
+		 * TYP DNIA ZAWSZE NA GÓRZE. Wybiera się go najpierw po randze rozgrywek, potem po
+		 * przewadze, więc bywa spoza piątki najmocniejszych — i wtedy darmowy użytkownik
+		 * widział w panelu pięć kłódek, a jedynego odkrytego typu nie widział wcale.
+		 */
+		const top = topWithDaily(list, dziennyId, TOP).map((w) => ({
 			fixtureId: w.fixtureId,
 			home: w.home,
 			away: w.away,
 			league: w.league,
 			kickoff: w.kickoff,
-			hint: odkryty(w.fixtureId) ? { ...w.hint, ...(dzienny && String(dzienny.fixtureId) === w.fixtureId ? { daily: true } : {}) } : { locked: true },
+			hint: pokaz(w.fixtureId, w.hint),
 		}));
 		return Response.json({ hints: out, top, count: list.length, full });
 	} catch (error) {

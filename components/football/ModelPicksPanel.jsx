@@ -16,7 +16,9 @@ import { cn } from '@/lib/utils';
  * Na telefonie pasek do przewijania w bok nad listą (pięć kart, każda na ~2/3 ekranu,
  * z przyciąganiem), na szerokim ekranie kolumna z prawej, przyklejona przy przewijaniu.
  * Plan darmowy widzi mecze i godziny, ale zamiast selekcji kłódkę — tak samo jak na
- * plakietkach listy: wiadomo ILE model ma do powiedzenia, nie CO.
+ * plakietkach listy: wiadomo ILE model ma do powiedzenia, nie CO. Wyjątek to typ dnia:
+ * odkryty dla wszystkich, zawsze na pierwszym miejscu i wyróżniony — to jedyny konkret,
+ * który darmowy użytkownik dostaje od razu, więc nie może ginąć wśród kłódek.
  */
 
 function czas(iso, locale) {
@@ -25,13 +27,16 @@ function czas(iso, locale) {
 
 function Pick({ pick, locale, t }) {
 	const locked = !pick.hint || pick.hint.locked;
+	const daily = Boolean(pick.hint?.daily);
 	return (
 		<Link
 			href={`/mecz/${pick.fixtureId}`}
 			className={cn(
 				'group flex h-full flex-col gap-1 rounded-[var(--radius-ui)] border border-border bg-surface-2 px-3.5 py-3 no-underline',
 				'transition-colors hover:border-accent',
-				'lg:rounded-none lg:border-0 lg:border-t lg:border-border lg:bg-transparent lg:px-4 lg:hover:bg-surface-2'
+				'lg:rounded-none lg:border-0 lg:border-t lg:border-border lg:bg-transparent lg:px-4 lg:hover:bg-surface-2',
+				// Typ dnia: akcent na telefonie (ramka karty) i na szerokim ekranie (pasek z lewej, tło).
+				daily && 'border-accent/70 bg-accent-soft/40 lg:border-l-[3px] lg:border-l-accent lg:bg-accent-soft/30'
 			)}
 		>
 			{pick.hint?.daily && (
@@ -72,9 +77,14 @@ function Pick({ pick, locale, t }) {
 	);
 }
 
-export default function ModelPicksPanel({ picks, count, full, dateLabel, locale, className }) {
+/**
+ * @param {object} props
+ * @param {boolean} [props.todayLink] panel pokazuje dzisiejszy dzień — dołóż odnośnik do „Typów na dziś"
+ */
+export default function ModelPicksPanel({ picks, count, full, dateLabel, locale, className, todayLink = false }) {
 	const t = useTranslations('common');
 	if (!picks?.length) return null;
+	const zDziennym = picks.some((p) => p.hint?.daily);
 
 	return (
 		<aside
@@ -93,7 +103,7 @@ export default function ModelPicksPanel({ picks, count, full, dateLabel, locale,
 				</div>
 				<p className="mt-1 text-xs leading-relaxed text-muted">
 					{count > picks.length
-						? t('model_sees_top', { shown: picks.length, count })
+						? t(zDziennym ? 'model_sees_top_daily' : 'model_sees_top', { shown: picks.length, count })
 						: t('model_sees_all', { count })}
 				</p>
 			</div>
@@ -112,18 +122,29 @@ export default function ModelPicksPanel({ picks, count, full, dateLabel, locale,
 				))}
 			</ol>
 
-			<p className="border-t border-border px-4 py-3 text-xs leading-relaxed text-muted">
-				{full ? (
-					t('model_sees_note')
-				) : (
-					<>
-						{t('model_sees_locked_note')}{' '}
-						<Link href="/cennik" className="font-semibold text-accent underline">
-							{t('see_plans')}
-						</Link>
-					</>
+			<div className="border-t border-border px-4 py-3">
+				<p className="text-xs leading-relaxed text-muted">
+					{full ? (
+						t('model_sees_note')
+					) : (
+						<>
+							{t('model_sees_locked_note')}{' '}
+							<Link href="/cennik" className="font-semibold text-accent underline">
+								{t('see_plans')}
+							</Link>
+						</>
+					)}
+				</p>
+				{todayLink && (
+					<Link
+						href="/typy-na-dzis"
+						className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-accent no-underline hover:underline"
+					>
+						{t('model_sees_today_link')}
+						<ChevronRight size={15} aria-hidden="true" />
+					</Link>
 				)}
-			</p>
+			</div>
 		</aside>
 	);
 }

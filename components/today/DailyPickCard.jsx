@@ -6,10 +6,10 @@ import { cn } from '@/lib/utils';
  * Karta typu dnia — bez stanu, renderowana na serwerze (strona „Typy na dziś") i u klienta
  * (strona główna). Wszystko, co mówi „dlaczego", to liczby modelu zapisane przy wyborze.
  *
- * @param {{ pick: object, c: object, label: string, locale: string, compact?: boolean }} props
+ * @param {{ pick: object, c: object, label: string, locale: string, compact?: boolean, className?: string }} props
  *   `pick` z `toDto`, `c` treść z `todayPicksContent`
  */
-export default function DailyPickCard({ pick, c, label, locale, compact = false }) {
+export default function DailyPickCard({ pick, c, label, locale, compact = false, className }) {
 	if (!pick) return null;
 	const godzina = new Date(pick.kickoff).toLocaleTimeString(locale === 'en' ? 'en-GB' : 'pl-PL', {
 		timeZone: 'Europe/Warsaw',
@@ -23,7 +23,7 @@ export default function DailyPickCard({ pick, c, label, locale, compact = false 
 	const e = pick.explanation || {};
 
 	return (
-		<article className="overflow-hidden rounded-[var(--radius-ui)] border border-accent/60 bg-surface shadow-[var(--shadow-soft)]">
+		<article className={cn('flex flex-col overflow-hidden rounded-[var(--radius-ui)] border border-accent/60 bg-surface shadow-[var(--shadow-soft)]', className)}>
 			<div className="bg-gradient-to-b from-accent-soft/60 to-transparent px-5 pb-4 pt-4 sm:px-6">
 				<p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-accent">
 					<Sparkles size={13} aria-hidden="true" />
@@ -76,7 +76,7 @@ export default function DailyPickCard({ pick, c, label, locale, compact = false 
 				</div>
 			)}
 
-			<div className={cn('px-5 pb-5 sm:px-6', compact && 'pt-1')}>
+			<div className={cn('mt-auto px-5 pb-5 sm:px-6', compact && 'pt-1')}>
 				<Link
 					href={`/mecz/${pick.fixtureId}`}
 					className="inline-flex items-center gap-1.5 text-sm font-bold text-accent no-underline hover:underline"

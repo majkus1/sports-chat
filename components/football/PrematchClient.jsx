@@ -14,6 +14,7 @@ import FullScreenModal from '@/components/FullScreenModal';
 import Footer from '@/components/layout/Footer';
 import Pagination from '@/components/ui/Pagination';
 import ModelPicksPanel from '@/components/football/ModelPicksPanel';
+import { localDate } from '@/lib/time';
 import MorningEmailPrompt from '@/components/billing/MorningEmailPrompt';
 import { Link } from '@/i18n/routing';
 import BeatLoader from 'react-spinners/BeatLoader';
@@ -238,6 +239,7 @@ export default function PrematchClient() {
           picks={modelTop.picks}
           count={modelTop.count}
           full={modelTop.full}
+          todayLink={selectedDate === localDate()}
           dateLabel={getDateOptions().find((d) => d.formatted === selectedDate)?.display || selectedDate}
           locale={locale}
           className="mb-4 mt-4 lg:sticky lg:top-28 lg:col-start-2 lg:row-start-1 lg:mb-0 lg:mt-0"

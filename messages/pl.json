@@ -139,6 +139,8 @@
 		"model_hint_locked": "Model ma tu typ. Selekcję i przewagę widać w planie Pro i VIP.",
 		"model_sees_title": "Model widzi",
 		"model_sees_top": "Najmocniejsze {shown} z {count, plural, one {# typu} few {# typów} other {# typów}} modelu na ten dzień. Resztę poznasz po plakietce ✦ na liście.",
+		"model_sees_top_daily": "Typ dnia za darmo i najmocniejsze typy modelu — {shown} z {count, plural, one {# typu} few {# typów} other {# typów}} na ten dzień. Resztę poznasz po plakietce ✦ na liście.",
+		"model_sees_today_link": "Wszystkie typy na dziś",
 		"model_sees_all": "{count, plural, one {Jedyny typ modelu} few {Wszystkie # typy modelu} other {Wszystkie # typów modelu}} na ten dzień.",
 		"model_sees_usual": "zwykle {base}%",
 		"model_sees_locked": "Typ i przewaga w planie Pro i VIP",

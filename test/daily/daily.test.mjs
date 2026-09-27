@@ -12,7 +12,7 @@ import { setupEnv } from '../helpers/setup.mjs';
 
 setupEnv();
 
-const { orderCandidates } = await import('@/lib/daily/service');
+const { orderCandidates, topWithDaily } = await import('@/lib/daily/service');
 const { trialDaysLeft, getEntitlements } = await import('@/lib/billing/entitlements');
 const { todayPicksContent } = await import('@/lib/landing/todayPicks');
 const { MIN_LIFT, MIN_PROBABILITY } = await import('@/lib/picks/policy');
@@ -41,6 +41,29 @@ describe('kolejność kandydatów na typ dnia', () => {
 
 	test('bez typu nie ma kandydata', () => {
 		assert.deepEqual(orderCandidates([{ fixtureId: 'x', leagueId: 39, kickoff: za(300), hint: null }], { now: TERAZ }), []);
+	});
+});
+
+describe('panel „Model widzi": typ dnia na górze', () => {
+	const lista = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map((fixtureId) => ({ fixtureId }));
+
+	test('typ dnia spoza piątki wchodzi na pierwsze miejsce, ostatni z piątki wypada', () => {
+		assert.deepEqual(
+			topWithDaily(lista, 'f', 5).map((w) => w.fixtureId),
+			['f', 'a', 'b', 'c', 'd']
+		);
+	});
+
+	test('typ dnia w piątce idzie na górę bez dublowania; identyfikator liczbowy też pasuje', () => {
+		assert.deepEqual(
+			topWithDaily([{ fixtureId: '1' }, { fixtureId: '2' }, { fixtureId: '3' }], 3, 5).map((w) => w.fixtureId),
+			['3', '1', '2']
+		);
+	});
+
+	test('bez typu dnia albo spoza listy — zwykła kolejność po przewadze', () => {
+		assert.deepEqual(topWithDaily(lista, null, 3).map((w) => w.fixtureId), ['a', 'b', 'c']);
+		assert.deepEqual(topWithDaily(lista, 'zz', 3).map((w) => w.fixtureId), ['a', 'b', 'c']);
 	});
 });
 
