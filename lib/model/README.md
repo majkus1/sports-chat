@@ -215,6 +215,35 @@ Kursy wróciły do serwisu w dwóch wąskich rolach, obie bez śladu w treści i
 Granica, której pilnujemy: rynek nie jest bazą do liczenia przewagi. „Przewaga nad rynkiem"
 to value betting — mechanika usunięta z serwisu świadomie.
 
+## Typy przy kursie ≥ 1,50 — eksperyment i tryb cienia (wrzesień 2026)
+
+Pytanie właściciela: czy dać zakładkę z typami modelu, przy których kurs wynosi co najmniej 1,50?
+Zanim cokolwiek trafi do interfejsu, dwa pomiary tą samą definicją (`oddsShadow.js`: reguły,
+rozliczenie, bilans po stałej stawce, polski podatek 12% od stawki, CLV).
+
+**Historia — `oddsExperiment.mjs`** (11 lig z football-data, walk-forward, 10 369 meczów
+od lipca 2023, kurs otwarcia średniej rynku):
+
+| reguła | zakładów | model obiecywał | trafione | zwrot | po podatku PL |
+|---|---|---|---|---|---|
+| plakietka modelu, kurs ≥ 1,50 | 1302 | 67,5% | 55,7% | −6,8% ±4,6 | −18,0% |
+| wartość wg modelu ≥ 5% | 6322 | 37,8% | 28,2% | −14,2% | −24,5% |
+| wartość wg modelu ≥ 10% | 4436 | 38,0% | 26,6% | −16,9% | −26,9% |
+| wszystkie plakietki (bez progu kursu) | 6010 | 74,8% | 72,9% | −2,7% | −14,4% |
+
+Wynik ujemny w każdym sezonie osobno, CLV ujemne (kurs częściej rośnie, niż spada, do
+zamknięcia — rynek odchodzi od modelu). Wniosek: plakietki jako całość są uczciwie
+skalibrowane, ale tam, gdzie rynek płaci ≥ 1,50, model przesadza o ~12 pkt. Zgadza się
+z pierwszymi 23 rozliczonymi typami z produkcji (obiecane ~71%, trafione 48%).
+
+**Żywe dane — tryb cienia.** Archiwum nie ma mniejszych lig, „powyżej 2,5" ani „drużyna
+strzeli", więc co 20 minut (`oddsShadowJob.js`, `/api/cron/odds-snapshot`) do dziennika
+prognoz trafiają kursy API-Football: otwarcie od 9:00 w dniu meczu i zamknięcie 10–30 minut
+przed meczem. Raport: `oddsShadowCheck.mjs`. Kryteria zakładki ustalone przed zbieraniem
+danych: ≥ 300 zakładów reguły „plakietka", zwrot > 0, CLV ≥ 0, trafność najwyżej 5 pkt
+pod obietnicą. Nawet wtedy po podatku 12% zakład wychodzi na plus dopiero przy zwrocie
+powyżej ~14%, więc zakładka nie może obiecywać zarobku.
+
 ## Uruchomienie backtestu
 
 Wymaga ważnego klucza `API_SPORTS_KEY`, więc w praktyce uruchamia się go na serwerze:

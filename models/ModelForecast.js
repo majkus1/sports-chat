@@ -18,6 +18,26 @@ import mongoose from 'mongoose';
  * TO NIE JEST ŹRÓDŁO DLA INTERFEJSU. Nic tu nie czyta lista, analiza ani asystent. Czyta
  * `lib/model/forecastCheck.mjs` (pomiar) i — w przyszłości — uczenie.
  */
+/**
+ * Zdjęcie kursów meczu: mediana bukmacherów per selekcja (kurs dziesiętny, nie procent).
+ * `bookmakers: 0` = dostawca nie miał kursów — zapisane, żeby nie pytać o nie w kółko.
+ */
+const OddsSnapshotSchema = new mongoose.Schema(
+	{
+		at: { type: Date, required: true },
+		bookmakers: { type: Number, default: null },
+		home: { type: Number, default: null },
+		draw: { type: Number, default: null },
+		away: { type: Number, default: null },
+		dc1X: { type: Number, default: null },
+		dcX2: { type: Number, default: null },
+		homeScores: { type: Number, default: null },
+		awayScores: { type: Number, default: null },
+		over25: { type: Number, default: null },
+	},
+	{ _id: false }
+);
+
 const ModelForecastSchema = new mongoose.Schema(
 	{
 		fixtureId: { type: String, required: true, unique: true },
@@ -76,6 +96,16 @@ const ModelForecastSchema = new mongoose.Schema(
 			status: { type: String, default: null },
 		},
 		settledAt: { type: Date, default: null, index: true },
+
+		/*
+		 * TRYB CIENIA „kurs ≥ 1,50" (`lib/model/oddsShadow.js`). Otwarcie: od 9:00 w dniu meczu
+		 * (tyle zobaczyłby czytelnik zakładki), zamknięcie: 10–30 minut przed meczem. WYŁĄCZNIE
+		 * do pomiaru — nic tego nie czyta poza `lib/model/oddsShadowCheck.mjs`.
+		 */
+		odds: {
+			open: { type: OddsSnapshotSchema, default: null },
+			close: { type: OddsSnapshotSchema, default: null },
+		},
 	},
 	{ timestamps: true }
 );
