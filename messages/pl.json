@@ -68,7 +68,7 @@
 		"morning_email_off": "Wyłączony.",
 		"morning_email_locked": "W planie Pro i VIP",
 		"morning_email_error": "Nie udało się zmienić ustawienia. Spróbuj ponownie.",
-		"quota_reset_note": "Limity odnawiają się co miesiąc i nie przechodzą na kolejny okres.",
+		"quota_reset_note": "Plan płatny odnawia limity co 30 dni od zakupu, darmowy — pierwszego dnia miesiąca. Niewykorzystane nie przechodzą dalej.",
 		"plan_free": "Darmowy",
 		"plan_pro": "Pro",
 		"plan_vip": "VIP",

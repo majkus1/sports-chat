@@ -68,7 +68,7 @@
 		"morning_email_off": "Off.",
 		"morning_email_locked": "On Pro and VIP",
 		"morning_email_error": "Could not change the setting. Please try again.",
-		"quota_reset_note": "Limits reset monthly and do not carry over.",
+		"quota_reset_note": "Paid plans renew limits every 30 days from purchase, the free plan on the first of the month. Unused limits do not carry over.",
 		"plan_free": "Free",
 		"plan_pro": "Pro",
 		"plan_vip": "VIP",

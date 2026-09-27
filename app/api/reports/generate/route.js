@@ -28,7 +28,7 @@ const PARTIAL_INTERVAL_MS = 220;
 
 const MESSAGES = {
 	pl: {
-		limit: 'Wykorzystałeś miesięczny limit raportów ({limit}). Limit odnawia się pierwszego dnia miesiąca.',
+		limit: 'Wykorzystałeś limit raportów w tym okresie ({limit}). W planie płatnym odnawia się co 30 dni od zakupu, w darmowym — pierwszego dnia miesiąca.',
 		noReports: 'Raporty AI są dostępne w planie Pro i VIP. Nowe konto dostaje 2 raporty na start.',
 		busy: 'Generowanie raportów jest chwilowo wstrzymane. Spróbuj ponownie później.',
 		failed: 'Nie udało się wygenerować raportu. Spróbuj ponownie za chwilę.',
@@ -37,7 +37,7 @@ const MESSAGES = {
 		emptySummary: 'Spróbuj ponownie, gdy terminarz będzie bogatszy — raport pokazuje tylko typy, które dane wspierają wyraźnie.',
 	},
 	en: {
-		limit: 'You have used the monthly report limit ({limit}). It resets on the first of the month.',
+		limit: 'You have used the report limit for this period ({limit}). On a paid plan it renews every 30 days from purchase; on the free plan, on the first of the month.',
 		noReports: 'AI reports are available on the Pro and VIP plans. New accounts get 2 to start.',
 		busy: 'Report generation is paused for now. Please try again later.',
 		failed: 'Could not generate the report. Please try again in a moment.',

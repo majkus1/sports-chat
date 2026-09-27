@@ -95,11 +95,20 @@ async function handleCheckoutPaid(event) {
 		eventType: event.type,
 	};
 
+	/*
+	 * Klucz idempotencji z identyfikatora SESJI: jedna sesja to jeden zakup. Zdarzenie potrafi
+	 * przyjść wielokrotnie (Stripe gwarantuje dostarczenie „co najmniej raz"), a jedna sesja
+	 * potrafi wygenerować dwa zdarzenia (`completed`, potem `async_payment_succeeded`). Z kluczem
+	 * po zdarzeniu drugie z nich — gdyby oba niosły `paid` — przyznałoby zakup drugi raz;
+	 * z kluczem po sesji odpada na unikalnym indeksie księgi.
+	 */
+	const kluczZakupu = data.id ? `stripe:session:${data.id}` : `stripe:event:${event.id}`;
+
 	if (pass) {
 		const { granted, plan, validUntil } = await grantPlanAccess({
 			userId,
 			planId: pass.id,
-			idempotencyKey: `stripe:event:${event.id}`,
+			idempotencyKey: kluczZakupu,
 			details: szczegoly,
 		});
 
@@ -109,19 +118,11 @@ async function handleCheckoutPaid(event) {
 		return ok({ plan, validUntil });
 	}
 
-	/*
-	 * Klucz idempotencji budujemy z identyfikatora ZDARZENIA, nie sesji.
-	 *
-	 * Jedna sesja może wygenerować kilka zdarzeń (np. `completed`, a potem
-	 * `async_payment_succeeded` dla BLIK-a) i każde jest osobnym faktem. Za to to samo
-	 * zdarzenie potrafi przyjść wielokrotnie — Stripe gwarantuje dostarczenie co najmniej
-	 * raz — i właśnie przed tym broni unikalny indeks w księdze.
-	 */
 	const { granted, credits } = await grantCredits({
 		userId,
 		credits: pack.credits,
 		reason: `purchase:${pack.id}`,
-		idempotencyKey: `stripe:event:${event.id}`,
+		idempotencyKey: kluczZakupu,
 		details: szczegoly,
 	});
 

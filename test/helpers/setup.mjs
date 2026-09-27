@@ -68,13 +68,15 @@ export function checkoutEvent({
 	type = 'checkout.session.completed',
 	paymentIntentId = 'pi_test_1',
 	metadata,
+	// Osobna sesja na zdarzenie, chyba że test celowo symuluje dwa zdarzenia jednej sesji.
+	sessionId = `cs_${id}`,
 } = {}) {
 	return {
 		id,
 		type,
 		data: {
 			object: {
-				id: 'cs_test_1',
+				id: sessionId,
 				mode,
 				payment_status: paymentStatus,
 				amount_total: amountTotal,

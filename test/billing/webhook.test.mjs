@@ -165,7 +165,7 @@ describe('naliczanie kredytów', () => {
 		assert.equal(body.credited, PACK.credits);
 		assert.equal(await saldo(), PACK.credits);
 
-		const wpis = await CreditLedger.findOne({ idempotencyKey: `stripe:event:${eventId}` }).lean();
+		const wpis = await CreditLedger.findOne({ idempotencyKey: `stripe:session:cs_${eventId}` }).lean();
 		assert.ok(wpis, 'każde naliczenie musi zostawić ślad w księdze');
 		assert.equal(wpis.amount, PACK.credits);
 		assert.equal(wpis.reason, `purchase:${PACK.id}`);
@@ -188,6 +188,19 @@ describe('naliczanie kredytów', () => {
 		assert.equal(drugie.status, 200);
 		assert.equal(drugie.body.duplicate, true, 'Stripe gwarantuje dostarczenie CO NAJMNIEJ raz');
 		assert.equal(await saldo(), po_pierwszym, 'saldo nie może urosnąć przy powtórce');
+		assert.equal(await saldo(), przed + PACK.credits);
+	});
+
+	test('dwa opłacone zdarzenia jednej sesji naliczają zakup raz', async () => {
+		// `completed` i `async_payment_succeeded` tej samej sesji — to jeden zakup, nie dwa.
+		const przed = await saldo();
+		const sesja = `cs_jedna_${bieg}`;
+		const pierwsze = await wyslij(checkoutEvent({ id: evt('sesja_a'), userId: user._id, sessionId: sesja }));
+		const drugie = await wyslij(
+			checkoutEvent({ id: evt('sesja_b'), userId: user._id, sessionId: sesja, type: 'checkout.session.async_payment_succeeded' })
+		);
+		assert.equal(pierwsze.body.credited, PACK.credits);
+		assert.equal(drugie.body.duplicate, true);
 		assert.equal(await saldo(), przed + PACK.credits);
 	});
 

@@ -173,8 +173,9 @@ export async function POST(request) {
 				consentId: String(consent._id),
 				termsVersion: CONSENT_VERSION,
 			},
-			success_url: `${config.appUrl}/pl/cennik?platnosc=sukces&sid={CHECKOUT_SESSION_ID}`,
-			cancel_url: `${config.appUrl}/pl/cennik?platnosc=anulowana`,
+			// Powrót w języku, w którym użytkownik kupował — wcześniej zawsze /pl.
+			success_url: `${config.appUrl}/${locale === 'en' ? 'en' : 'pl'}/cennik?platnosc=sukces&sid={CHECKOUT_SESSION_ID}`,
+			cancel_url: `${config.appUrl}/${locale === 'en' ? 'en' : 'pl'}/cennik?platnosc=anulowana`,
 		});
 
 		/*
