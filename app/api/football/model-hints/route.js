@@ -3,6 +3,8 @@ import User from '@/models/User';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { hasFeature } from '@/lib/billing/entitlements';
 import { hintsForDate } from '@/lib/model/hints';
+import { getDailyPick } from '@/lib/daily/service';
+import { localDate } from '@/lib/time';
 
 /**
  * Podpowiedzi modelu dla listy meczów z jednego dnia.
@@ -39,17 +41,28 @@ export async function GET(request) {
 	if (session?.userId) {
 		await connectToDb();
 		user = await User.findById(session.userId)
-			.select('plan planStatus planValidUntil role grantedFeatures')
+			.select('plan planStatus planValidUntil role grantedFeatures createdAt')
 			.lean();
 	}
 	const full = hasFeature(user, 'model_hints');
 
 	try {
 		const { byId, list } = await hintsForDate(date);
+		/*
+		 * Typ dnia jest odkryty dla wszystkich — to jego jedyny sens. Na dziś lista może go
+		 * wybrać (pierwsze zapytanie dnia, kilka zapytań o kursy); na inne dni tylko czyta.
+		 */
+		let dzienny = null;
+		try {
+			dzienny = await getDailyPick(date, { create: date === localDate() });
+		} catch {
+			dzienny = null;
+		}
+		const odkryty = (fixtureId) => full || (dzienny && String(dzienny.fixtureId) === String(fixtureId));
 		const out = {};
 		for (const [fixtureId, hint] of byId) {
-			out[fixtureId] = full
-				? hint
+			out[fixtureId] = odkryty(fixtureId)
+				? { ...hint, ...(dzienny && String(dzienny.fixtureId) === String(fixtureId) ? { daily: true } : {}) }
 				: // Sam fakt, bez liczb — patrz komentarz na górze.
 					{ locked: true };
 		}
@@ -61,7 +74,7 @@ export async function GET(request) {
 			away: w.away,
 			league: w.league,
 			kickoff: w.kickoff,
-			hint: full ? w.hint : { locked: true },
+			hint: odkryty(w.fixtureId) ? { ...w.hint, ...(dzienny && String(dzienny.fixtureId) === w.fixtureId ? { daily: true } : {}) } : { locked: true },
 		}));
 		return Response.json({ hints: out, top, count: list.length, full });
 	} catch (error) {

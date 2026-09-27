@@ -26,6 +26,8 @@ const UserSchema = new mongoose.Schema(
 		tokenVersion: { type: Number, default: 0 },
 
 		isEmailVerified: { type: Boolean, default: false },
+		/** Kiedy poszedł jednorazowy mail powitalny (`lib/onboarding/welcome.js`) — chroni przed drugim. */
+		welcomeSentAt: { type: Date, default: null },
 		emailVerificationTokenHash: { type: String, default: null },
 		emailVerificationTokenExp: { type: Date, default: null },
 

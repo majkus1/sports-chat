@@ -1,7 +1,7 @@
 import connectToDb from '@/lib/db';
 import User from '@/models/User';
 import { getAuthenticatedUser } from '@/lib/auth';
-import { hasFeature } from '@/lib/billing/entitlements';
+import { hasFeature, trialDaysLeft } from '@/lib/billing/entitlements';
 import { newUnsubscribeToken } from '@/lib/morning/service';
 
 /**
@@ -12,13 +12,15 @@ import { newUnsubscribeToken } from '@/lib/morning/service';
  * powstaje raz, przy pierwszym włączeniu, i nie zmienia się — stare maile mają działać.
  */
 
-const POLA = 'plan planStatus planValidUntil role grantedFeatures morningEmail';
+const POLA = 'plan planStatus planValidUntil role grantedFeatures morningEmail createdAt';
 
 function widok(user) {
 	return {
 		enabled: Boolean(user.morningEmail?.enabled),
 		locale: user.morningEmail?.locale || 'pl',
 		available: hasFeature(user, 'morning_email'),
+		// W okresie próbnym mail jest dostępny tylko do jego końca — przełącznik mówi o tym wprost.
+		trialDaysLeft: trialDaysLeft(user),
 	};
 }
 

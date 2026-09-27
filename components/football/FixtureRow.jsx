@@ -79,11 +79,21 @@ function ModelHint({ hint, t }) {
 		lift: hint.lift,
 	});
 
-	return (
+	const plakietka = (
 		<span title={opis} aria-label={opis} className={cn(baza, 'bg-accent text-accent-fg tabular-nums')}>
 			<Sparkles size={12} aria-hidden="true" />
 			{hint.label}
 			<span className="font-semibold opacity-90">+{hint.lift}</span>
+		</span>
+	);
+	// Typ dnia — odkryty dla wszystkich; podpis mówi, dlaczego ten jeden jest bez kłódki.
+	if (!hint.daily) return plakietka;
+	return (
+		<span className="inline-flex shrink-0 items-center gap-1">
+			<span className="rounded-md border border-accent px-1.5 py-1 text-[10px] font-bold uppercase tracking-wide text-accent">
+				{t('daily_pick')}
+			</span>
+			{plakietka}
 		</span>
 	);
 }

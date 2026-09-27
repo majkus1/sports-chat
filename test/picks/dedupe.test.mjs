@@ -100,4 +100,33 @@ describe('ta sama selekcja z raportu i z analizy', () => {
 		assert.equal(ile, 1);
 		assert.equal(gol.countsToStats, true);
 	});
+
+	test('typ dnia i późniejsza analiza tej samej selekcji to jedna prognoza', async () => {
+		const MECZ = `${FIXTURE}-dzien`;
+		const res = () => ({ fixtureId: MECZ, homeName: 'Dinamo Zagreb', awayName: 'HNK Gorica', kickoff: new Date(Date.now() + 86_400_000) });
+		await recordPicks({
+			picks: [{ market: 'Wynik meczu', selection: 'Dinamo Zagreb (gospodarze)', probability: 81 }],
+			kind: 'daily',
+			source: 'daily',
+			userId: null,
+			fixtureResolver: res,
+			context: kontekst,
+		});
+		await recordPicks({
+			picks: [{ market: 'Wynik meczu', selection: 'Dinamo Zagreb', probability: 79 }],
+			kind: 'prematch',
+			source: 'analysis',
+			userId: null,
+			fixtureResolver: res,
+			context: kontekst,
+		});
+		const [dzien, analiza] = await Promise.all([
+			Pick.findOne({ fixtureId: MECZ, kind: 'daily' }).lean(),
+			Pick.findOne({ fixtureId: MECZ, kind: 'prematch' }).lean(),
+		]);
+		await Pick.deleteMany({ fixtureId: MECZ });
+		assert.equal(dzien.countsToStats, true);
+		assert.equal(String(analiza.duplicateOf), String(dzien._id));
+		assert.equal(analiza.countsToStats, false);
+	});
 });

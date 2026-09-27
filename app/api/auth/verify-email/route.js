@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import connectToDb from '@/lib/db';
 import User from '@/models/User';
+import { sendWelcomeEmail } from '@/lib/onboarding/welcome';
 
 export async function GET(request) {
   try {
@@ -53,6 +54,9 @@ export async function GET(request) {
     // Mark token as used by setting expiration to past (don't delete, so we can find user on second click)
     user.emailVerificationTokenExp = new Date(0); // Set to epoch (1970) to mark as used
     await user.save();
+
+    // Pierwsze potwierdzenie adresu — jednorazowy mail powitalny, bez czekania na pocztę.
+    sendWelcomeEmail(user._id);
 
     return Response.json({ ok: true, username: user.username, verified: true }, { status: 200 });
   } catch (e) {

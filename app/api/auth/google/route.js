@@ -8,6 +8,7 @@ import {
   hashRefreshToken,
 } from '@/lib/auth';
 import { TERMS_VERSION } from '@/lib/legal/operator';
+import { sendWelcomeEmail } from '@/lib/onboarding/welcome';
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -64,6 +65,8 @@ export async function POST(request) {
         termsAcceptedAt: new Date(),
         termsVersion: TERMS_VERSION,
       });
+      // Nowe konto — jednorazowy mail powitalny. Bez `await`: logowanie nie czeka na pocztę.
+      sendWelcomeEmail(user._id);
     } else {
       const update = {};
       if (!user.googleId) update.googleId = p.sub;

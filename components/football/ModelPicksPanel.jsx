@@ -34,6 +34,11 @@ function Pick({ pick, locale, t }) {
 				'lg:rounded-none lg:border-0 lg:border-t lg:border-border lg:bg-transparent lg:px-4 lg:hover:bg-surface-2'
 			)}
 		>
+			{pick.hint?.daily && (
+				<span className="w-fit rounded-md border border-accent px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent">
+					{t('daily_pick')} · {t('daily_pick_free')}
+				</span>
+			)}
 			<p className="truncate text-sm font-bold text-text">
 				{pick.home} – {pick.away}
 			</p>

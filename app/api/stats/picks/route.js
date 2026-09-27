@@ -14,14 +14,14 @@ import { BRIER_BASELINE, MIN_SETTLED_FOR_RATE, wilsonInterval } from '@/lib/pick
  * Parametry:
  *   scope=global|me     zasięg (własny wymaga sesji)
  *   author=ai|user      kto wystawił typ; domyślnie `ai`
- *   kind=all|prematch|live|report
+ *   kind=all|prematch|live|report|daily
  *   days=30|90|all      okno czasowe liczone od daty meczu
  *
  * Filtr autora jest domyślnie ustawiony na `ai`, żeby dodanie typów użytkowników nie
  * zmieniło po cichu znaczenia liczby na stronie „skuteczność analiz AI".
  */
 
-const KINDS = ['prematch', 'live', 'report'];
+const KINDS = ['prematch', 'live', 'report', 'daily'];
 const AUTHORS = ['ai', 'user'];
 
 export async function GET(request) {

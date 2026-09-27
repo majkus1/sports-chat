@@ -28,9 +28,13 @@ const PickSchema = new mongoose.Schema(
 		 * użytkownikom na tych samych dwunastu meczach. Osobny rodzaj, bo powstaje z innego
 		 * powodu (gra, nie analiza) i jest rozliczany osobno w rankingu kolejki.
 		 */
-		kind: { type: String, enum: ['prematch', 'live', 'report', 'round'], required: true, index: true },
+		/*
+		 * `daily` — typ dnia (`lib/daily/service.js`): jeden dziennie, odkryty dla wszystkich.
+		 * Liczy się do skuteczności jak każdy inny — skoro go pokazujemy, musimy go rozliczać.
+		 */
+		kind: { type: String, enum: ['prematch', 'live', 'report', 'round', 'daily'], required: true, index: true },
 
-		source: { type: String, enum: ['analysis', 'report', 'user', 'round'], required: true },
+		source: { type: String, enum: ['analysis', 'report', 'user', 'round', 'daily'], required: true },
 		/** Dokument źródłowy; może już nie istnieć (analiza live kasuje się z TTL). */
 		sourceId: { type: mongoose.Schema.Types.ObjectId, default: null },
 

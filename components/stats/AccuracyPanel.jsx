@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
  * trafieniami, nie jest wiarygodny — a wiarygodność jest tu jedyną walutą.
  */
 
-const KINDS = ['all', 'prematch', 'live', 'report'];
+const KINDS = ['all', 'daily', 'prematch', 'live', 'report'];
 const AUTHORS = ['ai', 'user'];
 const RANGES = ['30', '90', 'all'];
 
@@ -178,6 +178,7 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 		prematch: t('accuracy_kind_prematch'),
 		live: t('accuracy_kind_live'),
 		report: t('accuracy_kind_report'),
+		daily: t('accuracy_kind_daily'),
 	};
 
 	return (

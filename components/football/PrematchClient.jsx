@@ -14,6 +14,7 @@ import FullScreenModal from '@/components/FullScreenModal';
 import Footer from '@/components/layout/Footer';
 import Pagination from '@/components/ui/Pagination';
 import ModelPicksPanel from '@/components/football/ModelPicksPanel';
+import MorningEmailPrompt from '@/components/billing/MorningEmailPrompt';
 import { Link } from '@/i18n/routing';
 import BeatLoader from 'react-spinners/BeatLoader';
 
@@ -189,6 +190,9 @@ export default function PrematchClient() {
         </h1>
 
         <FootballMenu onResultsClick={() => setIsResultsModalOpen(true)} />
+
+        {/* Tylko dla zalogowanych z porannym mailem w planie (także w okresie próbnym), którzy go nie włączyli. */}
+        <MorningEmailPrompt className="mb-4 max-w-2xl" />
 
         {/* Wybór dnia — ten sam segmented control co zakładki w pokoju meczowym,
             żeby przełączniki w całej aplikacji wyglądały tak samo. */}

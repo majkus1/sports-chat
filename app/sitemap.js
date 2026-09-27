@@ -16,6 +16,8 @@ import { UPDATED_AT } from '@/lib/legal/operator';
 /** `changeFrequency` i `priority` to podpowiedzi, nie polecenia — stąd ostrożne wartości. */
 const STATIC_ROUTES = [
 	{ path: '', changeFrequency: 'daily', priority: 1 },
+	// Zmienia się codziennie i celuje w najczęstszą frazę — zaraz po stronie głównej.
+	{ path: '/typy-na-dzis', changeFrequency: 'daily', priority: 0.95 },
 	{ path: '/pilka-nozna/przedmeczowe', changeFrequency: 'hourly', priority: 0.9 },
 	{ path: '/pilka-nozna/live', changeFrequency: 'hourly', priority: 0.8 },
 	{ path: '/pilka-nozna/kolejka', changeFrequency: 'daily', priority: 0.8 },
