@@ -15,13 +15,21 @@ const { PLANS } = await import('@/lib/billing/plans');
 
 describe('przewodnik', () => {
 	for (const locale of ['pl', 'en']) {
-		test(`${locale}: próg typu i limity planów wzięte z kodu`, () => {
+		test(`${locale}: próg typu i limit darmowy wzięte z kodu`, () => {
 			const g = guideContent(locale);
 			const tekst = JSON.stringify(g);
 			assert.ok(tekst.includes(`${MIN_PROBABILITY}%`), 'brak dolnej granicy');
 			assert.ok(tekst.includes(`${MIN_LIFT} `), 'brak progu przewagi');
 			assert.ok(tekst.includes(String(PLANS.free.limits.analysis)), 'brak limitu darmowego');
-			assert.ok(tekst.includes(String(PLANS.pro.priceMonthlyPln)), 'brak ceny Pro');
+		});
+
+		test(`${locale}: krótko — trzy kroki po kilka słów, przykład spójny z progiem`, () => {
+			const g = guideContent(locale);
+			assert.equal(g.steps.length, 3);
+			for (const s of g.steps) assert.ok(s.body.length <= 60, s.body);
+			assert.ok(g.title.length <= 100, 'tytuł za długi');
+			const { probability, usual } = g.example;
+			assert.ok(probability >= MIN_PROBABILITY && probability - usual >= MIN_LIFT, 'przykład nie przechodzi własnego progu');
 		});
 
 		test(`${locale}: sześć zakładek, każda z adresem z menu`, () => {

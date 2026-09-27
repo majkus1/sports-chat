@@ -151,8 +151,22 @@ reprezentacji różnice sił są ogromne (Hiszpania – San Marino), więc przew
 jest większa niż w ligach — to nie znaczy, że model jest tu „lepszy", tylko że łatwiej go
 pobić bazowej linii. Kalibracja typów (obiecane ≈ trafione) jest tu ważniejszą miarą.
 
-Pula `europe` nie była jeszcze mierzona tym skryptem (wcześniejszy przebieg na jednej wspólnej
-puli dawał w Lidze Mistrzów +0,079 log lossu nad częstościami). Uruchomienie na serwerze:
+Backtest `europe` (serwer, wrzesień 2026; 836 meczów po lipcu 2025, 39 % pokrycia — reszta to
+drużyny z lig spoza puli):
+
+| rozgrywki | n | log loss model | częstości | t |
+|---|---|---|---|---|
+| razem | 836 | **0,965** | 1,046 | 4,63 |
+| Liga Mistrzów | 239 | 0,944 | 1,038 | 3,22 |
+| Liga Europy | 247 | 0,958 | 1,033 | 2,66 |
+| Liga Konferencji | 229 | 1,015 | 1,057 | 1,18 (w szumie) |
+
+Typy po polityce: 545, obiecane 74,9 %, trafiło 70,8 % — model jest tu o ~4 pkt za pewny
+siebie, najbardziej przy wygranej gości (70 % obiecane, 60 % trafione) i 1X (84 % / 74 %).
+To ten sam kierunek, który widać w ligach powyżej 70 %; do poprawienia kalibracją, gdy dziennik
+prognoz zbierze dość meczów pucharowych. Nadal: typ na wygraną gości trafia 60 % przy normie 31 %.
+
+Ponowne uruchomienie na serwerze:
 
 ```bash
 node --experimental-loader ./test/helpers/alias.mjs lib/model/poolBacktest.mjs --pool=europe
