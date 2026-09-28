@@ -16,6 +16,12 @@ export const UserContext = createContext(null);
 export function UserProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isAuthed, setIsAuthed] = useState(false);
+  /**
+   * Czy pierwsze sprawdzenie sesji już się skończyło. Do tego czasu `isAuthed: false` znaczy
+   * „jeszcze nie wiadomo", a nie „wylogowany" — strony mogą pokazać szkielet zamiast kłódki,
+   * która mignęłaby zalogowanemu po każdym odświeżeniu.
+   */
+  const [authChecked, setAuthChecked] = useState(false);
   /** Jedna sesja „/me (+ ewentualnie refresh)” naraz */
   const refreshInflightRef = useRef(null);
   const tabHiddenAtRef = useRef(null);
@@ -78,6 +84,7 @@ export function UserProvider({ children }) {
         return false;
       } finally {
         refreshInflightRef.current = null;
+        setAuthChecked(true);
       }
     })();
 
@@ -146,9 +153,10 @@ export function UserProvider({ children }) {
       setUser,
       isAuthed,
       setIsAuthed,
+      authChecked,
       refreshUser,
     }),
-    [user, isAuthed, refreshUser]
+    [user, isAuthed, authChecked, refreshUser]
   );
 
   return <UserContext.Provider value={ctxValue}>{children}</UserContext.Provider>;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Bot, ChevronDown, Lock, MessageSquare, Plus, Send, Sparkles, Trash2 } from 'lucide-react';
 import BallIcon from '@/components/icons/BallIcon';
@@ -11,11 +11,23 @@ import Footer from '@/components/layout/Footer';
 import { UserContext } from '@/context/UserContext';
 import { Link } from '@/i18n/routing';
 import { Card, CardContent } from '@/components/ui/Card';
+import { Skeleton } from '@/components/ui/Skeleton';
 import Answer from '@/components/assistant/Answer';
 import { Button } from '@/components/ui/Button';
 import AutoGrowTextarea from '@/components/ui/AutoGrowTextarea';
 import { MAX_CHAT_MSG_LEN } from '@/lib/chatConstraints';
 import { cn } from '@/lib/utils';
+import {
+	NEW_KEY,
+	claimMemory,
+	conversationKey,
+	hrefWithConversation,
+	idFromSearch,
+	memory,
+	readDraft,
+	sendQuestion,
+	writeDraft,
+} from '@/lib/assistant/clientMemory';
 
 /**
  * Asystent całej oferty — jedna rozmowa o wszystkich meczach dnia.
@@ -34,6 +46,13 @@ import { cn } from '@/lib/utils';
  * lista stoi obok czatu (na telefonie — pod przyciskiem nad czatem). „Nowa rozmowa"
  * zaczyna pustą; wejście na stronę też zaczyna pustą, a nie ostatnią — bo najczęściej
  * przychodzi się z nowym pytaniem, a stare rozmowy są o kliknięcie dalej.
+ *
+ * NAWIGACJA BEZ GUBIENIA STANU. Otwarta rozmowa jest w adresie (`?c=<id>`), a przejście między
+ * rozmowami to wpis w historii przeglądarki — „Wstecz" wraca do poprzedniej rozmowy, odświeżenie
+ * i powrót z meczu (klik w odnośnik w odpowiedzi) otwierają tę samą. Wczytane rozmowy, miejsce
+ * przewinięcia, szkic wiadomości i pytanie w toku żyją w `lib/assistant/clientMemory.js`, dłużej
+ * niż ten komponent: powrót jest natychmiastowy, a odpowiedź, na którą się czekało, pojawia się,
+ * choćby w międzyczasie oglądało się inną stronę.
  */
 
 const STARTERS = [
@@ -48,7 +67,7 @@ const THINKING_STEPS = ['assistant_step_1', 'assistant_step_2', 'assistant_step_
 function Bubble({ message }) {
 	const isUser = message.role === 'user';
 	return (
-		<div className={cn('flex gap-2', isUser ? 'justify-end' : 'justify-start')}>
+		<div data-role={message.role} className={cn('flex gap-2', isUser ? 'justify-end' : 'justify-start')}>
 			{!isUser && (
 				<span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
 					<Bot size={15} aria-hidden="true" />
@@ -182,129 +201,242 @@ function ConversationList({ conversations, activeId, onNew, onOpen, onDelete, lo
 export default function AssistantClient() {
 	const t = useTranslations('common');
 	const locale = useLocale();
-	const { isAuthed } = useContext(UserContext);
+	const { isAuthed, authChecked, user } = useContext(UserContext);
 
-	const [conversations, setConversations] = useState([]);
+	// Adres czytamy dopiero w przeglądarce — do tego czasu (i przy renderze serwera) szkielet.
+	const [ready, setReady] = useState(false);
 	const [activeId, setActiveId] = useState(null);
+	const [conversations, setConversations] = useState(() => memory.list || []);
 	const [messages, setMessages] = useState([]);
 	const [value, setValue] = useState('');
-	const [isSending, setIsSending] = useState(false);
+	const [waiting, setWaiting] = useState(false);
 	const [isOpening, setIsOpening] = useState(false);
 	const [error, setError] = useState(null);
 	const [limitReached, setLimitReached] = useState(false);
 	const [listOpen, setListOpen] = useState(false);
 	const [isResultsModalOpen, setIsResultsModalOpen] = useState(false);
-	const endRef = useRef(null);
 
-	const loadList = async () => {
-		try {
-			const res = await fetch(`/api/ai/assistant?language=${locale}`, { credentials: 'include' });
-			if (!res.ok) return;
-			const data = await res.json();
-			setConversations(data.conversations || []);
-		} catch {
-			/* brak listy to nie błąd — czat działa bez niej */
-		}
-	};
+	const key = conversationKey(activeId);
+	const keyRef = useRef(key);
+	keyRef.current = key;
+	const mounted = useRef(false);
+	const boxRef = useRef(null);
+	const inputRef = useRef(null);
+	/** Dokąd przewinąć okno wiadomości po najbliższym renderze: `bottom`, `answer`, `restore`. */
+	const scrollTarget = useRef(null);
 
+	/** Inne konto w tej samej karcie — pamięć poprzedniego nie może się pokazać. */
+	useEffect(() => {
+		if (claimMemory(user?.userId || null)) setConversations([]);
+	}, [user?.userId]);
+
+	/* ---------- adres: która rozmowa jest otwarta ---------- */
+	useEffect(() => {
+		mounted.current = true;
+		const read = () => setActiveId(idFromSearch(window.location.search));
+		read();
+		setReady(true);
+		// „Wstecz" i „Dalej" między rozmowami — Next przywraca adres, my czytamy z niego rozmowę.
+		window.addEventListener('popstate', read);
+		return () => {
+			mounted.current = false;
+			window.removeEventListener('popstate', read);
+		};
+	}, []);
+
+	/** Przejście do rozmowy (`null` = nowa): wpis w historii, żeby „Wstecz" wracał do poprzedniej. */
+	const goTo = useCallback((id, { replace = false } = {}) => {
+		window.history[replace ? 'replaceState' : 'pushState'](null, '', hrefWithConversation(window.location.href, id));
+		setActiveId(id);
+	}, []);
+
+	/* ---------- lista rozmów ---------- */
 	useEffect(() => {
 		if (!isAuthed) return;
-		loadList();
-		// eslint-disable-next-line react-hooks/exhaustive-deps
+		let cancelled = false;
+		fetch(`/api/ai/assistant?language=${locale}`, { credentials: 'include' })
+			.then((res) => (res.ok ? res.json() : null))
+			.then((data) => {
+				if (cancelled || !data) return;
+				memory.list = data.conversations || [];
+				setConversations(memory.list);
+			})
+			.catch(() => {
+				/* brak listy to nie błąd — czat działa bez niej */
+			});
+		return () => {
+			cancelled = true;
+		};
 	}, [isAuthed, locale]);
 
-	useEffect(() => {
-		endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-	}, [messages, isSending]);
-
-	const startNew = () => {
-		setActiveId(null);
-		setMessages([]);
-		setError(null);
-		setListOpen(false);
-	};
-
-	const openConversation = async (id) => {
-		if (id === activeId) return;
-		setIsOpening(true);
-		setError(null);
-		setListOpen(false);
-		try {
-			const res = await fetch(`/api/ai/assistant?language=${locale}&id=${id}`, { credentials: 'include' });
-			if (!res.ok) {
-				setError(t('assistant_error'));
+	/* ---------- odpowiedź na pytanie (także zadane przed wyjściem ze strony) ---------- */
+	const applyResult = useCallback(
+		(result, pending) => {
+			if (!mounted.current) return;
+			setConversations(memory.list || []);
+			// Odpowiedź przyszła, gdy użytkownik patrzy już na inną rozmowę — zmienia się tylko lista.
+			if (keyRef.current !== pending.key) return;
+			setWaiting(false);
+			if (result.status === 'ok') {
+				scrollTarget.current = 'answer';
+				setMessages(result.messages);
+				// Nowa rozmowa dostała zapis — adres ją wskazuje, ale bez nowego wpisu w historii.
+				if (pending.key === NEW_KEY) goTo(result.conversationId, { replace: true });
 				return;
 			}
-			const data = await res.json();
-			setActiveId(data.id);
-			setMessages(data.messages || []);
-		} catch {
-			setError(t('assistant_error'));
-		} finally {
-			setIsOpening(false);
+			// Błąd albo limit: pytanie wraca do pola, żeby wystarczył jeden klik, by wysłać je znowu.
+			setMessages(pending.previous);
+			setValue((v) => v || pending.question);
+			writeDraft(pending.key, pending.question);
+			if (result.status === 'limit') {
+				setLimitReached(true);
+				setError(result.message || t('ai_chat_limit'));
+			} else {
+				setError(result.message || t('assistant_error'));
+			}
+		},
+		[goTo, t]
+	);
+
+	const awaitPending = useCallback(
+		(pending) => {
+			pending.promise.then((result) => applyResult(result, pending));
+		},
+		[applyResult]
+	);
+
+	/* ---------- otwarcie rozmowy z adresu: z pamięci od razu, z serwera tylko raz ---------- */
+	useEffect(() => {
+		if (!ready || !isAuthed) return undefined;
+		setIsOpening(false);
+		setValue(readDraft(key));
+
+		const pending = memory.pending?.key === key ? memory.pending : null;
+		if (pending) {
+			scrollTarget.current = 'bottom';
+			setMessages([...pending.previous, { role: 'user', content: pending.question }]);
+			setWaiting(true);
+			awaitPending(pending);
+			return undefined;
 		}
+		setWaiting(false);
+
+		if (!activeId) {
+			setMessages([]);
+			return undefined;
+		}
+		const cached = memory.conversations.get(activeId);
+		if (cached) {
+			scrollTarget.current = 'restore';
+			setMessages(cached);
+			return undefined;
+		}
+
+		let cancelled = false;
+		setIsOpening(true);
+		setMessages([]);
+		fetch(`/api/ai/assistant?language=${locale}&id=${activeId}`, { credentials: 'include' })
+			.then(async (res) => {
+				if (cancelled) return;
+				if (res.status === 404) {
+					// Usunięta albo cudza — zamiast pustego ekranu nowa rozmowa i jedno zdanie wyjaśnienia.
+					setError(t('assistant_not_found'));
+					goTo(null, { replace: true });
+					return;
+				}
+				if (!res.ok) {
+					setError(t('assistant_error'));
+					return;
+				}
+				const data = await res.json();
+				if (cancelled) return;
+				memory.conversations.set(data.id, data.messages || []);
+				scrollTarget.current = 'restore';
+				setMessages(data.messages || []);
+			})
+			.catch(() => {
+				if (!cancelled) setError(t('assistant_error'));
+			})
+			.finally(() => {
+				if (!cancelled) setIsOpening(false);
+			});
+		return () => {
+			cancelled = true;
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [ready, isAuthed, activeId]);
+
+	/* ---------- przewijanie okna wiadomości (nie całej strony) ---------- */
+	useLayoutEffect(() => {
+		const box = boxRef.current;
+		const target = scrollTarget.current;
+		if (!box || !target) return;
+		scrollTarget.current = null;
+		if (target === 'restore') {
+			const saved = memory.scroll.get(key);
+			box.scrollTop = saved ?? box.scrollHeight;
+		} else if (target === 'answer') {
+			// Początek odpowiedzi, nie jej koniec: pytanie na górze okna, odpowiedź czyta się od pierwszego zdania.
+			const questions = box.querySelectorAll('[data-role="user"]');
+			const last = questions[questions.length - 1];
+			box.scrollTop = last ? Math.max(0, last.offsetTop - 8) : box.scrollHeight;
+		} else {
+			box.scrollTop = box.scrollHeight;
+		}
+	}, [messages, waiting, key]);
+
+	/* ---------- działania ---------- */
+	const startNew = () => {
+		setError(null);
+		setListOpen(false);
+		if (activeId) goTo(null);
+		// Już na nowej rozmowie — od razu do pisania.
+		requestAnimationFrame(() => inputRef.current?.focus());
+	};
+
+	const openConversation = (id) => {
+		setListOpen(false);
+		if (id === activeId) return;
+		setError(null);
+		goTo(id);
 	};
 
 	const deleteConversation = async (id) => {
 		// Z ekranu znika od razu; serwer dogania. Nieudane usunięcie wróci przy odświeżeniu listy.
-		setConversations((prev) => prev.filter((c) => c.id !== id));
-		if (id === activeId) startNew();
+		memory.list = (memory.list || conversations).filter((c) => c.id !== id);
+		memory.conversations.delete(id);
+		memory.scroll.delete(id);
+		writeDraft(id, '');
+		setConversations(memory.list);
+		if (id === activeId) goTo(null, { replace: true });
 		try {
 			await fetch(`/api/ai/assistant?id=${id}`, { method: 'DELETE', credentials: 'include' });
 		} catch {
-			loadList();
+			/* lista odświeży się przy następnym wejściu */
 		}
 	};
 
-	const ask = async (question) => {
+	const ask = (question) => {
 		const q = question.trim();
-		if (!q || isSending) return;
+		if (!q || memory.pending) return;
 		setError(null);
+		const previous = messages;
 		setValue('');
-		setMessages((prev) => [...prev, { role: 'user', content: q }]);
-		setIsSending(true);
-		try {
-			const res = await fetch('/api/ai/assistant', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				credentials: 'include',
-				body: JSON.stringify({ question: q, language: locale, conversationId: activeId }),
-			});
-			const data = await res.json().catch(() => ({}));
-			if (res.status === 429) {
-				setLimitReached(true);
-				setError(data.message || t('ai_chat_limit'));
-				return;
-			}
-			if (!res.ok) {
-				setError(data.message || t('assistant_error'));
-				return;
-			}
-			const odpowiedz = (data.messages || []).find((m) => m.role === 'assistant');
-			if (odpowiedz) setMessages((prev) => [...prev, odpowiedz]);
-			// Nowa rozmowa dostaje identyfikator i trafia na górę listy; istniejąca — tylko na górę.
-			if (data.conversationId) {
-				setActiveId(data.conversationId);
-				setConversations((prev) => {
-					const bez = prev.filter((c) => c.id !== data.conversationId);
-					const stara = prev.find((c) => c.id === data.conversationId);
-					return [
-						{
-							id: data.conversationId,
-							title: data.title || stara?.title || q,
-							updatedAt: new Date().toISOString(),
-							messageCount: (stara?.messageCount || 0) + 2,
-						},
-						...bez,
-					];
-				});
-			}
-		} catch {
-			setError(t('assistant_error'));
-		} finally {
-			setIsSending(false);
-		}
+		writeDraft(key, '');
+		scrollTarget.current = 'bottom';
+		setMessages([...previous, { role: 'user', content: q }]);
+		setWaiting(true);
+		awaitPending(sendQuestion({ question: q, id: activeId, language: locale, previous }));
 	};
+
+	const onType = (text) => {
+		setValue(text);
+		writeDraft(key, text);
+	};
+
+	// Asystent kończy odpowiedź w innej rozmowie — drugie pytanie naraz poczeka.
+	const busyElsewhere = Boolean(memory.pending) && memory.pending.key !== key;
+	const activeTitle = activeId ? conversations.find((c) => c.id === activeId)?.title : null;
 
 	const lista = (
 		<ConversationList
@@ -334,7 +466,13 @@ export default function AssistantClient() {
 					</h2>
 					<p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{t('assistant_intro')}</p>
 
-					{!isAuthed ? (
+					{!authChecked || (isAuthed && !ready) ? (
+						// Sesja jeszcze się sprawdza — szkielet zamiast kłódki, która mignęłaby zalogowanemu.
+						<div className="mt-6 grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+							<Skeleton className="hidden h-48 lg:block" />
+							<Skeleton className="h-64" />
+						</div>
+					) : !isAuthed ? (
 						<Card className="mt-6 max-w-3xl">
 							<CardContent className="flex flex-col items-center gap-3 px-5 py-8 text-center">
 								<span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-muted">
@@ -347,7 +485,7 @@ export default function AssistantClient() {
 					) : (
 						<div className="mt-6 grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start">
 							{/* Lista rozmów: na dużym ekranie obok, na telefonie pod przyciskiem. */}
-							<aside className="hidden lg:block">
+							<aside className="hidden lg:sticky lg:top-24 lg:block">
 								<Card>
 									<CardContent className="px-3 py-3">
 										<p className="mb-2 flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-muted">
@@ -381,21 +519,43 @@ export default function AssistantClient() {
 
 							<Card>
 								<CardContent className="flex flex-col gap-4 px-5 py-5">
-									{isOpening && <Thinking />}
+									{/* Nagłówek rozmowy: gdzie jestem i jak zacząć od nowa — bez szukania listy. */}
+									<div className="-mt-1 flex items-center justify-between gap-3 border-b border-border pb-3">
+										<p className="min-w-0 truncate text-sm font-semibold text-text">
+											{activeTitle || (activeId ? '…' : t('assistant_new_chat'))}
+										</p>
+										{activeId && (
+											<button
+												type="button"
+												onClick={startNew}
+												className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-transparent px-2.5 py-1 text-xs font-semibold text-text transition-colors hover:border-accent hover:bg-accent-soft"
+											>
+												<Plus size={13} aria-hidden="true" />
+												{t('assistant_new_chat')}
+											</button>
+										)}
+									</div>
 
-									{!isOpening && messages.length === 0 && (
+									{isOpening && (
+										<p className="flex items-center gap-2 text-sm text-muted" aria-live="polite">
+											<Sparkles size={14} aria-hidden="true" className="animate-pulse text-accent" />
+											{t('assistant_loading')}
+										</p>
+									)}
+
+									{!isOpening && messages.length === 0 && !waiting && (
 										<div className="flex flex-col gap-3">
 											<p className="text-sm text-text">{t('assistant_empty')}</p>
 											<div className="flex flex-wrap gap-2">
-												{STARTERS.map((key) => (
+												{STARTERS.map((k) => (
 													<button
-														key={key}
+														key={k}
 														type="button"
-														onClick={() => ask(t(key))}
-														disabled={isSending}
-														className="rounded-full border border-border bg-transparent px-3.5 py-2 text-sm text-text transition-colors hover:border-accent hover:bg-accent-soft"
+														onClick={() => ask(t(k))}
+														disabled={Boolean(memory.pending)}
+														className="rounded-full border border-border bg-transparent px-3.5 py-2 text-sm text-text transition-colors hover:border-accent hover:bg-accent-soft disabled:opacity-50"
 													>
-														{t(key)}
+														{t(k)}
 													</button>
 												))}
 											</div>
@@ -403,15 +563,17 @@ export default function AssistantClient() {
 									)}
 
 									{!isOpening && messages.length > 0 && (
-										<div className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto pr-1">
+										<div
+											ref={boxRef}
+											onScroll={(e) => memory.scroll.set(key, e.currentTarget.scrollTop)}
+											className="relative flex max-h-[60vh] flex-col gap-3 overflow-y-auto overscroll-contain pr-1"
+										>
 											{messages.map((m, idx) => (
 												<Bubble key={idx} message={m} />
 											))}
-											{isSending && <Thinking />}
-											<div ref={endRef} />
+											{waiting && <Thinking />}
 										</div>
 									)}
-									{messages.length === 0 && isSending && <Thinking />}
 
 									{error && <p className="text-sm text-loss">{error}</p>}
 									{limitReached && (
@@ -426,34 +588,38 @@ export default function AssistantClient() {
 												e.preventDefault();
 												ask(value);
 											}}
-											className="flex items-end gap-2"
+											className="flex flex-col gap-1.5"
 										>
-											{/* Rośnie z treścią: dwie linie na start, do ośmiu, potem przewijanie. Enter wysyła, Shift+Enter łamie linię. */}
-											<AutoGrowTextarea
-												value={value}
-												onChange={(e) => setValue(e.target.value)}
-												onKeyDown={(e) => {
-													if (e.key === 'Enter' && !e.shiftKey) {
-														e.preventDefault();
-														ask(value);
-													}
-												}}
-												minRows={2}
-												maxRows={8}
-												maxLength={MAX_CHAT_MSG_LEN}
-												placeholder={t('assistant_placeholder')}
-												disabled={isSending}
-												className="flex-1 rounded-[var(--radius-ui)] border border-border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted focus:border-accent focus:outline-2 focus:outline-offset-2 focus:outline-ring"
-											/>
-											<Button
-												type="submit"
-												variant="accent"
-												size="icon"
-												disabled={isSending || !value.trim()}
-												aria-label={t('sent')}
-											>
-												<Send size={16} aria-hidden="true" />
-											</Button>
+											<div className="flex items-end gap-2">
+												{/* Rośnie z treścią: dwie linie na start, do ośmiu, potem przewijanie. Enter wysyła, Shift+Enter łamie linię. */}
+												<AutoGrowTextarea
+													inputRef={inputRef}
+													value={value}
+													onChange={(e) => onType(e.target.value)}
+													onKeyDown={(e) => {
+														if (e.key === 'Enter' && !e.shiftKey) {
+															e.preventDefault();
+															ask(value);
+														}
+													}}
+													minRows={2}
+													maxRows={8}
+													maxLength={MAX_CHAT_MSG_LEN}
+													placeholder={t('assistant_placeholder')}
+													disabled={waiting}
+													className="flex-1 rounded-[var(--radius-ui)] border border-border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted focus:border-accent focus:outline-2 focus:outline-offset-2 focus:outline-ring"
+												/>
+												<Button
+													type="submit"
+													variant="accent"
+													size="icon"
+													disabled={waiting || busyElsewhere || !value.trim()}
+													aria-label={t('sent')}
+												>
+													<Send size={16} aria-hidden="true" />
+												</Button>
+											</div>
+											{busyElsewhere && <p className="text-xs text-muted">{t('assistant_busy_elsewhere')}</p>}
 										</form>
 									)}
 

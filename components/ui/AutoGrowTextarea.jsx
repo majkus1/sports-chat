@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
  * Czcionka jest jawnie dziedziczona: przeglądarki dają polom formularza własną (często
  * monospace) i pole wyglądało obco na tle reszty czatu.
  */
-export default function AutoGrowTextarea({ value, minRows = 2, maxRows = 8, className, ...props }) {
+export default function AutoGrowTextarea({ value, minRows = 2, maxRows = 8, className, inputRef, ...props }) {
 	const ref = useRef(null);
 
 	useEffect(() => {
@@ -36,7 +36,11 @@ export default function AutoGrowTextarea({ value, minRows = 2, maxRows = 8, clas
 
 	return (
 		<textarea
-			ref={ref}
+			ref={(el) => {
+				ref.current = el;
+				// Rodzic może chcieć ustawić kursor w polu (np. po „Nowa rozmowa").
+				if (inputRef) inputRef.current = el;
+			}}
 			value={value}
 			rows={minRows}
 			className={cn('block w-full resize-none font-[inherit] leading-relaxed', className)}
