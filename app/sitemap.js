@@ -1,12 +1,47 @@
 import { LOCALES, SITE_URL } from '@/lib/seo/config';
 import { allPosts } from '@/lib/blog';
 import { UPDATED_AT } from '@/lib/legal/operator';
+import connectToDb from '@/lib/db';
+import ModelForecast from '@/models/ModelForecast';
+import { matchPath } from '@/lib/seo/matchPreview';
+
+/** Mapa zależy od bazy (strony meczów) — liczona przy pobraniu, nie przy budowaniu. */
+export const dynamic = 'force-dynamic';
+
+/**
+ * Strony „typ na mecz" w mapie: tydzień wstecz (świeże rozliczenia) i trzy dni naprzód.
+ * Starsze nadal działają i są podlinkowane między sobą, ale mapa wskazuje to, co ludzie
+ * szukają teraz — kilkaset adresów zamiast tysięcy.
+ */
+async function matchEntries(now) {
+	try {
+		await connectToDb();
+		const mecze = await ModelForecast.find({
+			kickoff: { $gte: new Date(now.getTime() - 7 * 86_400_000), $lte: new Date(now.getTime() + 3 * 86_400_000) },
+		})
+			.select('fixtureId homeName awayName kickoff forecastAt settledAt')
+			.sort({ kickoff: -1 })
+			.limit(2000)
+			.lean();
+		return mecze.flatMap((m) =>
+			entry(matchPath(m), {
+				lastModified: m.settledAt || m.forecastAt || now,
+				changeFrequency: new Date(m.kickoff) > now ? 'hourly' : 'weekly',
+				priority: 0.6,
+			})
+		);
+	} catch {
+		// Baza niedostępna — mapa bez meczów jest lepsza niż żadna.
+		return [];
+	}
+}
 
 /**
  * Mapa witryny.
  *
  * Trafiają do niej wyłącznie adresy, które chcemy widzieć w wynikach — czyli wszystko poza
- * pokojami meczowymi, raportami i ekranami konta. Mapa z dziesiątkami tysięcy krótko żyjących
+ * pokojami meczowymi, raportami i ekranami konta. Mecze reprezentują strony „typ na mecz"
+ * (`/typ/...`), nie pokoje. Mapa z dziesiątkami tysięcy krótko żyjących
  * pokoi nie tylko nic by nie dała, ale osłabiłaby sygnał dla stron naprawdę istotnych.
  *
  * `alternates.languages` przy każdym wpisie informuje o wersji w drugim języku — ten sam
@@ -48,7 +83,7 @@ function entry(path, { lastModified, changeFrequency, priority }) {
 	}));
 }
 
-export default function sitemap() {
+export default async function sitemap() {
 	const now = new Date();
 
 	const staticEntries = STATIC_ROUTES.flatMap((route) =>
@@ -69,5 +104,5 @@ export default function sitemap() {
 		})
 	);
 
-	return [...staticEntries, ...postEntries];
+	return [...staticEntries, ...postEntries, ...(await matchEntries(now))];
 }

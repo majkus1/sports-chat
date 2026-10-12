@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ChevronRight, Lock, Sparkles } from 'lucide-react';
 import { Link } from '@/i18n/routing';
+import { matchPath } from '@/lib/seo/matchPreview';
 
 /**
  * Lista dzisiejszych typów modelu na stronie „Typy na dziś".
@@ -10,6 +11,9 @@ import { Link } from '@/i18n/routing';
  * Serwer renderuje wersję dla wszystkich (mecze, godziny, ligi — typy za kłódką, poza typem
  * dnia), bo to ją widzi robot wyszukiwarki. Po załadowaniu pytamy o plakietki tą samą trasą co
  * lista meczów: kto ma plan z liczbami (Pro, VIP, okres próbny), dostaje je tu bez przeładowania.
+ *
+ * Wiersz prowadzi na stronę „typ na mecz" (indeksowaną), a stamtąd jest przejście do pokoju
+ * meczowego — dzięki temu robot trafia na strony meczów z tej, którą już zna.
  */
 export default function TodayPicksList({ items, date, locale, labels: c }) {
 	const [lista, setLista] = useState(items);
@@ -44,7 +48,7 @@ export default function TodayPicksList({ items, date, locale, labels: c }) {
 					return (
 						<li key={p.fixtureId}>
 							<Link
-								href={`/mecz/${p.fixtureId}`}
+								href={matchPath({ fixtureId: p.fixtureId, homeName: p.home, awayName: p.away })}
 								className="group flex items-center gap-3 px-4 py-3 no-underline transition-colors hover:bg-surface-2"
 							>
 								<span className="w-11 shrink-0 text-sm font-bold tabular-nums text-text">{godzina}</span>

@@ -47,6 +47,9 @@ const ModelForecastSchema = new mongoose.Schema(
 		awayId: { type: Number, required: true },
 		homeName: { type: String, default: null },
 		awayName: { type: String, default: null },
+		/** Nazwa i kraj rozgrywek od dostawcy — do strony meczu (`/typ/...`); starsze zapisy ich nie mają. */
+		leagueName: { type: String, default: null },
+		leagueCountry: { type: String, default: null },
 		kickoff: { type: Date, required: true, index: true },
 
 		/** Kiedy policzono i ile godzin przed meczem. */
