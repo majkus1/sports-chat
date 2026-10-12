@@ -1,6 +1,7 @@
 import { ArrowRight, Check, Clock, Radio, Sparkles, X } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
+import { matchPath } from '@/lib/seo/matchPreview';
 
 /**
  * Karta typu dnia — bez stanu, renderowana na serwerze (strona „Typy na dziś") i u klienta
@@ -29,8 +30,15 @@ export default function DailyPickCard({ pick, c, label, locale, compact = false,
 					<Sparkles size={13} aria-hidden="true" />
 					{label}
 				</p>
+				{/* Nazwa meczu prowadzi na stronę meczu (`/typ/...`) — link z nazwami drużyn to
+				    najlepsza wskazówka dla wyszukiwarki; „Pełna analiza" niżej prowadzi do pokoju. */}
 				<h2 className="mt-2 font-display text-2xl font-bold leading-tight text-text sm:text-3xl">
-					{pick.home} – {pick.away}
+					<Link
+						href={matchPath({ fixtureId: pick.fixtureId, homeName: pick.home, awayName: pick.away })}
+						className="text-text no-underline decoration-2 underline-offset-4 hover:underline"
+					>
+						{pick.home} – {pick.away}
+					</Link>
 				</h2>
 				<p className="mt-1 text-sm text-muted">
 					{godzina}
