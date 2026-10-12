@@ -14,7 +14,7 @@ import LanguageSwitcher from './LanguageSwitcher';
 import ThemeToggle from './theme/ThemeToggle';
 import Logo from './Logo';
 import BallIcon from './icons/BallIcon';
-import { ChevronDown, CreditCard, Home, LayoutGrid, Menu, User, X } from 'lucide-react';
+import { ChevronDown, CreditCard, Home, LayoutGrid, Menu, Send, User, X } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { SITE_LINKS, SPORT_CATEGORIES } from '@/lib/navigation';
 
@@ -190,6 +190,17 @@ export default function NavBar({ onLanguageChange }) {
                     <>
                       {isAuthed ? (
                         <>
+                          {/* Skrót administratora: gotowy post z typem dnia (strona sama sprawdza rolę). */}
+                          {user?.role === 'admin' && (
+                            <Link
+                              href="/admin/posty"
+                              onClick={() => setMobileMenuOpen(false)}
+                              className="mx-auto mb-3 mt-1 inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold text-text no-underline transition-colors hover:border-accent hover:bg-accent-soft"
+                            >
+                              <Send size={15} aria-hidden="true" />
+                              Post na X (admin)
+                            </Link>
+                          )}
                           <UserPanel />
                           <button onClick={handleLogout} className="log-out-btn">
                             <GiPlayButton /> {t('out')}

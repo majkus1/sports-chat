@@ -19,7 +19,7 @@ export async function GET(request) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await User.findById(session.userId).select('username email image');
+    const user = await User.findById(session.userId).select('username email image role');
     if (!user) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -29,6 +29,9 @@ export async function GET(request) {
       username: user.username,
       email: user.email,
       image: user.image,
+      // Własna rola — interfejs pokazuje administratorowi skróty (np. post na X).
+      // Uprawnień nie daje: każda trasa admina sprawdza rolę w bazie sama.
+      role: user.role || 'user',
     }, { status: 200 });
   } catch (err) {
     if (process.env.NODE_ENV === 'development') {

@@ -6,6 +6,7 @@ import Logo from '@/components/Logo';
 import { LEGAL_LINKS, SITE_LINKS, SPORT_CATEGORIES } from '@/lib/navigation';
 import { clearConsent } from '@/lib/consent';
 import { cn } from '@/lib/utils';
+import { SOCIAL } from '@/lib/seo/config';
 
 /**
  * Aplikacja nie miała stopki w ogóle — brakowało miejsca na informację o odpowiedzialnej grze,
@@ -32,6 +33,18 @@ export default function Footer({ className }) {
 						<Logo locale={locale} />
 					</Link>
 					<p className="mt-3 leading-relaxed text-muted">{t('footer_tagline')}</p>
+					{/* Typ dnia codziennie rano także na X — link zewnętrzny, w nowej karcie. */}
+					<a
+						href={SOCIAL.x.url}
+						target="_blank"
+						rel="noopener noreferrer me"
+						className="footer-link mt-3 inline-flex items-center gap-2"
+					>
+						<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="currentColor">
+							<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+						</svg>
+						{t('footer_follow_x')} {SOCIAL.x.handle}
+					</a>
 				</div>
 
 				{/*
