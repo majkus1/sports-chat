@@ -181,6 +181,10 @@ export async function POST(request) {
 			 * są proste. Tu model musi trzymać się reguł promptu (np. zacząć od zdania o tym,
 			 * że pewniak to nie typ) i sam decydować o narzędziach — szybki model gubił
 			 * te reguły. Na wejściu pełny gpt-5.5 jest przy tym tańszy od gpt-4o.
+			 *
+			 * Od października 2026 oba modele to gpt-5.6-luna (patrz `lib/ai/config.js`).
+			 * Sprawdzone na pytaniu „który typ jest najpewniejszy" i na łańcuchu dwóch narzędzi:
+			 * reguły trzymane, 4,9 s zamiast 12,9 s, ~10 razy taniej.
 			 */
 			fast: false,
 		});
