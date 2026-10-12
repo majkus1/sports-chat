@@ -66,8 +66,12 @@ export default function DailyPickTeaser() {
 	}, [pick?.date, pick?.fixtureId]);
 
 	if (!pick) return null;
-	const label = pick === dane?.tomorrow ? c.tomorrowLabel : c.dailyLabel;
+	const naJutro = pick === dane?.tomorrow;
+	const label = naJutro ? c.tomorrowLabel : c.dailyLabel;
 	const odkryty = drugi?.hint && !drugi.hint.locked;
+	// Wieczorem obie karty są z jutra — podpis musi to mówić, inaczej typ „znika" z listy na dziś.
+	const planLabel = naJutro ? c.planLabelTomorrow : c.planLabel;
+	const lockedLabel = naJutro ? c.lockedLabelTomorrow : c.lockedLabel;
 
 	return (
 		<section className="px-5 pb-12" aria-label={label}>
@@ -87,13 +91,13 @@ export default function DailyPickTeaser() {
 									score: null,
 								}}
 								c={c}
-								label={c.planLabel}
+								label={planLabel}
 								locale={locale}
 								compact
 								className="h-full"
 							/>
 						) : (
-							<LockedPickCard pick={drugi} c={c} locale={locale} guest={!isAuthed} className="h-full" />
+							<LockedPickCard pick={drugi} c={c} label={lockedLabel} locale={locale} guest={!isAuthed} className="h-full" />
 						))}
 				</div>
 				<div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">

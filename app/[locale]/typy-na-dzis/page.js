@@ -51,6 +51,19 @@ export default async function Page({ params }) {
 
 	let overview = { today: null, tomorrow: null, yesterday: null, record: { won: 0, total: 0 } };
 	let lista = [];
+	let listaJutro = [];
+	const jutro = localDate(new Date(), 1);
+	/** Lista dnia dla strony: typ dnia odkryty, reszta za kłódką (plan odkrywa ją u klienta). */
+	const doListy = (list, dziennyId) =>
+		list.slice(0, 12).map((w) => ({
+			fixtureId: w.fixtureId,
+			home: w.home,
+			away: w.away,
+			league: w.league,
+			kickoff: w.kickoff,
+			// Gość i robot widzą typ tylko przy typie dnia — reszta za kłódką, jak na liście meczów.
+			hint: w.fixtureId === dziennyId ? { ...w.hint, daily: true } : { locked: true },
+		}));
 	try {
 		await connectToDb();
 		/*
@@ -64,17 +77,16 @@ export default async function Page({ params }) {
 			withTimeout(hintsForDate(dzis), 8000, { list: [] }),
 		]);
 		overview = ov || (await dailyOverviewCached());
-		const { list } = hinty;
-		const dziennyId = overview.today?.fixtureId;
-		lista = list.slice(0, 12).map((w) => ({
-			fixtureId: w.fixtureId,
-			home: w.home,
-			away: w.away,
-			league: w.league,
-			kickoff: w.kickoff,
-			// Gość i robot widzą typ tylko przy typie dnia — reszta za kłódką, jak na liście meczów.
-			hint: w.fixtureId === dziennyId ? { ...w.hint, daily: true } : { locked: true },
-		}));
+		lista = doListy(hinty.list, overview.today?.fixtureId);
+		/*
+		 * Wieczorem (dzisiejszy typ dnia już trwa) strona pokazuje typ dnia na jutro — wtedy także
+		 * jutrzejszą listę. Bez niej najmocniejszy jutrzejszy typ ze strony głównej nie miał tu
+		 * odpowiednika, a robot nie dostawał linków do jutrzejszych stron meczów.
+		 */
+		if (overview.tomorrow) {
+			const jutroHinty = await withTimeout(hintsForDate(jutro), 8000, { list: [] });
+			listaJutro = doListy(jutroHinty.list, overview.tomorrow.fixtureId);
+		}
 	} catch (error) {
 		console.warn('[typy-na-dzis] dane niedostępne:', error.message);
 	}
@@ -110,6 +122,15 @@ export default async function Page({ params }) {
 						{c.listTitle(lista.length)}
 					</h2>
 					<TodayPicksList items={lista} date={dzis} locale={locale} labels={labels} />
+				</section>
+			)}
+
+			{listaJutro.length > 0 && (
+				<section className="mt-8" aria-labelledby="lista-jutro">
+					<h2 id="lista-jutro" className="font-display text-xl font-bold uppercase tracking-wide text-text">
+						{c.listTitleTomorrow(listaJutro.length)}
+					</h2>
+					<TodayPicksList items={listaJutro} date={jutro} locale={locale} labels={labels} />
 				</section>
 			)}
 

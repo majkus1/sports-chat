@@ -14,7 +14,7 @@ import { matchPath } from '@/lib/seo/matchPreview';
  * Zamazane kropki to atrapa, nie ukryty typ: przy kłódce trasa w ogóle nie wysyła selekcji,
  * więc nie da się jej odczytać z kodu strony.
  */
-export default function LockedPickCard({ pick, c, locale, guest = false, className }) {
+export default function LockedPickCard({ pick, c, label, locale, guest = false, className }) {
 	const godzina = new Date(pick.kickoff).toLocaleTimeString(locale === 'en' ? 'en-GB' : 'pl-PL', {
 		timeZone: 'Europe/Warsaw',
 		hour: '2-digit',
@@ -31,7 +31,7 @@ export default function LockedPickCard({ pick, c, locale, guest = false, classNa
 			<div className="px-5 pb-4 pt-4 sm:px-6">
 				<p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted">
 					<Lock size={12} aria-hidden="true" />
-					{c.lockedLabel}
+					{label || c.lockedLabel}
 				</p>
 				<h2 className="mt-2 font-display text-2xl font-bold leading-tight text-text sm:text-3xl">
 					<Link

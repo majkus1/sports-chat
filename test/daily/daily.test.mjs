@@ -103,5 +103,10 @@ describe('strona „Typy na dziś"', () => {
 		assert.equal(c.listTitle(3), 'Model widzi dziś 3 typy');
 		assert.equal(c.listTitle(12), 'Model widzi dziś 12 typów');
 		assert.equal(c.listTitle(22), 'Model widzi dziś 22 typy');
+		assert.equal(c.listTitleTomorrow(1), 'Jutro model widzi 1 typ');
+		assert.equal(c.listTitleTomorrow(12), 'Jutro model widzi 12 typów');
+		assert.equal(todayPicksContent('en').listTitleTomorrow(3), 'Tomorrow the model sees 3 picks');
+		// Druga karta na głównej mówi „na jutro", gdy typ dnia jest jutrzejszy.
+		assert.ok(c.planLabelTomorrow.includes('na jutro') && c.lockedLabelTomorrow.includes('na jutro'));
 	});
 });
