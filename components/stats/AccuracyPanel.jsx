@@ -191,7 +191,8 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 			 * poznać, czy patrzy się na swoje typy, czy na cały serwis.
 			 */}
 			<div className="flex items-center gap-2">
-				<Badge variant={scope === 'me' ? 'accent' : 'outline'}>
+				{/* `shrink-0`: na telefonie długi podpis obok ściskał plakietkę do dwóch linii. */}
+				<Badge variant={scope === 'me' ? 'accent' : 'outline'} className="shrink-0">
 					{scope === 'me' ? <User size={12} aria-hidden="true" /> : <Globe size={12} aria-hidden="true" />}
 					{scope === 'me' ? t('accuracy_scope_mine') : t('accuracy_scope_global')}
 				</Badge>
@@ -238,9 +239,13 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 			)}
 
 			{/* Rodzaj typu i okno czasowe. W wąskim panelu przewijają się poziomo,
-			    zamiast łamać w dwie linie. */}
+			    zamiast łamać w dwie linie.
+
+			    Grupy niżej potrzebują `min-w-0`: element flex domyślnie nie zwęża się poniżej
+			    szerokości treści, więc pasek pigułek zamiast przewijać się w sobie rozpychał
+			    cały panel. */}
 			<div className="flex flex-wrap items-end gap-x-4 gap-y-3">
-				<div className={cn('flex flex-col gap-1', author === 'user' && 'hidden')}>
+				<div className={cn('flex min-w-0 max-w-full flex-col gap-1', author === 'user' && 'hidden')}>
 					<span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
 						{t('accuracy_filter_kind')}
 					</span>
@@ -265,7 +270,7 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 				</div>
 
 				{!compact && (
-					<div className="flex flex-col gap-1">
+					<div className="flex min-w-0 max-w-full flex-col gap-1">
 						<span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
 							{t('accuracy_filter_range')}
 						</span>

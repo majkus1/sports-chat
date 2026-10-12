@@ -193,8 +193,12 @@ export default function UserPanel() {
          * Dwie kolumny na szerokim ekranie: po lewej skuteczność (najbogatsza treść),
          * po prawej listy — ulubione mecze i rozmowy. Na wąskim wszystko wraca
          * do jednej kolumny, bo siatka ma tylko jeden tor.
+         *
+         * Ten jeden tor musi być jawny (`grid-cols-1`, czyli `minmax(0, 1fr)`). Domyślny
+         * tor `auto` rośnie do najszerszego nierozbijalnego wiersza — u nas pięciu pigułek
+         * filtra skuteczności — i na telefonie cały panel wystawał poza ekran o ~120 px.
          */}
-        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start">
+        <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start">
           {/*
            * Plan i limity na samej górze lewej kolumny.
            *
