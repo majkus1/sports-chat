@@ -370,6 +370,7 @@
 		"accuracy_kind_live": "Live",
 		"accuracy_kind_report": "Reports",
 		"accuracy_kind_daily": "Pick of the day",
+		"accuracy_kind_hint": "Badges",
 		"daily_pick": "Pick of the day",
 		"daily_pick_free": "free",
 		"today_picks_menu": "Today’s picks",

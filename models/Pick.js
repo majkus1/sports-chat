@@ -32,9 +32,9 @@ const PickSchema = new mongoose.Schema(
 		 * `daily` — typ dnia (`lib/daily/service.js`): jeden dziennie, odkryty dla wszystkich.
 		 * Liczy się do skuteczności jak każdy inny — skoro go pokazujemy, musimy go rozliczać.
 		 */
-		kind: { type: String, enum: ['prematch', 'live', 'report', 'round', 'daily'], required: true, index: true },
+		kind: { type: String, enum: ['prematch', 'live', 'report', 'round', 'daily', 'hint'], required: true, index: true },
 
-		source: { type: String, enum: ['analysis', 'report', 'user', 'round', 'daily'], required: true },
+		source: { type: String, enum: ['analysis', 'report', 'user', 'round', 'daily', 'hint'], required: true },
 		/** Dokument źródłowy; może już nie istnieć (analiza live kasuje się z TTL). */
 		sourceId: { type: mongoose.Schema.Types.ObjectId, default: null },
 
