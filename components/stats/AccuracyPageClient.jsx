@@ -10,7 +10,6 @@ import Footer from '@/components/layout/Footer';
 import { useGameDetailsModal } from '@/components/football/useGameDetailsModal';
 import AccuracyPanel from '@/components/stats/AccuracyPanel';
 import Leaderboard from '@/components/stats/Leaderboard';
-import ModelHintsAccuracy from '@/components/stats/ModelHintsAccuracy';
 
 /**
  * Publiczna skuteczność wszystkich typów wygenerowanych w serwisie.
@@ -42,15 +41,6 @@ export default function AccuracyPageClient() {
 					<p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{t('accuracy_intro')}</p>
 
 					<AccuracyPanel scope="global" className="mt-6" />
-
-					{/* Wszystkie plakietki modelu z listy — także te, do których nikt nie zrobił analizy. */}
-					<section className="mt-10">
-						<h2 className="font-display text-xl font-bold uppercase tracking-wide text-text">
-							{t('hints_acc_title')}
-						</h2>
-						<p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{t('hints_acc_intro')}</p>
-						<ModelHintsAccuracy className="mt-4" />
-					</section>
 
 					<section className="mt-10">
 						<h2 className="font-display text-xl font-bold uppercase tracking-wide text-text">
