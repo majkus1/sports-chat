@@ -33,6 +33,7 @@ function dzien(weekday) {
 }
 const PIATEK = dzien(5);
 const WTOREK = dzien(2);
+const SRODA = dzien(3);
 const o = (date, h, m = 0) => new Date(localMidnight(date).getTime() + (h * 60 + m) * 60_000);
 
 /** Plakietka z listy dnia (`hintsForDate().list`) i jej kurs (dla podstawionego dostawcy). */
@@ -59,16 +60,20 @@ const LISTY = {
 	[niedziela]: [wpis(niedziela, 15, 80, 1.33), wpis(niedziela, 17, 79, 1.25), wpis(niedziela, 20, 77, 1.3)],
 	// Wtorek: za mało typów do kursu 2,0.
 	[WTOREK]: [wpis(WTOREK, 20, 85, 1.2), wpis(WTOREK, 21, 80, 1.2)],
+	// Środa: dość typów, ale kursu najpewniejszego meczu nie da się pobrać.
+	[SRODA]: [wpis(SRODA, 22, 92, 1.1), wpis(SRODA, 22, 85, 1.3), wpis(SRODA, 22, 84, 1.3), wpis(SRODA, 22, 83, 1.3)],
 };
+const UPARTY = LISTY[SRODA][0].fixtureId;
 let pytaniaOKursy = 0;
 const opcje = {
 	hintsFor: async (date) => ({ list: LISTY[date] || [] }),
 	fetchOdds: async (fixtureId) => {
 		pytaniaOKursy += 1;
+		if (fixtureId === UPARTY) throw new Error('API zwróciło 429');
 		return { at: new Date(), bookmakers: 8, home: kursy.get(fixtureId) ?? null };
 	},
 };
-const KLUCZE = [`daily:${PIATEK}`, `weekend:${PIATEK}`, `daily:${WTOREK}`];
+const KLUCZE = [`daily:${PIATEK}`, `weekend:${PIATEK}`, `daily:${WTOREK}`, `daily:${SRODA}`];
 
 after(async () => {
 	await Coupon.deleteMany({ key: { $in: KLUCZE } });
@@ -84,7 +89,7 @@ describe('wybór kuponów', () => {
 
 	test('przed 9:30 nic nie powstaje', async () => {
 		const r = await ensureCoupons({ now: o(PIATEK, 9, 20), ...opcje });
-		assert.deepEqual(r, { created: [], none: [] });
+		assert.deepEqual(r, { created: [], none: [], postponed: [], details: {} });
 		assert.equal(await Coupon.countDocuments({ key: { $in: KLUCZE } }), 0);
 	});
 
@@ -116,6 +121,22 @@ describe('wybór kuponów', () => {
 		const ov = await couponsOverview({ now: o(WTOREK, 13) });
 		assert.equal(ov.today.status, 'none');
 		assert.equal(ov.todayLater, false);
+	});
+});
+
+describe('nieudane pobranie kursów', () => {
+	test('kursu nie ma — kupon czeka na kolejny przebieg; od 22:00 już nie czeka', async () => {
+		const r = await ensureCoupons({ now: o(SRODA, 13), ...opcje });
+		assert.deepEqual(r.postponed, [`daily:${SRODA}`]);
+		assert.deepEqual(r.details[`daily:${SRODA}`], { entries: 4, fetched: 3, failed: 1, withOdds: 3 });
+		assert.equal(await Coupon.exists({ key: `daily:${SRODA}` }), null);
+
+		const pozno = await ensureCoupons({ now: o(SRODA, 22 - 1, 0), ...opcje });
+		assert.deepEqual(pozno.postponed, [`daily:${SRODA}`]);
+		const ostatnia = await ensureCoupons({ now: o(SRODA, 22, 0), ...opcje });
+		assert.equal(ostatnia.postponed.length, 0);
+		// O 22:00 mecze o 22:00 nie mają już godziny wyprzedzenia — kuponu nie da się złożyć.
+		assert.deepEqual(ostatnia.none, [`daily:${SRODA}`]);
 	});
 });
 

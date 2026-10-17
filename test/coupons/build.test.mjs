@@ -12,7 +12,7 @@ import { setupEnv } from '../helpers/setup.mjs';
  */
 
 setupEnv();
-const { buildCoupon, legResult, couponStatus, settledOdds, COUPON_TYPES } = await import('@/lib/coupons/build');
+const { buildCoupon, legResult, couponStatus, settledOdds, legEligible, COUPON_TYPES } = await import('@/lib/coupons/build');
 const { buildCouponPost, xLength, X_LIMIT } = await import('@/lib/social/posts');
 
 const TERAZ = new Date('2026-10-17T08:00:00Z');
@@ -61,6 +61,21 @@ describe('buildCoupon', () => {
 			k.legs.map((l) => l.fixtureId).sort(),
 			ok.map((x) => x.fixtureId).sort()
 		);
+	});
+
+	test('tylko mecze od 12:00 do 23:00 czasu polskiego — nocne MLS nie wchodzą', () => {
+		// TERAZ = 10:00 w Polsce (CEST). 01:30 i 04:30 w nocy odpadają, 11:59 też, 23:00 wchodzi.
+		const noc = [typ(95, 1.07, { kickoff: za(15.5) }), typ(94, 1.15, { kickoff: za(18.5) })];
+		const dzien = [typ(80, 1.3), typ(79, 1.3), typ(78, 1.3)];
+		const k = buildCoupon([...noc, ...dzien], { type: 'daily', now: TERAZ });
+		assert.deepEqual(
+			k.legs.map((l) => l.fixtureId).sort(),
+			dzien.map((x) => x.fixtureId).sort()
+		);
+		assert.equal(legEligible(new Date('2026-10-17T09:59:00Z'), TERAZ), false);
+		assert.equal(legEligible(new Date('2026-10-17T10:00:00Z'), TERAZ), true);
+		assert.equal(legEligible(new Date('2026-10-17T21:00:00Z'), TERAZ), true);
+		assert.equal(legEligible(new Date('2026-10-17T21:01:00Z'), TERAZ), false);
 	});
 
 	test('jeden typ na mecz', () => {
