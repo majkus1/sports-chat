@@ -15,6 +15,7 @@ import { buildMetadata } from '@/lib/seo/metadata';
 import { JsonLd, faqLd, organizationLd, webApplicationLd, websiteLd } from '@/lib/seo/jsonLd';
 import { MethodTeaser } from '@/components/method/MethodSections';
 import DailyPickTeaser from '@/components/landing/DailyPickTeaser';
+import CouponTeaser from '@/components/coupons/CouponTeaser';
 import { landingContent } from '@/lib/landing/content';
 import { methodContent } from '@/lib/landing/method';
 import { faqItems } from '@/lib/landing/faq';
@@ -97,6 +98,7 @@ export default async function HomePage({ params }) {
 			<Hero content={content.hero} />
 			{/* Typ dnia pod nagłówkiem — konkretny dowód, zanim ktoś przewinie do opisu funkcji. */}
 			<DailyPickTeaser />
+			<CouponTeaser />
 			<Problem content={content.problem} />
 			<Features content={content.features} />
 			<HowItWorks content={content.how} />

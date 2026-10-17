@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import connectToDb from '@/lib/db';
 import { settlePendingPicks } from '@/lib/picks/service';
+import { settleCoupons } from '@/lib/coupons/service';
 
 export const maxDuration = 300;
 
@@ -37,7 +38,12 @@ export async function POST(request) {
 		await connectToDb();
 		const summary = await settlePendingPicks();
 		console.log('[picks] rozliczenie:', JSON.stringify(summary));
-		return Response.json({ ok: true, ...summary });
+		// Kupony rozlicza też przebieg co 20 minut; tu dla pewności, gdyby tamten był wyłączony.
+		const coupons = await settleCoupons().catch((error) => {
+			console.error('[coupons] rozliczenie kuponów nie powiodło się:', error.message);
+			return null;
+		});
+		return Response.json({ ok: true, ...summary, coupons });
 	} catch (error) {
 		console.error('[picks] rozliczenie nie powiodło się:', error.message);
 		return Response.json({ error: 'settlement_failed' }, { status: 500 });

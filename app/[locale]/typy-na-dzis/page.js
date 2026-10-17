@@ -2,11 +2,15 @@ import { ArrowRight } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import DailyPickCard from '@/components/today/DailyPickCard';
 import TodayPicksList from '@/components/today/TodayPicksList';
+import CouponCard from '@/components/coupons/CouponCard';
+import CouponsBlock from '@/components/coupons/CouponsBlock';
 import { Link } from '@/i18n/routing';
 import connectToDb from '@/lib/db';
 import { dailyOverview, dailyOverviewCached, withTimeout } from '@/lib/daily/service';
 import { hintsForDate } from '@/lib/model/hints';
 import { todayPicksContent } from '@/lib/landing/todayPicks';
+import { couponsOverview } from '@/lib/coupons/service';
+import { couponContent } from '@/lib/coupons/content';
 import { buildMetadata } from '@/lib/seo/metadata';
 import { JsonLd, breadcrumbLd } from '@/lib/seo/jsonLd';
 import { localDate } from '@/lib/time';
@@ -16,7 +20,8 @@ import { localDate } from '@/lib/time';
  *
  * Renderowana na serwerze przy każdym żądaniu (dane zmieniają się w ciągu dnia), więc robot
  * dostaje gotowy HTML: typ dnia z liczbami i powodami, listę dzisiejszych typów modelu
- * (za kłódką poza typem dnia — tak widzi je robot i gość), wczorajszy wynik i dorobek.
+ * (za kłódką poza typem dnia — tak widzi je robot i gość), kupon dnia i weekendowy (za darmo,
+ * z kursami — `lib/coupons`), wczorajszy wynik i dorobek.
  * Liczenie jest tanie: model i plakietki siedzą w pamięci procesu, typ dnia w bazie.
  *
  * Adres bez segmentu dyscypliny i po polsku — krótki i dokładnie taki, jak fraza.
@@ -47,7 +52,9 @@ export async function generateMetadata({ params }) {
 export default async function Page({ params }) {
 	const { locale } = await params;
 	const c = todayPicksContent(locale);
+	const k = couponContent(locale);
 	const dzis = localDate();
+	let kupony = null;
 
 	let overview = { today: null, tomorrow: null, yesterday: null, record: { won: 0, total: 0 } };
 	let lista = [];
@@ -72,10 +79,13 @@ export default async function Page({ params }) {
 		 * kończy się w tle i zasila pamięć podręczną na kolejne żądanie.
 		 */
 		// Oba liczenia równolegle — najgorszy przypadek to jeden limit, nie suma.
-		const [ov, hinty] = await Promise.all([
+		const [ov, hinty, kup] = await Promise.all([
 			withTimeout(dailyOverview(), 8000, null),
 			withTimeout(hintsForDate(dzis), 8000, { list: [] }),
+			// Kupony to sam odczyt z bazy — powstają w przebiegu co 20 minut, nie tutaj.
+			couponsOverview().catch(() => null),
 		]);
+		kupony = kup;
 		overview = ov || (await dailyOverviewCached());
 		lista = doListy(hinty.list, overview.today?.fixtureId);
 		/*
@@ -115,6 +125,17 @@ export default async function Page({ params }) {
 				{tomorrow && <DailyPickCard pick={tomorrow} c={c} label={c.tomorrowLabel} locale={locale} />}
 			</div>
 
+			{kupony && (kupony.today || kupony.weekend || kupony.todayLater || kupony.weekendLater) && (
+				<section className="mt-8" aria-labelledby="kupony">
+					<h2 id="kupony" className="font-display text-xl font-bold uppercase tracking-wide text-text">
+						{k.sectionTitle}
+					</h2>
+					<p className="mt-1.5 text-sm leading-relaxed text-muted">{k.sectionLead}</p>
+					<CouponsBlock data={kupony} c={k} locale={locale} className="mt-4" />
+					<p className="mt-3 text-xs leading-relaxed text-muted">{k.how}</p>
+				</section>
+			)}
+
 			{/* Pusta lista (brak typów albo dane nie zdążyły) — bez nagłówka „0 typów". */}
 			{lista.length > 0 && (
 				<section className="mt-8" aria-labelledby="lista-typow">
@@ -134,14 +155,25 @@ export default async function Page({ params }) {
 				</section>
 			)}
 
-			{(yesterday || record.total > 0) && (
+			{(yesterday || record.total > 0 || kupony?.yesterday?.legs?.length > 0) && (
 				<section className="mt-8" aria-labelledby="wczoraj">
 					<h2 id="wczoraj" className="font-display text-xl font-bold uppercase tracking-wide text-text">
-						{c.yesterday}
+						{kupony?.yesterday?.legs?.length > 0 ? k.yesterdaySection : c.yesterday}
 					</h2>
 					<div className="mt-3 flex flex-col gap-3">
 						{yesterday && <DailyPickCard pick={yesterday} c={c} label={c.yesterday} locale={locale} compact />}
 						{record.total > 0 && <p className="text-sm font-semibold text-text">{c.record(record.won, record.total)}</p>}
+						{kupony?.yesterday?.legs?.length > 0 && (
+							<CouponCard coupon={kupony.yesterday} c={k} label={k.yesterday} locale={locale} compact />
+						)}
+						{['daily', 'weekend'].map(
+							(typ) =>
+								kupony?.record?.[typ]?.total > 0 && (
+									<p key={typ} className="text-sm font-semibold text-text">
+										{k.record(typ, kupony.record[typ].won, kupony.record[typ].total)}
+									</p>
+								)
+						)}
 					</div>
 				</section>
 			)}

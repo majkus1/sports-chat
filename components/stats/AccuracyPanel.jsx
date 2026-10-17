@@ -6,6 +6,8 @@ import { Check, Globe, Info, Minus, Target, TrendingUp, Trophy, User, X } from '
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
+import CouponStats from '@/components/coupons/CouponStats';
+import { couponContent } from '@/lib/coupons/content';
 import { cn } from '@/lib/utils';
 
 /**
@@ -17,6 +19,12 @@ import { cn } from '@/lib/utils';
  */
 
 const KINDS = ['all', 'daily', 'hint', 'prematch', 'live', 'report'];
+/**
+ * Kupony to osobny bilans (kupon wchodzi albo nie — nie da się go dodać do typów pojedynczych),
+ * więc mają własne zakładki i własny widok. Tylko w publicznej skuteczności: kupony są wspólne,
+ * nie należą do żadnego konta.
+ */
+const COUPON_KINDS = { coupon_daily: 'daily', coupon_weekend: 'weekend' };
 const AUTHORS = ['ai', 'user'];
 const RANGES = ['30', '90', 'all'];
 
@@ -155,6 +163,11 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 	const load = useCallback(async () => {
 		setIsLoading(true);
 		try {
+			if (COUPON_KINDS[kind]) {
+				const res = await fetch(`/api/coupons/stats?type=${COUPON_KINDS[kind]}&days=${days}`);
+				setData(res.ok ? { coupons: await res.json() } : null);
+				return;
+			}
 			const params = new URLSearchParams({ scope, days, author });
 			// Typy użytkownika są zawsze przedmeczowe — filtr rodzaju byłby tu martwy.
 			if (author === 'ai' && kind !== 'all') params.set('kind', kind);
@@ -172,6 +185,9 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 	}, [load]);
 
 	const s = data?.summary;
+	const cc = couponContent(locale);
+	const rodzaje = scope === 'me' ? KINDS : [...KINDS, ...Object.keys(COUPON_KINDS)];
+	const kupon = COUPON_KINDS[kind];
 
 	const kindLabel = {
 		all: t('accuracy_kind_all'),
@@ -180,6 +196,8 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 		report: t('accuracy_kind_report'),
 		daily: t('accuracy_kind_daily'),
 		hint: t('accuracy_kind_hint'),
+		coupon_daily: cc.tab.daily,
+		coupon_weekend: cc.tab.weekend,
 	};
 
 	return (
@@ -251,7 +269,7 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 						{t('accuracy_filter_kind')}
 					</span>
 					<div className="inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-border bg-surface-2 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-						{KINDS.map((k) => (
+						{rodzaje.map((k) => (
 							<button
 								key={k}
 								type="button"
@@ -325,6 +343,8 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 					<Skeleton className="h-28 w-full" />
 					{!compact && <Skeleton className="h-40 w-full" />}
 				</div>
+			) : kupon && data?.coupons ? (
+				<CouponStats stats={data.coupons} c={cc} locale={locale} type={kupon} />
 			) : !s ? (
 				<p className="py-6 text-center text-sm text-muted">{t('accuracy_no_data')}</p>
 			) : (
