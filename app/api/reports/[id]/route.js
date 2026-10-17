@@ -34,6 +34,7 @@ export async function GET(request, { params }) {
 	return Response.json({
 		id: String(report._id),
 		type: report.type,
+		variant: report.variant || 'standard',
 		language: report.language,
 		status: report.status,
 		sections: report.sections,

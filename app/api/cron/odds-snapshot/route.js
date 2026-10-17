@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import connectToDb from '@/lib/db';
 import { snapshotOdds } from '@/lib/model/oddsShadowJob';
 import { ensureCoupons, settleCoupons } from '@/lib/coupons/service';
+import { settleValuePicks } from '@/lib/value/service';
 
 export const maxDuration = 120;
 
@@ -43,6 +44,13 @@ export async function POST(request) {
 		} catch (error) {
 			console.error('[coupons] rozliczenie kuponów nie powiodło się:', error.message);
 			coupons.error = 'settle_failed';
+		}
+		// Typy z wyższym kursem (asystent, raport) — rozliczane tym samym rytmem co kupony.
+		try {
+			coupons.valueSettled = (await settleValuePicks()).settled;
+		} catch (error) {
+			console.error('[value] rozliczenie typów z wyższym kursem nie powiodło się:', error.message);
+			coupons.error = 'value_settle_failed';
 		}
 		return Response.json({ ok: true, ...summary, coupons });
 	} catch (error) {

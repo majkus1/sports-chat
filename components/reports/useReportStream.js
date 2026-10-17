@@ -28,9 +28,12 @@ export function useReportStream({ language, failedText }) {
 
 	const reset = useCallback(() => setReport(EMPTY), []);
 
-	/** @param {'soon'|'threeDays'} type */
+	/**
+	 * @param {'soon'|'threeDays'} type
+	 * @param {'standard'|'value'} [variant] `value` — raport „Wyższe kursy"
+	 */
 	const start = useCallback(
-		async (type) => {
+		async (type, variant = 'standard') => {
 			if (busyRef.current) return;
 			busyRef.current = true;
 
@@ -48,7 +51,7 @@ export function useReportStream({ language, failedText }) {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					credentials: 'include',
-					body: JSON.stringify({ type, language }),
+					body: JSON.stringify({ type, variant, language }),
 					signal: controller.signal,
 				});
 

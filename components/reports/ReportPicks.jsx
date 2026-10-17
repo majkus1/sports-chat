@@ -35,6 +35,8 @@ function ProbabilityBar({ value, label }) {
 }
 
 function PickCard({ pick, locale, t }) {
+	// Raport „Wyższe kursy": kurs i szansa rynku zamiast normy — patrz `lib/reports/value.js`.
+	const zKursem = Number.isFinite(pick.odds);
 	const kickoff = pick.kickoffUtc ? new Date(pick.kickoffUtc) : null;
 	const kickoffLabel =
 		kickoff && !Number.isNaN(kickoff.getTime())
@@ -64,14 +66,36 @@ function PickCard({ pick, locale, t }) {
 						</p>
 					</div>
 
-					{pick.market && (
+					{pick.market && !zKursem && (
 						<Badge variant="accent" className="shrink-0">
 							<Target size={12} aria-hidden="true" />
 							{pick.market}: {pick.selection}
 						</Badge>
 					)}
+					{zKursem && (
+						<div className="flex shrink-0 flex-wrap items-center gap-2">
+							<Badge variant="accent">
+								<Target size={12} aria-hidden="true" />
+								{pick.selection}
+							</Badge>
+							<span className="rounded-md bg-surface-2 px-2 py-1 text-sm font-bold tabular-nums text-text">
+								{t('report_value_odds', { odds: pick.odds.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
+							</span>
+						</div>
+					)}
 				</div>
 
+				{zKursem ? (
+					<div className="flex flex-col gap-1.5">
+						<div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+							<ProbabilityBar value={pick.marketProbability} label={t('report_value_market')} />
+							<ProbabilityBar value={pick.confidence} label={t('report_value_ai')} />
+						</div>
+						{Number.isFinite(pick.modelProbability) && (
+							<p className="text-xs text-muted">{t('report_value_model', { value: pick.modelProbability })}</p>
+						)}
+					</div>
+				) : (
 				<div className="flex flex-col gap-1.5">
 					<div className="flex flex-wrap items-end gap-x-6 gap-y-3">
 						<ProbabilityBar value={pick.probability} label={t('report_probability')} />
@@ -89,6 +113,7 @@ function PickCard({ pick, locale, t }) {
 						lift={pick.lift}
 					/>
 				</div>
+				)}
 
 				{pick.analysis && <p className="text-sm leading-relaxed text-text">{pick.analysis}</p>}
 

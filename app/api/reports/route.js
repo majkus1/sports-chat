@@ -14,7 +14,7 @@ export async function GET() {
 
 	await connectToDb();
 	const reports = await Report.find({ userId: session.userId })
-		.select('type language status fixtureCount candidateCount createdAt')
+		.select('type variant language status fixtureCount candidateCount createdAt')
 		.sort({ createdAt: -1 })
 		.limit(50)
 		.lean();
@@ -23,6 +23,7 @@ export async function GET() {
 		reports: reports.map((r) => ({
 			id: String(r._id),
 			type: r.type,
+			variant: r.variant || 'standard',
 			language: r.language,
 			status: r.status,
 			fixtureCount: r.fixtureCount,

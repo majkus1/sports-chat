@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import connectToDb from '@/lib/db';
 import { settlePendingPicks } from '@/lib/picks/service';
 import { settleCoupons } from '@/lib/coupons/service';
+import { settleValuePicks } from '@/lib/value/service';
 
 export const maxDuration = 300;
 
@@ -43,7 +44,11 @@ export async function POST(request) {
 			console.error('[coupons] rozliczenie kuponów nie powiodło się:', error.message);
 			return null;
 		});
-		return Response.json({ ok: true, ...summary, coupons });
+		const value = await settleValuePicks().catch((error) => {
+			console.error('[value] rozliczenie typów z wyższym kursem nie powiodło się:', error.message);
+			return null;
+		});
+		return Response.json({ ok: true, ...summary, coupons, value });
 	} catch (error) {
 		console.error('[picks] rozliczenie nie powiodło się:', error.message);
 		return Response.json({ error: 'settlement_failed' }, { status: 500 });

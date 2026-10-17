@@ -36,6 +36,8 @@ export default function ReportsHubClient() {
 	const { gameId: detailsGameId, close: closeGameDetails } = useGameDetailsModal();
 
 	const [myReports, setMyReports] = useState(null);
+	/** Rodzaj raportu: typy modelu albo „Wyższe kursy" (typy z kursem od 2,0). */
+	const [variant, setVariant] = useState('standard');
 	const [usage, setUsage] = useState(null);
 
 	const { report, isGenerating, isPartial, stage, candidateCount, start } = useReportStream({
@@ -87,6 +89,7 @@ export default function ReportsHubClient() {
 	};
 
 	const typeLabel = (type) => (type === 'threeDays' ? t('report_type_3d') : t('report_type_24h'));
+	const VARIANTS = ['standard', 'value'];
 
 	const generationCards = [
 		{
@@ -141,19 +144,48 @@ export default function ReportsHubClient() {
 						</Card>
 					) : (
 						<>
+							{/* Rodzaj raportu nad oknem czasowym: typy modelu albo wyższe kursy. */}
+							<div className="mt-6 flex flex-col gap-2">
+								<span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+									{t('report_variant_label')}
+								</span>
+								<div className="inline-flex max-w-full items-center gap-0.5 self-start rounded-full border border-border bg-surface-2 p-1">
+									{VARIANTS.map((v) => (
+										<button
+											key={v}
+											type="button"
+											onClick={() => setVariant(v)}
+											aria-pressed={variant === v}
+											disabled={isGenerating}
+											className={
+												variant === v
+													? 'whitespace-nowrap rounded-full border-0 bg-brand px-4 py-1.5 text-sm font-semibold text-brand-fg shadow-sm'
+													: 'whitespace-nowrap rounded-full border-0 bg-transparent px-4 py-1.5 text-sm font-semibold text-muted transition-colors hover:bg-surface-3 hover:text-text'
+											}
+										>
+											{v === 'value' ? t('report_variant_value') : t('report_variant_standard')}
+										</button>
+									))}
+								</div>
+								{variant === 'value' && <p className="max-w-2xl text-xs leading-relaxed text-muted">{t('report_value_hint')}</p>}
+							</div>
+
 							{/* Wybór okna czasowego — dwie karty zamiast formularza z mailem. */}
-							<div className="mt-6 grid gap-4 sm:grid-cols-2">
+							<div className="mt-4 grid gap-4 sm:grid-cols-2">
 								{generationCards.map(({ type, icon: Icon, title, description }) => (
 									<Card key={type}>
 										<CardContent className="flex h-full flex-col gap-3 px-5 py-5">
 											<span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-soft text-accent">
 												<Icon size={18} aria-hidden="true" />
 											</span>
-											<h3 className="font-display text-base font-bold text-text">{title}</h3>
+											<h3 className="font-display text-base font-bold text-text">
+												{title}
+												{variant === 'value' && <span className="text-accent"> · {t('report_variant_value')}</span>}
+											</h3>
 											<p className="flex-1 text-sm leading-relaxed text-muted">{description}</p>
 											<Button
 												variant="accent"
-												onClick={() => start(type)}
+												onClick={() => start(type, variant)}
 												disabled={isGenerating}
 												className="rounded-full"
 											>
@@ -246,6 +278,7 @@ export default function ReportsHubClient() {
 														<Badge variant={r.type === 'threeDays' ? 'outline' : 'accent'}>
 															{typeLabel(r.type)}
 														</Badge>
+														{r.variant === 'value' && <Badge variant="outline">{t('report_variant_value')}</Badge>}
 														<span className="text-sm font-semibold text-text">
 															{t('report_pick_count', { count: r.fixtureCount })}
 														</span>

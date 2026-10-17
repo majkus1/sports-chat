@@ -7,7 +7,9 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import CouponStats from '@/components/coupons/CouponStats';
+import ValueStats from '@/components/value/ValueStats';
 import { couponContent } from '@/lib/coupons/content';
+import { valueContent } from '@/lib/value/content';
 import { cn } from '@/lib/utils';
 
 /**
@@ -25,6 +27,8 @@ const KINDS = ['all', 'daily', 'hint', 'prematch', 'live', 'report'];
  * nie należą do żadnego konta.
  */
 const COUPON_KINDS = { coupon_daily: 'daily', coupon_weekend: 'weekend' };
+/** Typy z wyższym kursem (asystent, raport) — też osobny bilans, nigdy w głównej liczbie. */
+const VALUE_KIND = 'value';
 const AUTHORS = ['ai', 'user'];
 const RANGES = ['30', '90', 'all'];
 
@@ -163,6 +167,11 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 	const load = useCallback(async () => {
 		setIsLoading(true);
 		try {
+			if (kind === VALUE_KIND) {
+				const res = await fetch(`/api/value-picks/stats?days=${days}`);
+				setData(res.ok ? { value: await res.json() } : null);
+				return;
+			}
 			if (COUPON_KINDS[kind]) {
 				const res = await fetch(`/api/coupons/stats?type=${COUPON_KINDS[kind]}&days=${days}`);
 				setData(res.ok ? { coupons: await res.json() } : null);
@@ -186,7 +195,8 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 
 	const s = data?.summary;
 	const cc = couponContent(locale);
-	const rodzaje = scope === 'me' ? KINDS : [...KINDS, ...Object.keys(COUPON_KINDS)];
+	const vc = valueContent(locale);
+	const rodzaje = scope === 'me' ? KINDS : [...KINDS, ...Object.keys(COUPON_KINDS), VALUE_KIND];
 	const kupon = COUPON_KINDS[kind];
 
 	const kindLabel = {
@@ -198,6 +208,7 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 		hint: t('accuracy_kind_hint'),
 		coupon_daily: cc.tab.daily,
 		coupon_weekend: cc.tab.weekend,
+		value: vc.tab,
 	};
 
 	return (
@@ -345,6 +356,8 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 				</div>
 			) : kupon && data?.coupons ? (
 				<CouponStats stats={data.coupons} c={cc} locale={locale} type={kupon} />
+			) : kind === VALUE_KIND && data?.value ? (
+				<ValueStats stats={data.value} c={vc} locale={locale} />
 			) : !s ? (
 				<p className="py-6 text-center text-sm text-muted">{t('accuracy_no_data')}</p>
 			) : (

@@ -13,6 +13,8 @@ const ReportSchema = new mongoose.Schema(
 
 		/** Okno czasowe raportu: najbliższe 24 h albo 3 dni. */
 		type: { type: String, enum: ['soon', 'threeDays'], required: true },
+		/** `value` — raport „Wyższe kursy" (`lib/reports/value.js`); starsze raporty to `standard`. */
+		variant: { type: String, enum: ['standard', 'value'], default: 'standard' },
 		language: { type: String, required: true },
 
 		status: { type: String, enum: ['ready', 'failed'], default: 'ready' },

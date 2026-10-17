@@ -14,6 +14,13 @@ import { buildReportCandidates, bindPicksToSelection, REPORT_WINDOWS } from '@/l
 import { leagueTier } from '@/lib/football/leagues';
 import { recordPicks } from '@/lib/picks/service';
 import { sameSelection } from '@/lib/picks/markets';
+import { buildValueReportCandidates, bindValuePicks } from '@/lib/reports/value';
+import {
+	VALUE_REPORT_SYSTEM_PROMPT,
+	VALUE_REPORT_PROMPT_VERSION,
+	buildValueReportPrompt,
+} from '@/lib/ai/prompts/reportValue';
+import { recordValuePicks } from '@/lib/value/service';
 
 export const maxDuration = 300;
 
@@ -22,6 +29,10 @@ export const maxDuration = 300;
  *
  * Raport wymaga sesji: wynik zapisuje się na koncie, a limit tygodniowy liczy się
  * po użytkowniku. Zdarzenia: `status` (selecting | generating), `partial`, `done`, `error`.
+ *
+ * `variant: 'value'` — raport „Wyższe kursy" (`lib/reports/value.js`): typy z kursem od 2,0,
+ * z kursem i szansą rynku w treści, rozliczane w osobnym bilansie (`ValuePick`), nie w głównej
+ * skuteczności. Ten sam limit raportów co raport zwykły.
  */
 
 const PARTIAL_INTERVAL_MS = 220;
@@ -34,6 +45,7 @@ const MESSAGES = {
 		failed: 'Nie udało się wygenerować raportu. Spróbuj ponownie za chwilę.',
 		refused: 'Model nie mógł przygotować raportu.',
 		emptyIntro: 'W tym oknie czasowym selekcja nie znalazła meczów o wystarczającej wartości.',
+		emptyValueIntro: 'W tym oknie nie ma meczu z kursem tuż powyżej 2,0, przy którym model zgadza się z rynkiem.',
 		emptySummary: 'Spróbuj ponownie, gdy terminarz będzie bogatszy — raport pokazuje tylko typy, które dane wspierają wyraźnie.',
 	},
 	en: {
@@ -43,6 +55,7 @@ const MESSAGES = {
 		failed: 'Could not generate the report. Please try again in a moment.',
 		refused: 'The model could not prepare the report.',
 		emptyIntro: 'The selection found no sufficiently valuable matches in this time window.',
+		emptyValueIntro: 'In this window there is no match with odds just above 2.0 where the model agrees with the market.',
 		emptySummary: 'Try again when the fixture list is richer — the report only shows picks the data clearly supports.',
 	},
 };
@@ -59,6 +72,8 @@ export async function POST(request) {
 	}
 
 	const type = REPORT_WINDOWS[body?.type] ? body.type : 'soon';
+	const variant = body?.variant === 'value' ? 'value' : 'standard';
+	const wartosc = variant === 'value';
 	const language = body?.language === 'en' ? 'en' : 'pl';
 	const t = MESSAGES[language];
 
@@ -109,7 +124,9 @@ export async function POST(request) {
 
 			try {
 				send('status', { stage: 'selecting' });
-				const { candidates, poolSize, examined } = await buildReportCandidates({ type });
+				const { candidates, poolSize, examined } = wartosc
+					? await buildValueReportCandidates({ type })
+					: await buildReportCandidates({ type });
 
 				let sections;
 				let meta = null;
@@ -117,15 +134,17 @@ export async function POST(request) {
 				if (!candidates.length) {
 					// Bez kandydatów nie ma czego pisać — uczciwy pusty raport zamiast
 					// wywołania modelu, które i tak nie miałoby treści do pracy.
-					sections = { intro: t.emptyIntro, picks: [], summary: t.emptySummary };
+					sections = { intro: (wartosc && t.emptyValueIntro) || t.emptyIntro, picks: [], summary: t.emptySummary };
 				} else {
 					send('status', { stage: 'generating', candidates: candidates.length });
 
 					let lastPartialAt = 0;
 					({ data: sections, meta } = await streamStructured({
 						model: MODEL_ANALYSIS,
-						system: REPORT_SYSTEM_PROMPT,
-						user: buildReportPrompt(candidates, { type, language }),
+						system: wartosc ? VALUE_REPORT_SYSTEM_PROMPT : REPORT_SYSTEM_PROMPT,
+						user: wartosc
+							? buildValueReportPrompt(candidates, { type, language })
+							: buildReportPrompt(candidates, { type, language }),
 						schema: REPORT_SCHEMA,
 						maxTokens: MAX_TOKENS_ANALYSIS,
 						onProgress: (accumulated) => {
@@ -144,11 +163,14 @@ export async function POST(request) {
 				 * i przewaga. Zapisujemy już związane, żeby zapisany raport pokazywał to samo,
 				 * co panel skuteczności policzy.
 				 */
-				sections.picks = bindPicksToSelection(sections.picks, candidates);
+				sections.picks = wartosc
+					? bindValuePicks(sections.picks, candidates, { language })
+					: bindPicksToSelection(sections.picks, candidates);
 
 				const report = await Report.create({
 					userId: session.userId,
 					type,
+					variant,
 					language,
 					status: 'ready',
 					sections,
@@ -156,14 +178,24 @@ export async function POST(request) {
 					candidateCount: candidates.length,
 					provider: meta?.provider ?? null,
 					model: meta?.model ?? null,
-					promptVersion: REPORT_PROMPT_VERSION,
+					promptVersion: wartosc ? VALUE_REPORT_PROMPT_VERSION : REPORT_PROMPT_VERSION,
 					tokensIn: meta?.tokensIn ?? null,
 					tokensOut: meta?.tokensOut ?? null,
 					costUsd: meta?.costUsd ?? null,
 				});
 
+				// Raport „Wyższe kursy": typy do osobnego bilansu, nie do głównej skuteczności.
+				if (wartosc) {
+					await recordValuePicks(
+						sections.picks.map((p) => {
+							const k = candidates.find((c) => String(c.fixtureId) === String(p.fixtureId));
+							return { ...k, market: k.market, model: k.model };
+						}),
+						{ source: 'report' }
+					);
+				}
 				// Typy raportu do osobnej kolekcji — na ich podstawie liczymy skuteczność.
-				await recordPicks({
+				if (!wartosc) await recordPicks({
 					picks: sections.picks || [],
 					kind: 'report',
 					source: 'report',

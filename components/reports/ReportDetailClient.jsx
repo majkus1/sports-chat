@@ -70,6 +70,7 @@ export default function ReportDetailClient({ params }) {
 						<Badge variant={report.type === 'threeDays' ? 'outline' : 'accent'}>
 							{report.type === 'threeDays' ? t('report_type_3d') : t('report_type_24h')}
 						</Badge>
+						{report.variant === 'value' && <Badge variant="outline">{t('report_variant_value')}</Badge>}
 					</div>
 					<p className="mt-1 text-xs text-muted">
 						{t('report_generated_at', {
