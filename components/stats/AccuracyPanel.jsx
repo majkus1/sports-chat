@@ -196,7 +196,15 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 	const s = data?.summary;
 	const cc = couponContent(locale);
 	const vc = valueContent(locale);
-	const rodzaje = scope === 'me' ? KINDS : [...KINDS, ...Object.keys(COUPON_KINDS), VALUE_KIND];
+	/*
+	 * Dwie grupy pigułek zamiast jednej: wszystkie dziewięć w jednym pasku nie mieściło się
+	 * nawet na komputerze i ostatnie chowały się za krawędzią. Kupony i wyższe kursy mają
+	 * własny bilans, więc osobna grupa mówi przy okazji, że to nie część głównej liczby.
+	 */
+	const grupy = [
+		{ key: 'kind', label: t('accuracy_filter_kind'), items: KINDS },
+		...(scope === 'me' ? [] : [{ key: 'extra', label: cc.filterLabel, items: [...Object.keys(COUPON_KINDS), VALUE_KIND] }]),
+	];
 	const kupon = COUPON_KINDS[kind];
 
 	const kindLabel = {
@@ -268,19 +276,20 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 				</div>
 			)}
 
-			{/* Rodzaj typu i okno czasowe. W wąskim panelu przewijają się poziomo,
-			    zamiast łamać w dwie linie.
+			{/* Rodzaj typu i okno czasowe. Pigułki w grupie zawijają się do kolejnej linii,
+			    zamiast przewijać poziomo — przewijany pasek chował ostatnie pozycje.
 
 			    Grupy niżej potrzebują `min-w-0`: element flex domyślnie nie zwęża się poniżej
 			    szerokości treści, więc pasek pigułek zamiast przewijać się w sobie rozpychał
 			    cały panel. */}
 			<div className="flex flex-wrap items-end gap-x-4 gap-y-3">
-				<div className={cn('flex min-w-0 max-w-full flex-col gap-1', author === 'user' && 'hidden')}>
+				{grupy.map((g) => (
+				<div key={g.key} className={cn('flex min-w-0 max-w-full flex-col gap-1', author === 'user' && 'hidden')}>
 					<span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-						{t('accuracy_filter_kind')}
+						{g.label}
 					</span>
-					<div className="inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-border bg-surface-2 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-						{rodzaje.map((k) => (
+					<div className="flex max-w-full flex-wrap items-center gap-0.5 self-start rounded-[1.25rem] border border-border bg-surface-2 p-1">
+						{g.items.map((k) => (
 							<button
 								key={k}
 								type="button"
@@ -298,6 +307,7 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 						))}
 					</div>
 				</div>
+				))}
 
 				{!compact && (
 					<div className="flex min-w-0 max-w-full flex-col gap-1">
