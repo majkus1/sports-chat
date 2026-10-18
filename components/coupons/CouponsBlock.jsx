@@ -37,13 +37,15 @@ export default function CouponsBlock({ data, c, locale, compact = false, guest =
 		<div className={cn('flex flex-col gap-3', className)}>
 			{karty.length > 0 && (
 				<div className={cn('grid gap-4', karty.length > 1 && 'md:grid-cols-2')}>
-					{karty.map((k) =>
-						k.locked ? (
-							<LockedCouponCard key={k.coupon.key} coupon={k.coupon} c={c} label={k.label} locale={locale} guest={guest} className="h-full" />
+					{karty.map((k, i) => {
+						// Nieparzysta liczba kart (np. trzy kupony): ostatnia na całą szerokość, bez pustej połowy obok.
+						const klasa = cn('h-full', karty.length > 1 && karty.length % 2 === 1 && i === karty.length - 1 && 'md:col-span-2');
+						return k.locked ? (
+							<LockedCouponCard key={k.coupon.key} coupon={k.coupon} c={c} label={k.label} locale={locale} guest={guest} className={klasa} />
 						) : (
-							<CouponCard key={k.coupon.key} coupon={k.coupon} c={c} label={k.label} locale={locale} compact={compact} className="h-full" />
-						)
-					)}
+							<CouponCard key={k.coupon.key} coupon={k.coupon} c={c} label={k.label} locale={locale} compact={compact} className={klasa} />
+						);
+					})}
 				</div>
 			)}
 			{notki.map((n) => (
