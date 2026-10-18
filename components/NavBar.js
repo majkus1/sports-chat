@@ -60,6 +60,25 @@ export default function NavBar({ onLanguageChange }) {
     }
   }, [isClient, isAuthed, router]);
 
+  /*
+   * Okna logowania i rejestracji na żądanie innych części strony (np. asystent dla gościa):
+   * `window.dispatchEvent(new CustomEvent('czat:auth', { detail: 'login' | 'register' }))`.
+   */
+  useEffect(() => {
+    const onAuth = (event) => {
+      if (isAuthed) return;
+      const register = event.detail === 'register';
+      // Okna mieszkają w panelu konta — tak samo jak po kliknięciu ikony konta.
+      setMobileLinksMenuOpen(false);
+      setForgotOpen(false);
+      setMobileMenuOpen(true);
+      setRegisterModalOpen(register);
+      setLoginModalOpen(!register);
+    };
+    window.addEventListener('czat:auth', onAuth);
+    return () => window.removeEventListener('czat:auth', onAuth);
+  }, [isAuthed]);
+
   /** Wybór pozycji zamyka menu — inaczej po przejściu zostaje otwarte na nowej stronie. */
   const closeLinksMenu = () => setMobileLinksMenuOpen(false);
 

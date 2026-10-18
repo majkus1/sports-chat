@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { CircleHelp } from 'lucide-react';
+import { CircleHelp, Sparkles } from 'lucide-react';
 import { Link, usePathname } from '@/i18n/routing';
 import GuideModal from '@/components/football/GuideModal';
 
@@ -12,6 +12,12 @@ import GuideModal from '@/components/football/GuideModal';
  * Na wąskim ekranie w pasie mieszczą się tylko dwie pierwsze pozycje — reszta chowa się
  * pod „⋯". Na szerokim wszystkie stoją obok siebie. Podział steruje jedną stałą poniżej,
  * a nie trzema kopiami tego samego JSX-a, jak było wcześniej.
+ *
+ * ASYSTENT TO NIE ZAKŁADKA, TYLKO WEJŚCIE. Stoi poza listą zakładek, jako wyróżniona pigułka
+ * z iskrą — na każdym rozmiarze ekranu. Na komputerze po prawej stronie paska, na telefonie
+ * jako szeroki przycisk w osobnym rzędzie pod zakładkami (w jednym pasie z nimi się nie mieści:
+ * ~379 px przy 343 dostępnych). Wygląda jak przycisk akcji, nie jak podkreślona pozycja, więc
+ * nie myli się z tym, gdzie użytkownik akurat jest; na samej stronie asystenta wypełnia się kolorem.
  */
 
 /** Ile pozycji zostaje w pasie na telefonie. Reszta ląduje w rozwijanym menu. */
@@ -58,7 +64,6 @@ export default function FootballMenu({ onResultsClick }) {
 		{ href: '/pilka-nozna/live', label: t('onlive'), key: 'live' },
 		{ onClick: onResultsClick, label: t('results'), key: 'results', isButton: true },
 		{ href: '/pilka-nozna/ai-agent', label: t('ai_agent_title'), key: 'ai-agent' },
-		{ href: '/pilka-nozna/asystent', label: t('assistant_menu'), key: 'asystent' },
 		{ href: '/pilka-nozna/kolejka', label: t('round_menu'), key: 'kolejka' },
 		{ href: '/pilka-nozna/skutecznosc', label: t('accuracy_menu'), key: 'skutecznosc' },
 	];
@@ -67,6 +72,7 @@ export default function FootballMenu({ onResultsClick }) {
 	const secondaryItems = menuItems.slice(VISIBLE_ON_MOBILE);
 
 	const isActive = (item) => !item.isButton && pathname === item.href;
+	const naAsystencie = pathname === '/pilka-nozna/asystent';
 
 	/** Kliknięcie poza menu i Escape zamykają listę — bez tego zostaje otwarta po wyborze. */
 	useEffect(() => {
@@ -150,6 +156,16 @@ export default function FootballMenu({ onResultsClick }) {
 						)}
 					</>
 				)}
+
+				<Link
+					href="/pilka-nozna/asystent"
+					className={`assistant-pill ${naAsystencie ? 'is-current' : ''}`}
+					aria-current={naAsystencie ? 'page' : undefined}
+				>
+					<Sparkles size={14} aria-hidden="true" />
+					<span>{t('assistant_menu_cta')}</span>
+					<span className="assistant-pill-more">· {t('assistant_menu_cta_more')}</span>
+				</Link>
 			</div>
 
 			<GuideModal open={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
@@ -177,6 +193,51 @@ export default function FootballMenu({ onResultsClick }) {
         .football-menu-item {
           display: inline-flex;
           align-items: center;
+        }
+
+        /* Asystent: pigułka akcji po prawej stronie paska, nie kolejna zakładka. */
+        .assistant-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          margin-left: auto;
+          padding: 6px 13px 6px 11px;
+          border-radius: 999px;
+          border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+          background: var(--accent-soft);
+          color: var(--accent);
+          font-family: 'Roboto Condensed', sans-serif;
+          font-size: 13px;
+          font-weight: 700;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          text-decoration: none;
+          white-space: nowrap;
+          box-shadow: 0 6px 20px -12px var(--accent);
+          transition: background 0.15s ease, color 0.15s ease, box-shadow 0.2s ease, transform 0.15s ease;
+        }
+
+        .assistant-pill:hover {
+          background: var(--accent);
+          color: var(--accent-fg);
+          box-shadow: 0 8px 22px -10px var(--accent);
+          transform: translateY(-1px);
+        }
+
+        .assistant-pill.is-current {
+          background: var(--accent);
+          color: var(--accent-fg);
+        }
+
+        .assistant-pill svg {
+          flex-shrink: 0;
+        }
+
+        .assistant-pill-more {
+          display: none;
+          font-weight: 600;
+          text-transform: none;
+          letter-spacing: 0;
         }
 
         /* Rozwijacz nie nosi klasy .pre-match-p celowo: tamta reguła jest zagnieżdżona
@@ -212,6 +273,20 @@ export default function FootballMenu({ onResultsClick }) {
         @media (max-width: 768px) {
           .menu-dots-button {
             display: inline-flex;
+          }
+
+          /* Na telefonie asystent dostaje własny rząd pod zakładkami — szeroki, łatwy do trafienia kciukiem. */
+          .assistant-pill {
+            order: 10;
+            flex-basis: 100%;
+            justify-content: center;
+            margin-left: 0;
+            padding: 9px 14px;
+            border-radius: 12px;
+          }
+
+          .assistant-pill-more {
+            display: inline;
           }
 
           /* Na telefonie zostaje sama ikona — ale w kółku, żeby dało się w nią trafić kciukiem. */

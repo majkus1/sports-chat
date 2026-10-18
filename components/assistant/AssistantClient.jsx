@@ -215,6 +215,12 @@ export default function AssistantClient() {
 	const [limitReached, setLimitReached] = useState(false);
 	const [listOpen, setListOpen] = useState(false);
 	const [isResultsModalOpen, setIsResultsModalOpen] = useState(false);
+	/**
+	 * Pytanie przyniesione z pola na stronie głównej (`?q=`). Zalogowany dostaje odpowiedź od
+	 * razu; gość widzi je przy prośbie o konto, a po zalogowaniu pytanie wysyła się samo.
+	 */
+	const pytanieZAdresu = useRef(null);
+	const [czekajace, setCzekajace] = useState(null);
 
 	const key = conversationKey(activeId);
 	const keyRef = useRef(key);
@@ -229,6 +235,18 @@ export default function AssistantClient() {
 	useEffect(() => {
 		if (claimMemory(user?.userId || null)) setConversations([]);
 	}, [user?.userId]);
+
+	/* ---------- pytanie z adresu (`?q=` z pola na stronie głównej) — zabrane z adresu od razu ---------- */
+	useEffect(() => {
+		const params = new URLSearchParams(window.location.search);
+		const q = params.get('q');
+		if (!q) return;
+		pytanieZAdresu.current = q.trim().slice(0, MAX_CHAT_MSG_LEN);
+		// Odświeżenie strony nie może wysłać tego samego pytania drugi raz.
+		params.delete('q');
+		const reszta = params.toString();
+		window.history.replaceState(window.history.state, '', window.location.pathname + (reszta ? `?${reszta}` : '') + window.location.hash);
+	}, []);
 
 	/* ---------- adres: która rozmowa jest otwarta ---------- */
 	useEffect(() => {
@@ -434,6 +452,22 @@ export default function AssistantClient() {
 		writeDraft(key, text);
 	};
 
+	/* ---------- pytanie z adresu: wysyłka, gdy wiadomo, kto pyta ---------- */
+	useEffect(() => {
+		const q = pytanieZAdresu.current;
+		if (!q || !ready || !authChecked) return;
+		if (!isAuthed) {
+			// Gość: pytanie czeka w polu nowej rozmowy i przy prośbie o konto.
+			writeDraft(NEW_KEY, q);
+			setCzekajace(q);
+			return;
+		}
+		pytanieZAdresu.current = null;
+		setCzekajace(null);
+		ask(q);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [ready, authChecked, isAuthed]);
+
 	// Asystent kończy odpowiedź w innej rozmowie — drugie pytanie naraz poczeka.
 	const busyElsewhere = Boolean(memory.pending) && memory.pending.key !== key;
 	const activeTitle = activeId ? conversations.find((c) => c.id === activeId)?.title : null;
@@ -479,7 +513,29 @@ export default function AssistantClient() {
 									<Lock size={18} aria-hidden="true" />
 								</span>
 								<p className="text-sm font-semibold text-text">{t('assistant_title')}</p>
+								{czekajace && (
+									<p className="max-w-md rounded-[var(--radius-ui)] bg-surface-2 px-3 py-2 text-sm text-text">
+										<span className="text-muted">{t('assistant_waiting_question')}</span> „{czekajace}”
+									</p>
+								)}
 								<p className="max-w-xs text-sm text-muted">{t('assistant_login_hint')}</p>
+								{/* Okna logowania i rejestracji mieszkają w pasku górnym — otwieramy je zdarzeniem. */}
+								<div className="mt-1 flex flex-wrap justify-center gap-2">
+									<Button
+										variant="accent"
+										className="rounded-full"
+										onClick={() => window.dispatchEvent(new CustomEvent('czat:auth', { detail: 'register' }))}
+									>
+										{t('assistant_cta_register')}
+									</Button>
+									<Button
+										variant="outline"
+										className="rounded-full"
+										onClick={() => window.dispatchEvent(new CustomEvent('czat:auth', { detail: 'login' }))}
+									>
+										{t('assistant_cta_login')}
+									</Button>
+								</div>
 							</CardContent>
 						</Card>
 					) : (

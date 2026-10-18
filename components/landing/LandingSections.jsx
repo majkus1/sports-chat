@@ -17,6 +17,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import AccuracyTeaser from '@/components/landing/AccuracyTeaser';
 import { cn } from '@/lib/utils';
+import HeroAsk from '@/components/landing/HeroAsk';
 
 /**
  * Sekcje strony głównej — komponenty SERWEROWE.
@@ -84,6 +85,9 @@ export function Hero({ content }) {
 				<p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
 					{content.subtitle}
 				</p>
+
+				{/* Asystent — najcenniejsza rzecz w serwisie — dostaje pole pytania od razu w nagłówku. */}
+				{content.ask && <HeroAsk content={content.ask} />}
 
 				<div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
 					<CtaLink href="/pilka-nozna/przedmeczowe">
