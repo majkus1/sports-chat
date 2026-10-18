@@ -3,7 +3,7 @@ import { Link } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 
 /**
- * Karta kuponu (dnia albo weekendowego) — bez stanu, renderowana na serwerze („Typy na dziś")
+ * Karta kuponu (dnia, 3- albo 5-dniowego) — bez stanu, renderowana na serwerze („Typy na dziś")
  * i u klienta (strona główna, skuteczność). Kurs łączny i szansa modelu stoją obok siebie
  * tej samej wielkości co do wagi: kurs bez szansy sugerowałby pewniaka.
  *
@@ -32,7 +32,8 @@ export default function CouponCard({ coupon, c, label, locale, compact = false, 
 	const teraz = Date.now();
 	const stan = couponState(coupon, teraz);
 	const loc = locale === 'en' ? 'en-GB' : 'pl-PL';
-	const weekend = coupon.type === 'weekend';
+	// Kupony z kilku dni pokazują przy godzinie dzień tygodnia.
+	const kilkaDni = coupon.type !== 'daily';
 	const godzina = (iso) =>
 		new Date(iso).toLocaleTimeString(loc, { timeZone: 'Europe/Warsaw', hour: '2-digit', minute: '2-digit' });
 	const dzien = (iso) => new Date(iso).toLocaleDateString(loc, { timeZone: 'Europe/Warsaw', weekday: 'short' }).replace('.', '');
@@ -90,7 +91,7 @@ export default function CouponCard({ coupon, c, label, locale, compact = false, 
 					return (
 						<li key={l.fixtureId} className="flex items-center gap-3 px-5 py-2.5 sm:px-6">
 							<span className="w-11 shrink-0 text-center leading-tight">
-								{weekend && <span className="block text-[10px] font-semibold uppercase text-muted">{dzien(l.kickoff)}</span>}
+								{kilkaDni && <span className="block text-[10px] font-semibold uppercase text-muted">{dzien(l.kickoff)}</span>}
 								<span className="block text-xs font-bold tabular-nums text-text">{godzina(l.kickoff)}</span>
 							</span>
 							<span className="min-w-0 flex-1">

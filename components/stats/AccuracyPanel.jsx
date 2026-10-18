@@ -26,7 +26,7 @@ const KINDS = ['all', 'daily', 'hint', 'prematch', 'live', 'report'];
  * więc mają własne zakładki i własny widok. Tylko w publicznej skuteczności: kupony są wspólne,
  * nie należą do żadnego konta.
  */
-const COUPON_KINDS = { coupon_daily: 'daily', coupon_weekend: 'weekend' };
+const COUPON_KINDS = { coupon_daily: 'daily', coupon_3d: 'days3', coupon_5d: 'days5' };
 /** Typy z wyższym kursem (asystent, raport) — też osobny bilans, nigdy w głównej liczbie. */
 const VALUE_KIND = 'value';
 const AUTHORS = ['ai', 'user'];
@@ -173,7 +173,8 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 				return;
 			}
 			if (COUPON_KINDS[kind]) {
-				const res = await fetch(`/api/coupons/stats?type=${COUPON_KINDS[kind]}&days=${days}`);
+				// Z sesją: płatne kupony w grze widać z meczami tylko w planie z liczbami.
+				const res = await fetch(`/api/coupons/stats?type=${COUPON_KINDS[kind]}&days=${days}`, { credentials: 'include' });
 				setData(res.ok ? { coupons: await res.json() } : null);
 				return;
 			}
@@ -215,7 +216,8 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 		daily: t('accuracy_kind_daily'),
 		hint: t('accuracy_kind_hint'),
 		coupon_daily: cc.tab.daily,
-		coupon_weekend: cc.tab.weekend,
+		coupon_3d: cc.tab.days3,
+		coupon_5d: cc.tab.days5,
 		value: vc.tab,
 	};
 

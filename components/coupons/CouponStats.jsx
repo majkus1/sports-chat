@@ -4,7 +4,7 @@ import CouponCard from '@/components/coupons/CouponCard';
 import { cn } from '@/lib/utils';
 
 /**
- * Skuteczność kuponów (zakładki „Kupon dnia" i „Kupon weekendowy" na stronie skuteczności).
+ * Skuteczność kuponów (zakładki „Kupon dnia", „Kupon 3-dniowy" i „Kupon 5-dniowy" w skuteczności).
  *
  * Najważniejsze zestawienie: ile kuponów weszło wobec tego, ile zapowiadał model. Kupon ~2,0
  * z szansą 45% wchodzi mniej niż co drugi dzień — i to jest w porządku, jeśli wchodzi tyle,

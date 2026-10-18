@@ -3,7 +3,7 @@ import AppShell from '@/components/layout/AppShell';
 import DailyPickCard from '@/components/today/DailyPickCard';
 import TodayPicksList from '@/components/today/TodayPicksList';
 import CouponCard from '@/components/coupons/CouponCard';
-import CouponsBlock from '@/components/coupons/CouponsBlock';
+import CouponsLive from '@/components/coupons/CouponsLive';
 import { Link } from '@/i18n/routing';
 import connectToDb from '@/lib/db';
 import { dailyOverview, dailyOverviewCached, withTimeout } from '@/lib/daily/service';
@@ -125,13 +125,13 @@ export default async function Page({ params }) {
 				{tomorrow && <DailyPickCard pick={tomorrow} c={c} label={c.tomorrowLabel} locale={locale} />}
 			</div>
 
-			{kupony && (kupony.today || kupony.weekend || kupony.todayLater || kupony.weekendLater) && (
+			{kupony && (kupony.today || kupony.days3 || kupony.days5 || kupony.todayLater || kupony.paidLater) && (
 				<section className="mt-8" aria-labelledby="kupony">
 					<h2 id="kupony" className="font-display text-xl font-bold uppercase tracking-wide text-text">
 						{k.sectionTitle}
 					</h2>
 					<p className="mt-1.5 text-sm leading-relaxed text-muted">{k.sectionLead}</p>
-					<CouponsBlock data={kupony} c={k} locale={locale} className="mt-4" />
+					<CouponsLive initial={kupony} locale={locale} className="mt-4" />
 					<p className="mt-3 text-xs leading-relaxed text-muted">{k.how}</p>
 				</section>
 			)}
@@ -166,7 +166,7 @@ export default async function Page({ params }) {
 						{kupony?.yesterday?.legs?.length > 0 && (
 							<CouponCard coupon={kupony.yesterday} c={k} label={k.yesterday} locale={locale} compact />
 						)}
-						{['daily', 'weekend'].map(
+						{['daily', 'days3', 'days5'].map(
 							(typ) =>
 								kupony?.record?.[typ]?.total > 0 && (
 									<p key={typ} className="text-sm font-semibold text-text">

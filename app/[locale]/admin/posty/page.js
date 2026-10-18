@@ -14,8 +14,8 @@ import { SITE_URL } from '@/lib/seo/config';
  * Gotowy post z typem dnia — strona tylko dla administratora.
  *
  * To samo, co ramka w porannym mailu, dostępne o dowolnej porze: rano typ na dziś, a gdy
- * dzisiejszy mecz już się zaczął — typ na jutro. Pod nim posty z kuponem dnia i weekendowym
- * (od 9:30, dopóki pierwszy mecz kuponu się nie zaczął). Dla każdego innego konta (i gościa)
+ * dzisiejszy mecz już się zaczął — typ na jutro. Pod nim post z kuponem dnia — darmowym; płatnych
+ * kuponów nie publikujemy (od 9:30, dopóki pierwszy mecz kuponu się nie zaczął). Dla każdego innego konta (i gościa)
  * strona nie istnieje (404), a wyszukiwarka jej nie indeksuje.
  */
 
@@ -57,7 +57,6 @@ export default async function Page() {
 	const kupony = await couponsOverview().catch(() => null);
 	const postyKuponow = [
 		{ tytul: 'Kupon dnia', post: buildCouponPost({ coupon: kupony?.today, previous: kupony?.yesterday, siteUrl: SITE_URL }) },
-		{ tytul: 'Kupon weekendowy', post: buildCouponPost({ coupon: kupony?.weekend, siteUrl: SITE_URL }) },
 	].filter((k) => k.post);
 
 	return (
@@ -85,7 +84,7 @@ export default async function Page() {
 			))}
 			{!postyKuponow.length && (
 				<p className="mt-10 text-sm text-muted">
-					Kuponu do publikacji teraz nie ma — kupon dnia powstaje o 9:30, weekendowy w piątek o 9:30. Post znika, gdy
+					Kuponu do publikacji teraz nie ma — kupon dnia powstaje o 9:30. Post znika, gdy
 					zacznie się pierwszy mecz kuponu.
 				</p>
 			)}

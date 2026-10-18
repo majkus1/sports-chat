@@ -1,36 +1,34 @@
 import CouponCard from '@/components/coupons/CouponCard';
+import LockedCouponCard from '@/components/coupons/LockedCouponCard';
 import { cn } from '@/lib/utils';
 
 /**
- * Kupon dnia i weekendowy obok siebie — z `couponsOverview`. Bez stanu: ten sam blok stoi
- * na „Typach na dziś" (serwer) i na stronie głównej (klient, `compact`).
+ * Kupon dnia, 3-dniowy i 5-dniowy obok siebie — z `couponsOverview`. Bez stanu: ten sam blok
+ * stoi na „Typach na dziś" i na stronie głównej (`compact`).
  *
- * Brak kuponu też jest treścią: rano „pojawi się o 9:30", a gdy model kuponu nie złożył —
- * mówimy to wprost. Na stronie głównej (`compact`) pokazujemy wyłącznie gotowe kupony.
+ * Płatne kupony bez planu przychodzą zakryte (`locked`) — wtedy karta z kłódką: kurs łączny,
+ * szansa, liczba typów, bez meczów. Brak kuponu też jest treścią: rano „pojawi się o 9:30",
+ * a gdy model kuponu dnia nie złożył — mówimy to wprost (poza wersją `compact`).
+ *
+ * @param {{ data: object, c: object, locale: string, compact?: boolean, guest?: boolean, className?: string }} props
  */
-
-/** Weekendowy jest „bieżący" do dnia po ostatnim meczu; potem to kupon z ostatniego weekendu. */
-function biezacy(coupon, now = Date.now()) {
-	const ostatni = Math.max(...coupon.legs.map((l) => Date.parse(l.kickoff)));
-	return coupon.status === 'pending' || ostatni >= now - 24 * 3600_000;
-}
-
-export default function CouponsBlock({ data, c, locale, compact = false, className }) {
+export default function CouponsBlock({ data, c, locale, compact = false, guest = false, className }) {
 	if (!data) return null;
-	const dzienny = data.today?.legs?.length ? data.today : null;
-	const weekend = data.weekend?.legs?.length ? data.weekend : null;
-	const weekendTeraz = weekend && biezacy(weekend);
-	// Na stronie głównej tylko kupony w grze — rozliczony weekend sprzed kilku dni nic tam nie wnosi.
 	const karty = [
-		dzienny && { coupon: dzienny, label: c.label.daily },
-		weekend && (!compact || weekendTeraz) && { coupon: weekend, label: weekendTeraz ? c.label.weekend : c.lastWeekend },
+		data.today?.legs?.length ? { coupon: data.today, label: c.label.daily } : null,
+		...['days3', 'days5'].map((type) => {
+			const k = data[type];
+			if (!k || k.status === 'none') return null;
+			if (k.locked) return { coupon: k, label: c.lockedLabel[type], locked: true };
+			return k.legs?.length ? { coupon: k, label: c.label[type] } : null;
+		}),
 	].filter(Boolean);
 
 	const notki = compact
 		? []
 		: [
-				!dzienny && (data.todayLater ? c.later.daily : data.today?.status === 'none' ? c.none.daily : null),
-				!weekend && (data.weekendLater ? c.later.weekend : data.weekend?.status === 'none' ? c.none.weekend : null),
+				!data.today?.legs?.length && (data.todayLater ? c.later.daily : data.today?.status === 'none' ? c.none.daily : null),
+				data.paidLater ? c.later.paid : null,
 			].filter(Boolean);
 
 	if (!karty.length && !notki.length) return null;
@@ -39,9 +37,13 @@ export default function CouponsBlock({ data, c, locale, compact = false, classNa
 		<div className={cn('flex flex-col gap-3', className)}>
 			{karty.length > 0 && (
 				<div className={cn('grid gap-4', karty.length > 1 && 'md:grid-cols-2')}>
-					{karty.map((k) => (
-						<CouponCard key={k.coupon.key} coupon={k.coupon} c={c} label={k.label} locale={locale} compact={compact} className="h-full" />
-					))}
+					{karty.map((k) =>
+						k.locked ? (
+							<LockedCouponCard key={k.coupon.key} coupon={k.coupon} c={c} label={k.label} locale={locale} guest={guest} className="h-full" />
+						) : (
+							<CouponCard key={k.coupon.key} coupon={k.coupon} c={c} label={k.label} locale={locale} compact={compact} className="h-full" />
+						)
+					)}
 				</div>
 			)}
 			{notki.map((n) => (

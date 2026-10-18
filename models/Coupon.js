@@ -1,9 +1,10 @@
 import mongoose from 'mongoose';
 
 /**
- * Kupon dnia (łączny kurs ok. 2,0) i kupon weekendowy (ok. 3,0) — za darmo dla wszystkich.
+ * Kupon dnia (łączny kurs ok. 2,0, za darmo), 3-dniowy (ok. 2,0) i 5-dniowy (ok. 3,0) — dwa
+ * ostatnie w planie Pro i VIP. Do 18.10.2026 był też weekendowy (zostaje w historii).
  *
- * Wybierany RAZ (pierwszy przebieg po 9:30; weekendowy w piątek) i już się nie zmienia —
+ * Wybierany RAZ (pierwszy przebieg po 9:30, codziennie każdy rodzaj) i już się nie zmienia —
  * to obietnica publiczna, rozliczana po meczach. Gdy pula dnia nie pozwala złożyć kuponu
  * w ramach zasad, zapisujemy `status: 'none'`, żeby nie próbować w kółko.
  *
@@ -35,9 +36,9 @@ const LegSchema = new mongoose.Schema(
 
 const CouponSchema = new mongoose.Schema(
 	{
-		/** `daily:YYYY-MM-DD` albo `weekend:YYYY-MM-DD` (data piątku) — jeden kupon na klucz. */
+		/** `daily|days3|days5:YYYY-MM-DD` (dzień publikacji; dawny `weekend:` — data piątku). Jeden kupon na klucz. */
 		key: { type: String, required: true, unique: true },
-		type: { type: String, enum: ['daily', 'weekend'], required: true, index: true },
+		type: { type: String, enum: ['daily', 'days3', 'days5', 'weekend'], required: true, index: true },
 		/** Dzień publikacji w czasie polskim. */
 		date: { type: String, required: true, index: true },
 		legs: { type: [LegSchema], default: [] },
