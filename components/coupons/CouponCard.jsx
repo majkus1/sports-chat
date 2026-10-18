@@ -1,4 +1,4 @@
-import { Check, Clock, Minus, Radio, Ticket, X } from 'lucide-react';
+import { Check, Clock, Minus, Radio, ShieldCheck, Ticket, X } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 
@@ -81,6 +81,26 @@ export default function CouponCard({ coupon, c, label, locale, compact = false, 
 					</div>
 					<p className="pb-0.5 text-sm text-muted">{c.legs(coupon.legs.length)}</p>
 				</div>
+
+				{/* Płatne kupony: AI sprawdziło wiadomości przed publikacją — i co odsiało (`lib/coupons/news.js`). */}
+				{coupon.newsCheck && (
+					<div className="mt-3 rounded-[var(--radius-ui)] bg-surface-2 px-3 py-2 text-xs leading-relaxed text-muted">
+						<p className="flex items-start gap-1.5 font-semibold text-text">
+							<ShieldCheck size={14} aria-hidden="true" className="mt-px shrink-0 text-accent" />
+							{c.newsChecked}
+						</p>
+						{!compact && coupon.newsCheck.dropped?.length > 0 && (
+							<ul className="mt-1 flex flex-col gap-0.5 pl-5">
+								{coupon.newsCheck.dropped.map((d) => (
+									<li key={d.match}>
+										{c.newsDropped} <span className="font-semibold text-text">{d.match}</span> ({d.selection})
+										{d.reason ? ` — ${d.reason}` : ''}
+									</li>
+								))}
+							</ul>
+						)}
+					</div>
+				)}
 			</div>
 
 			<ul className="divide-y divide-border border-t border-border">

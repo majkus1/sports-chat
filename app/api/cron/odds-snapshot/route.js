@@ -4,7 +4,7 @@ import { snapshotOdds } from '@/lib/model/oddsShadowJob';
 import { ensureCoupons, settleCoupons } from '@/lib/coupons/service';
 import { settleValuePicks } from '@/lib/value/service';
 
-export const maxDuration = 120;
+export const maxDuration = 600;
 
 /**
  * Tryb cienia „kurs ≥ 1,50" — kursy do dziennika prognoz (`lib/model/oddsShadowJob.js`).

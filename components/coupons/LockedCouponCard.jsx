@@ -1,4 +1,4 @@
-import { ArrowRight, Lock, Ticket } from 'lucide-react';
+import { ArrowRight, Lock, ShieldCheck, Ticket } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 
@@ -51,6 +51,12 @@ export default function LockedCouponCard({ coupon, c, label, locale, guest = fal
 					<Ticket size={14} aria-hidden="true" />
 					{c.lockedLegs(coupon.legsCount, dzien(coupon.firstKickoff), dzien(coupon.lastKickoff))}
 				</p>
+				{coupon.newsChecked && (
+					<p className="mt-1.5 flex items-start gap-1.5 text-sm text-muted">
+						<ShieldCheck size={14} aria-hidden="true" className="mt-0.5 shrink-0 text-accent" />
+						{c.newsCheckedLocked}
+					</p>
+				)}
 			</div>
 
 			<ul className="divide-y divide-border border-y border-border" aria-hidden="true">

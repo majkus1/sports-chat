@@ -12,6 +12,27 @@ import mongoose from 'mongoose';
  * sensu, więc pokazujemy medianę bukmacherów z chwili wyboru, bez nazw bukmacherów i linków.
  * Szczegóły wyboru i rozliczenia: `lib/coupons/build.js`.
  */
+/** Werdykt sprawdzenia wiadomości przez AI (płatne kupony, `lib/coupons/news.js`). */
+const LegNewsSchema = new mongoose.Schema(
+	{
+		verdict: { type: String, enum: ['ok', 'unknown'], default: 'unknown' },
+		sources: { type: [{ title: String, url: String, _id: false }], default: [] },
+	},
+	{ _id: false }
+);
+
+/** Typ odrzucony po sprawdzeniu wiadomości — pokazywany przy kuponie, żeby było widać, co AI odsiało. */
+const DroppedLegSchema = new mongoose.Schema(
+	{
+		fixtureId: String,
+		homeName: String,
+		awayName: String,
+		selection: String,
+		reason: String,
+	},
+	{ _id: false }
+);
+
 const LegSchema = new mongoose.Schema(
 	{
 		fixtureId: { type: String, required: true },
@@ -30,6 +51,8 @@ const LegSchema = new mongoose.Schema(
 		/** Po meczu: `won` / `lost` / `void` (mecz odwołany) i wynik z 90 minut. */
 		status: { type: String, enum: ['pending', 'won', 'lost', 'void'], default: 'pending' },
 		score: { type: String, default: null },
+		/** Tylko płatne kupony: czy AI sprawdziło wiadomości o tym meczu przed publikacją. */
+		news: { type: LegNewsSchema, default: null },
 	},
 	{ _id: false }
 );
@@ -47,6 +70,22 @@ const CouponSchema = new mongoose.Schema(
 		chance: { type: Number, default: null },
 		status: { type: String, enum: ['pending', 'won', 'lost', 'void', 'none'], default: 'pending', index: true },
 		settledAt: { type: Date, default: null },
+		/**
+		 * Sprawdzenie wiadomości przez AI przed publikacją (płatne kupony): ile typów sprawdzono,
+		 * które odrzucono i dlaczego; `skipped` — powód, gdy sprawdzenia nie było (próg wydatków).
+		 */
+		newsCheck: {
+			type: new mongoose.Schema(
+				{
+					checked: { type: Number, default: 0 },
+					dropped: { type: [DroppedLegSchema], default: [] },
+					skipped: { type: String, default: null },
+					at: { type: Date, default: null },
+				},
+				{ _id: false }
+			),
+			default: null,
+		},
 	},
 	{ timestamps: true }
 );

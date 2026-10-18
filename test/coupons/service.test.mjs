@@ -9,7 +9,8 @@ import { setupEnv } from '../helpers/setup.mjs';
  * wspólna z produkcją), z plakietkami i kursami podstawionymi zamiast dostawcy, ze sprzątaniem.
  *
  * Sprawdzamy: kupony powstają dopiero po 9:30 i raz — dnia, 3-dniowy i 5-dniowy, każdy z innymi
- * meczami; płatne bez planu przychodzą bez meczów; gdy nie da się ich złożyć — do południa nic,
+ * meczami; płatne bez planu przychodzą bez meczów; typ płatnego kuponu z ryzykiem w wiadomościach
+ * wypada i wchodzi następny; gdy nie da się ich złożyć — do południa nic,
  * potem „bez kuponu"; nieudane pobranie kursów wstrzymuje kupon; rozliczenie zamyka kupon od
  * pierwszego chybionego i pokazuje wynik w statystyce.
  */
@@ -30,6 +31,8 @@ const D = [0, 1, 2, 3, 4].map((i) => localDate(o(D0, 12), i));
 // Osobne miesiące: pule 3 i 5 dni tych dni nie sięgają do meczów z innych testów.
 const WTOREK = '2099-03-03';
 const SRODA = '2099-05-06';
+const R = [0, 1, 2].map((i) => localDate(o('2099-07-01', 12), i));
+const S = [0, 1].map((i) => localDate(o('2099-09-01', 12), i));
 
 /** Plakietka z listy dnia (`hintsForDate().list`) i jej kurs (dla podstawionego dostawcy). */
 const kursy = new Map();
@@ -58,7 +61,15 @@ const LISTY = {
 	[WTOREK]: [wpis(WTOREK, 20, 85, 1.2), wpis(WTOREK, 21, 80, 1.2)],
 	// Dość typów, ale kursu najpewniejszego meczu nie da się pobrać.
 	[SRODA]: [wpis(SRODA, 22, 92, 1.1), wpis(SRODA, 22, 85, 1.3), wpis(SRODA, 22, 84, 1.3), wpis(SRODA, 22, 83, 1.3)],
+	// Sprawdzanie wiadomości: drugi typ 3-dniowego (87%) ma „kontuzję lidera".
+	[R[0]]: [wpis(R[0], 15, 90, 1.15), wpis(R[0], 16, 88, 1.2), wpis(R[0], 17, 86, 1.25), wpis(R[0], 18, 84, 1.3)],
+	[R[1]]: [wpis(R[1], 15, 89, 1.2), wpis(R[1], 16, 87, 1.22), wpis(R[1], 17, 85, 1.3), wpis(R[1], 18, 80, 1.25)],
+	[R[2]]: [wpis(R[2], 15, 86, 1.18), wpis(R[2], 16, 83, 1.25), wpis(R[2], 17, 81, 1.2)],
+	// Próg wydatków przekroczony — płatny kupon bez sprawdzenia.
+	[S[0]]: [wpis(S[0], 15, 90, 1.15), wpis(S[0], 16, 88, 1.2), wpis(S[0], 17, 86, 1.25), wpis(S[0], 18, 84, 1.3)],
+	[S[1]]: [wpis(S[1], 15, 89, 1.2), wpis(S[1], 16, 87, 1.22), wpis(S[1], 17, 85, 1.3), wpis(S[1], 18, 83, 1.25)],
 };
+const RYZYKOWNY = LISTY[R[1]][1].fixtureId;
 const UPARTY = LISTY[SRODA][0].fixtureId;
 const opcje = {
 	hintsFor: async (date) => ({ list: LISTY[date] || [] }),
@@ -66,9 +77,12 @@ const opcje = {
 		if (fixtureId === UPARTY) throw new Error('API zwróciło 429');
 		return { at: new Date(), bookmakers: 8, home: kursy.get(fixtureId) ?? null };
 	},
+	// Wiadomości bez zastrzeżeń — testy niżej podstawiają własne werdykty. Nigdy prawdziwe wyszukiwanie.
+	checkNews: async () => ({ verdict: 'ok', reason: null, sources: [{ title: 'Źródło', url: 'https://example.com' }] }),
+	newsBudget: async () => true,
 };
 const klucze = (date) => ['daily', 'days3', 'days5'].map((t) => `${t}:${date}`);
-const NASZE = { date: { $in: [D[0], WTOREK, SRODA] } };
+const NASZE = { date: { $in: [D[0], WTOREK, SRODA, R[0], S[0]] } };
 
 after(async () => {
 	await Coupon.deleteMany(NASZE);
@@ -129,6 +143,59 @@ describe('wybór kuponów', () => {
 		const ov = await couponsOverview({ now: o(WTOREK, 13) });
 		assert.equal(ov.today.status, 'none');
 		assert.equal(ov.todayLater, false);
+	});
+});
+
+describe('wiadomości przed publikacją płatnego kuponu', () => {
+	test('typ z ryzykiem wypada, wchodzi następny i też jest sprawdzany; kupon dnia bez sprawdzania', async () => {
+		const sprawdzone = [];
+		const checkNews = async (leg) => {
+			sprawdzone.push(leg.fixtureId);
+			return leg.fixtureId === RYZYKOWNY
+				? { verdict: 'risk', reason: 'kontuzja lidera', sources: [] }
+				: { verdict: 'ok', reason: null, sources: [{ title: 'Źródło', url: 'https://example.com' }] };
+		};
+		const r = await ensureCoupons({ now: o(R[0], 9, 40), ...opcje, checkNews });
+		assert.ok(r.created.includes(`daily:${R[0]}`) && r.created.includes(`days3:${R[0]}`));
+
+		const dzienny = await Coupon.findOne({ key: `daily:${R[0]}` }).lean();
+		assert.equal(dzienny.newsCheck, null);
+		assert.ok(!dzienny.legs.some((l) => sprawdzone.includes(l.fixtureId)), 'darmowego kuponu nie sprawdzamy');
+
+		const trzy = await Coupon.findOne({ key: `days3:${R[0]}` }).lean();
+		assert.ok(!trzy.legs.some((l) => l.fixtureId === RYZYKOWNY));
+		assert.deepEqual(
+			trzy.newsCheck.dropped.map((d) => [d.fixtureId, d.reason]),
+			[[RYZYKOWNY, 'kontuzja lidera']]
+		);
+		assert.equal(trzy.newsCheck.checked, trzy.legs.length + 1);
+		assert.ok(trzy.legs.every((l) => l.news?.verdict === 'ok'));
+		assert.ok(trzy.totalOdds >= 2);
+
+		const plan = await couponsOverview({ now: o(R[0], 11), unlocked: true });
+		assert.deepEqual(plan.days3.newsCheck.dropped.map((d) => d.reason), ['kontuzja lidera']);
+		assert.ok(plan.days3.legs.every((l) => l.newsOk));
+		const gosc = await couponsOverview({ now: o(R[0], 11) });
+		assert.equal(gosc.days3.newsChecked, true);
+		assert.equal(gosc.days3.newsCheck, undefined);
+	});
+
+	test('po przekroczeniu dziennego progu wydatków kupon wychodzi bez sprawdzenia i tak jest oznaczony', async () => {
+		let wywolan = 0;
+		await ensureCoupons({
+			now: o(S[0], 9, 40),
+			...opcje,
+			newsBudget: async () => false,
+			checkNews: async () => {
+				wywolan += 1;
+				return { verdict: 'ok', reason: null, sources: [] };
+			},
+		});
+		const trzy = await Coupon.findOne({ key: `days3:${S[0]}` }).lean();
+		assert.ok(trzy);
+		assert.equal(wywolan, 0);
+		assert.equal(trzy.newsCheck.skipped, 'spend_cap');
+		assert.equal(trzy.newsCheck.checked, 0);
 	});
 });
 
