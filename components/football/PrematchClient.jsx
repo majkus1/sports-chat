@@ -15,6 +15,7 @@ import Footer from '@/components/layout/Footer';
 import Pagination from '@/components/ui/Pagination';
 import ModelPicksPanel from '@/components/football/ModelPicksPanel';
 import { localDate } from '@/lib/time';
+import { useAuthKey } from '@/context/UserContext';
 import MorningEmailPrompt from '@/components/billing/MorningEmailPrompt';
 import { Link } from '@/i18n/routing';
 import BeatLoader from 'react-spinners/BeatLoader';
@@ -147,12 +148,15 @@ export default function PrematchClient() {
   }, [selectedDate, currentPage, debouncedSearch]);
 
   // Plakietki modelu dla całego dnia — jedno żądanie na datę, niezależne od strony i frazy.
+  // Dopiero gdy sesja jest sprawdzona: plan decyduje, czy plakietki są odkryte (`useAuthKey`).
+  const authKey = useAuthKey();
   useEffect(() => {
+    if (!authKey) return undefined;
     let cancelled = false;
     setModelHints({});
     setModelTop({ picks: [], count: 0, full: false });
     axios
-      .get(`/api/football/model-hints?date=${selectedDate}`)
+      .get(`/api/football/model-hints?date=${selectedDate}`, { headers: { 'Cache-Control': 'no-cache' } })
       .then((response) => {
         if (cancelled) return;
         setModelHints(response.data?.hints || {});
@@ -168,7 +172,7 @@ export default function PrematchClient() {
     return () => {
       cancelled = true;
     };
-  }, [selectedDate]);
+  }, [selectedDate, authKey]);
 
   const totalPages = paging.totalPages;
 

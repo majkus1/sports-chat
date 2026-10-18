@@ -1,7 +1,7 @@
 'use client';
 
 import { useContext, useEffect, useState } from 'react';
-import { UserContext } from '@/context/UserContext';
+import { UserContext, useAuthKey } from '@/context/UserContext';
 import CouponsBlock from '@/components/coupons/CouponsBlock';
 import { couponContent } from '@/lib/coupons/content';
 
@@ -13,11 +13,13 @@ import { couponContent } from '@/lib/coupons/content';
 export default function CouponsLive({ initial, locale, className }) {
 	const c = couponContent(locale);
 	const { isAuthed } = useContext(UserContext);
+	const authKey = useAuthKey();
 	const [data, setData] = useState(initial);
 
 	useEffect(() => {
+		if (!authKey) return undefined;
 		let anulowane = false;
-		fetch('/api/coupons', { credentials: 'include' })
+		fetch('/api/coupons', { credentials: 'include', cache: 'no-store' })
 			.then((r) => (r.ok ? r.json() : null))
 			.then((d) => {
 				if (!anulowane && d?.date) setData(d);
@@ -26,7 +28,7 @@ export default function CouponsLive({ initial, locale, className }) {
 		return () => {
 			anulowane = true;
 		};
-	}, [isAuthed]);
+	}, [authKey]);
 
 	return <CouponsBlock data={data} c={c} locale={locale} guest={!isAuthed} className={className} />;
 }

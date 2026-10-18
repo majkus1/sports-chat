@@ -4,7 +4,7 @@ import { useContext, useEffect, useState } from 'react';
 import { useLocale } from 'next-intl';
 import { ArrowRight } from 'lucide-react';
 import { Link } from '@/i18n/routing';
-import { UserContext } from '@/context/UserContext';
+import { UserContext, useAuthKey } from '@/context/UserContext';
 import CouponsBlock from '@/components/coupons/CouponsBlock';
 import { couponContent } from '@/lib/coupons/content';
 
@@ -17,11 +17,13 @@ export default function CouponTeaser() {
 	const locale = useLocale();
 	const c = couponContent(locale);
 	const { isAuthed } = useContext(UserContext);
+	const authKey = useAuthKey();
 	const [dane, setDane] = useState(null);
 
 	useEffect(() => {
+		if (!authKey) return undefined;
 		let anulowane = false;
-		fetch('/api/coupons', { credentials: 'include' })
+		fetch('/api/coupons', { credentials: 'include', cache: 'no-store' })
 			.then((r) => (r.ok ? r.json() : null))
 			.then((d) => {
 				if (!anulowane) setDane(d);
@@ -30,7 +32,7 @@ export default function CouponTeaser() {
 		return () => {
 			anulowane = true;
 		};
-	}, [isAuthed]);
+	}, [authKey]);
 
 	const wGrze = (k) => k && k.status === 'pending' && (k.locked || k.legs?.length > 0);
 	if (!dane || ![dane.today, dane.days3, dane.days5].some(wGrze)) return null;

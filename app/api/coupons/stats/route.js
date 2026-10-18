@@ -21,7 +21,7 @@ export async function GET(request) {
 		await connectToDb();
 		const unlocked = await couponsUnlocked();
 		const stats = await couponStats({ type, days: days === 'all' ? null : Number(days), unlocked });
-		return Response.json(stats, { headers: { 'Cache-Control': 'private, max-age=60' } });
+		return Response.json(stats, { headers: { 'Cache-Control': 'private, no-store' } });
 	} catch (error) {
 		console.warn('[coupons] statystyka niedostępna:', error.message);
 		return Response.json({ error: 'unavailable' }, { status: 503 });

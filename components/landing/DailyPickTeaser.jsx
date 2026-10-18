@@ -4,7 +4,7 @@ import { useContext, useEffect, useState } from 'react';
 import { useLocale } from 'next-intl';
 import { ArrowRight } from 'lucide-react';
 import { Link } from '@/i18n/routing';
-import { UserContext } from '@/context/UserContext';
+import { UserContext, useAuthKey } from '@/context/UserContext';
 import DailyPickCard from '@/components/today/DailyPickCard';
 import LockedPickCard from '@/components/landing/LockedPickCard';
 import { todayPicksContent } from '@/lib/landing/todayPicks';
@@ -25,6 +25,7 @@ export default function DailyPickTeaser() {
 	const locale = useLocale();
 	const c = todayPicksContent(locale);
 	const { isAuthed } = useContext(UserContext);
+	const authKey = useAuthKey();
 	const [dane, setDane] = useState(null);
 	const [drugi, setDrugi] = useState(null);
 
@@ -48,9 +49,10 @@ export default function DailyPickTeaser() {
 
 	// Druga karta: pierwszy z najmocniejszych typów tego dnia, który nie jest typem dnia i jeszcze się nie zaczął.
 	useEffect(() => {
-		if (!pick?.date) return undefined;
+		// Dopiero gdy wiadomo, kto pyta — inaczej zalogowany dostawał kłódkę jak gość.
+		if (!pick?.date || !authKey) return undefined;
 		let anulowane = false;
-		fetch(`/api/football/model-hints?date=${pick.date}`, { credentials: 'include' })
+		fetch(`/api/football/model-hints?date=${pick.date}`, { credentials: 'include', cache: 'no-store' })
 			.then((r) => (r.ok ? r.json() : null))
 			.then((d) => {
 				if (anulowane || !Array.isArray(d?.top)) return;
@@ -63,7 +65,7 @@ export default function DailyPickTeaser() {
 		return () => {
 			anulowane = true;
 		};
-	}, [pick?.date, pick?.fixtureId]);
+	}, [pick?.date, pick?.fixtureId, authKey]);
 
 	if (!pick) return null;
 	const naJutro = pick === dane?.tomorrow;

@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  useContext,
   useState,
   useEffect,
   useCallback,
@@ -12,6 +13,22 @@ import { refreshAccessToken } from '@/lib/authFetch';
 import { ACCESS_REFRESH_INTERVAL_MS } from '@/lib/authConstants';
 
 export const UserContext = createContext(null);
+
+/**
+ * Klucz sesji dla danych zależnych od planu (plakietki, typy, kupony): `null`, dopóki pierwsze
+ * sprawdzenie sesji (z ewentualnym odświeżeniem tokenu) się nie skończyło, potem `guest` albo
+ * `u:<id>`.
+ *
+ * PO CO. Przy pierwszym wejściu po wygaśnięciu tokenu dostępu strona pytała o plakietki i kupony
+ * od razu — serwer nie widział ważnego tokenu i odpowiadał jak gościowi, a zalogowany VIP widział
+ * kłódki aż do odświeżenia strony. Efekt z tym kluczem w zależnościach pyta dopiero, gdy wiadomo,
+ * kto pyta, i pyta jeszcze raz, gdy tożsamość się zmieni (logowanie, wylogowanie).
+ */
+export function useAuthKey() {
+  const ctx = useContext(UserContext);
+  if (!ctx?.authChecked) return null;
+  return ctx.isAuthed ? `u:${ctx.user?.userId || 'auth'}` : 'guest';
+}
 
 export function UserProvider({ children }) {
   const [user, setUser] = useState(null);

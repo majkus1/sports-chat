@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ChevronRight, Lock, Sparkles } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { matchPath } from '@/lib/seo/matchPreview';
+import { useAuthKey } from '@/context/UserContext';
 
 /**
  * Lista dzisiejszych typów modelu na stronie „Typy na dziś".
@@ -17,10 +18,12 @@ import { matchPath } from '@/lib/seo/matchPreview';
  */
 export default function TodayPicksList({ items, date, locale, labels: c }) {
 	const [lista, setLista] = useState(items);
+	const authKey = useAuthKey();
 
 	useEffect(() => {
+		if (!authKey) return undefined;
 		let anulowane = false;
-		fetch(`/api/football/model-hints?date=${date}`, { credentials: 'include' })
+		fetch(`/api/football/model-hints?date=${date}`, { credentials: 'include', cache: 'no-store' })
 			.then((r) => (r.ok ? r.json() : null))
 			.then((d) => {
 				if (anulowane || !d?.hints) return;
@@ -30,7 +33,7 @@ export default function TodayPicksList({ items, date, locale, labels: c }) {
 		return () => {
 			anulowane = true;
 		};
-	}, [date]);
+	}, [date, authKey]);
 
 	if (!lista.length) return <p className="mt-3 text-sm text-muted">{c.listEmpty}</p>;
 	const zamkniete = lista.some((p) => !p.hint || p.hint.locked);

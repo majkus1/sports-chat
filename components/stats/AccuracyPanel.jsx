@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import CouponStats from '@/components/coupons/CouponStats';
 import ValueStats from '@/components/value/ValueStats';
 import { couponContent } from '@/lib/coupons/content';
+import { useAuthKey } from '@/context/UserContext';
 import { valueContent } from '@/lib/value/content';
 import { cn } from '@/lib/utils';
 
@@ -164,7 +165,10 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 		};
 	}, [scope]);
 
+	const authKey = useAuthKey();
 	const load = useCallback(async () => {
+		// Skuteczność własna i kupony w grze zależą od sesji — pytamy, gdy wiadomo, kto pyta.
+		if (!authKey) return;
 		setIsLoading(true);
 		try {
 			if (kind === VALUE_KIND) {
@@ -174,7 +178,10 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 			}
 			if (COUPON_KINDS[kind]) {
 				// Z sesją: płatne kupony w grze widać z meczami tylko w planie z liczbami.
-				const res = await fetch(`/api/coupons/stats?type=${COUPON_KINDS[kind]}&days=${days}`, { credentials: 'include' });
+				const res = await fetch(`/api/coupons/stats?type=${COUPON_KINDS[kind]}&days=${days}`, {
+					credentials: 'include',
+					cache: 'no-store',
+				});
 				setData(res.ok ? { coupons: await res.json() } : null);
 				return;
 			}
@@ -188,7 +195,7 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 		} finally {
 			setIsLoading(false);
 		}
-	}, [scope, kind, days, author]);
+	}, [scope, kind, days, author, authKey]);
 
 	useEffect(() => {
 		load();
