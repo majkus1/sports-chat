@@ -45,6 +45,15 @@ describe('wyszukanie', () => {
 		assert.match(p, /Nie podawaj kursów/);
 	});
 
+	test('wyraźny faworyt (rynek ≥ 80%) — łagodniejsza reguła; zwykły typ bez niej', () => {
+		const zKursu = newsPrompt({ ...LEG, odds: 1.12 });
+		assert.match(zKursu, /wyraźny faworyt — rynek daje mu ok\. 89%/);
+		assert.match(zKursu, /brak jednego–dwóch zawodników to OK/);
+		assert.match(newsPrompt({ ...LEG, marketProbability: 86 }), /rynek daje mu ok\. 86%/);
+		assert.doesNotMatch(newsPrompt({ ...LEG, odds: 1.4 }), /faworyt/);
+		assert.match(newsPrompt(LEG), /prawdopodobnie bez….*to OK/);
+	});
+
 	test('źródła z wyszukania; błąd wyszukiwarki — typ niesprawdzony, nie odrzucony', async () => {
 		const ok = await checkLegNews(LEG, {
 			search: async () => ({
