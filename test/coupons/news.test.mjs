@@ -75,3 +75,22 @@ describe('wyszukanie', () => {
 		assert.deepEqual(blad, { verdict: 'unknown', reason: null, sources: [] });
 	});
 });
+
+describe('jeden werdykt na mecz i typ', () => {
+	test('drugie pytanie o ten sam typ bierze zapisany werdykt; niesprawdzony nie zostaje', async () => {
+		const { checkLegNewsShared } = await import('@/lib/coupons/news');
+		let wywolan = 0;
+		const leg = { ...LEG, fixtureId: `test-${Date.now()}` };
+		const ryzyko = async () => {
+			wywolan += 1;
+			return { verdict: 'risk', reason: 'kontuzja', sources: [] };
+		};
+		assert.equal((await checkLegNewsShared(leg, { check: ryzyko })).verdict, 'risk');
+		assert.equal((await checkLegNewsShared(leg, { check: async () => ({ verdict: 'ok' }) })).verdict, 'risk');
+		assert.equal(wywolan, 1);
+
+		const inny = { ...leg, fixtureId: `${leg.fixtureId}-b` };
+		await checkLegNewsShared(inny, { check: async () => ({ verdict: 'unknown', reason: null, sources: [] }) });
+		assert.equal((await checkLegNewsShared(inny, { check: async () => ({ verdict: 'ok', reason: null, sources: [] }) })).verdict, 'ok');
+	});
+});
