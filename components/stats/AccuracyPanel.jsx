@@ -12,6 +12,7 @@ import { couponContent } from '@/lib/coupons/content';
 import { useAuthKey } from '@/context/UserContext';
 import { valueContent } from '@/lib/value/content';
 import { cn } from '@/lib/utils';
+import { LEAGUE_TIERS, PROBATION_TIER } from '@/lib/football/leagues';
 
 /**
  * Skuteczność typów — wspólny widok dla trzech miejsc: publicznej zakładki, huba raportów
@@ -30,6 +31,9 @@ const KINDS = ['all', 'daily', 'hint', 'prematch', 'live', 'report'];
 const COUPON_KINDS = { coupon_daily: 'daily', coupon_3d: 'days3', coupon_5d: 'days5', coupon_live: 'live' };
 /** Typy z wyższym kursem (asystent, raport) — też osobny bilans, nigdy w głównej liczbie. */
 const VALUE_KIND = 'value';
+/** Ligi w okresie próbnym (`PROBATION_TIER`) — osobny licznik, poza główną liczbą; pigułka tylko, gdy takie ligi są. */
+const PROBATION_KIND = 'new_leagues';
+const MA_LIGI_PROBNE = [...LEAGUE_TIERS.values()].includes(PROBATION_TIER);
 const AUTHORS = ['ai', 'user'];
 const RANGES = ['30', '90', 'all'];
 
@@ -186,8 +190,9 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 				return;
 			}
 			const params = new URLSearchParams({ scope, days, author });
+			if (kind === PROBATION_KIND) params.set('leagues', 'probation');
 			// Typy użytkownika są zawsze przedmeczowe — filtr rodzaju byłby tu martwy.
-			if (author === 'ai' && kind !== 'all') params.set('kind', kind);
+			else if (author === 'ai' && kind !== 'all') params.set('kind', kind);
 			const res = await fetch(`/api/stats/picks?${params}`, { credentials: 'include' });
 			setData(res.ok ? await res.json() : null);
 		} catch {
@@ -211,7 +216,7 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 	 */
 	const grupy = [
 		{ key: 'kind', label: t('accuracy_filter_kind'), items: KINDS },
-		...(scope === 'me' ? [] : [{ key: 'extra', label: cc.filterLabel, items: [...Object.keys(COUPON_KINDS), VALUE_KIND] }]),
+		...(scope === 'me' ? [] : [{ key: 'extra', label: cc.filterLabel, items: [...Object.keys(COUPON_KINDS), VALUE_KIND, ...(MA_LIGI_PROBNE ? [PROBATION_KIND] : [])] }]),
 	];
 	const kupon = COUPON_KINDS[kind];
 
@@ -227,6 +232,7 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 		coupon_5d: cc.tab.days5,
 		coupon_live: cc.tab.live,
 		value: vc.tab,
+		[PROBATION_KIND]: t('accuracy_kind_new_leagues'),
 	};
 
 	return (
@@ -382,6 +388,7 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 				<p className="py-6 text-center text-sm text-muted">{t('accuracy_no_data')}</p>
 			) : (
 				<>
+					{kind === PROBATION_KIND && <p className="text-sm leading-relaxed text-muted">{t('accuracy_new_leagues_note')}</p>}
 					<Card>
 						<CardContent className="flex flex-col gap-4 px-5 py-5">
 							<HitRate

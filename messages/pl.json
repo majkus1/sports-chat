@@ -384,6 +384,8 @@
 		"accuracy_kind_report": "Raporty",
 		"accuracy_kind_daily": "Typ dnia",
 		"accuracy_kind_hint": "Plakietki",
+		"accuracy_kind_new_leagues": "Nowe ligi",
+		"accuracy_new_leagues_note": "Ligi dopisane do modelu po sprawdzeniu na historii — w okresie próbnym. Ich typy liczymy osobno i nie wchodzą do głównej skuteczności, dopóki nie zbiorą co najmniej 150 rozliczonych typów z trafnością bliską obietnicy.",
 		"daily_pick": "Typ dnia",
 		"daily_pick_free": "za darmo",
 		"today_picks_menu": "Typy na dziś",

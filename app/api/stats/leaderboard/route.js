@@ -1,6 +1,7 @@
 import connectToDb from '@/lib/db';
 import Pick from '@/models/Pick';
 import { getAuthenticatedUser } from '@/lib/auth';
+import { MAIN_STATS_LEAGUES } from '@/lib/football/leagues';
 
 /**
  * Ranking typerów.
@@ -58,7 +59,7 @@ export async function GET(request) {
 			},
 		]),
 		Pick.aggregate([
-			{ $match: { ...match, author: 'ai' } },
+			{ $match: { ...match, author: 'ai', ...MAIN_STATS_LEAGUES } },
 			{
 				$group: {
 					_id: null,

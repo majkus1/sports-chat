@@ -244,6 +244,33 @@ danych: ≥ 300 zakładów reguły „plakietka", zwrot > 0, CLV ≥ 0, trafnoś
 pod obietnicą. Nawet wtedy po podatku 12% zakład wychodzi na plus dopiero przy zwrocie
 powyżej ~14%, więc zakładka nie może obiecywać zarobku.
 
+## Nowe ligi — sprawdzian i okres próbny (od października 2026)
+
+Każda liga ma własne dopasowanie, więc dopisanie nowej NIE zmienia prognoz w pozostałych.
+Jedyny punkt styku to pule pucharowe (`pools.js`) — mają zamkniętą listę lig i test
+(`test/model/probation.test.mjs`) pilnuje, żeby liga próbna się na niej nie znalazła.
+
+Kolejność:
+
+1. **Sprawdzian** — `leagueCheck.mjs` (zasady w `leagueCheck.js`): ostatni rok jako okres testowy,
+   model per liga przeliczany co 14 dni wyłącznie na wcześniejszych meczach, linia bazowa
+   z częstości TEJ ligi, typy po polityce produkcji. Progi ustalone przed uruchomieniem:
+   ≥ 150 meczów z prognozą, pokrycie ≥ 60%, zysk w log lossie z t ≥ 1,5, typy najwyżej 6 pkt
+   poniżej obietnicy. Obok kandydatów te same liczby dla kilku działających lig.
+2. **Poziom 3 w `LEAGUE_TIERS`** — tylko ligi z werdyktem „dopuszczona". Plakietki, analizy,
+   kupon live i asystent działają; kupony, typ dnia, wyższe kursy, raporty, kolejka i poranny
+   mail — nie. Typy liczone osobno (`/api/stats/picks?leagues=probation`, pigułka „Nowe ligi").
+3. **Awans na poziom 2** po ≥ 150 rozliczonych typach, gdy trafione nie niżej niż 6 pkt pod obietnicą.
+
+```bash
+node --experimental-loader ./test/helpers/alias.mjs lib/model/leagueCheck.mjs
+```
+
+Koszt ~3 zapytania na ligę; wynik także w kolekcji `modelleaguechecks`. Pierwszy lokalny
+przebieg (21.10.2026): Serie B przeszła (zysk +0,051, t = 2,8, typy 79% obiecane / 79% trafione),
+a działający od dawna Championship wypadł tą miarą w szumie (t = 0,7; 79% / 74%) —
+nowe ligi mają więc poprzeczkę wyżej niż część obecnych.
+
 ## Uruchomienie backtestu
 
 Wymaga ważnego klucza `API_SPORTS_KEY`, więc w praktyce uruchamia się go na serwerze:

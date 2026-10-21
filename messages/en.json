@@ -384,6 +384,8 @@
 		"accuracy_kind_report": "Reports",
 		"accuracy_kind_daily": "Pick of the day",
 		"accuracy_kind_hint": "Badges",
+		"accuracy_kind_new_leagues": "New leagues",
+		"accuracy_new_leagues_note": "Leagues added to the model after a historical check — on probation. Their picks are counted separately and stay out of the main accuracy until they reach at least 150 settled picks with a hit rate close to what was promised.",
 		"daily_pick": "Pick of the day",
 		"daily_pick_free": "free",
 		"today_picks_menu": "Today’s picks",

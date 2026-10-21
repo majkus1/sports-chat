@@ -4,6 +4,7 @@ import Pick from '@/models/Pick';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { MARKET_GROUPS } from '@/lib/picks/markets';
 import { BRIER_BASELINE, MIN_SETTLED_FOR_RATE, wilsonInterval } from '@/lib/picks/metrics';
+import { MAIN_STATS_LEAGUES, PROBATION_TIER } from '@/lib/football/leagues';
 
 /**
  * Skuteczność typów — globalna albo własna.
@@ -16,6 +17,7 @@ import { BRIER_BASELINE, MIN_SETTLED_FOR_RATE, wilsonInterval } from '@/lib/pick
  *   author=ai|user      kto wystawił typ; domyślnie `ai`
  *   kind=all|prematch|live|report|daily|hint
  *   days=30|90|all      okno czasowe liczone od daty meczu
+ *   leagues=main|probation  główna skuteczność (domyślnie) albo same ligi w okresie próbnym
  *
  * Filtr autora jest domyślnie ustawiony na `ai`, żeby dodanie typów użytkowników nie
  * zmieniło po cichu znaczenia liczby na stronie „skuteczność analiz AI".
@@ -45,6 +47,13 @@ export async function GET(request) {
 	 * pokazujemy w całości: użytkownik ma widzieć wszystko, co dla niego wygenerowaliśmy.
 	 */
 	if (scope !== 'me') match.countsToStats = { $ne: false };
+
+	/*
+	 * Ligi w okresie próbnym (`PROBATION_TIER`) mają osobny licznik i nie zmieniają głównej
+	 * liczby. Własna statystyka użytkownika obejmuje wszystko, jak dotąd.
+	 */
+	const leagues = searchParams.get('leagues') === 'probation' ? 'probation' : 'main';
+	if (scope !== 'me') Object.assign(match, leagues === 'probation' ? { leagueTier: PROBATION_TIER } : MAIN_STATS_LEAGUES);
 
 	if (scope === 'me') {
 		const session = await getAuthenticatedUser();
@@ -316,6 +325,7 @@ export async function GET(request) {
 		{
 			scope,
 			author,
+			leagues,
 			kind: kind || 'all',
 			days: days || null,
 			summary: {
