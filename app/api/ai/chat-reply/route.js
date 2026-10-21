@@ -14,6 +14,7 @@ import {
 	buildChatReplyPrompt,
 } from '@/lib/ai/prompts/chatReply';
 import { MODEL_CHAT, MAX_TOKENS_CHAT } from '@/lib/ai/config';
+import { fetchOddsSnapshot } from '@/lib/model/oddsShadowJob';
 
 export const maxDuration = 120;
 
@@ -94,18 +95,22 @@ export async function POST(request) {
 
 		let bundle = null;
 		let analysis = null;
+		let odds = null;
 
 		if (fixtureId && /^\d{1,12}$/.test(fixtureId)) {
 			// Pełny pakiet, tak samo jak w rozmowie pod analizą: pytanie „ile Ilves ma
 			// punktów" albo „kto strzelił w 41. minucie" ma dostać odpowiedź, a nie
 			// informację o braku danych. Dane i tak są już w cache'u po analizie.
-			const [bundleResult, analysisResult] = await Promise.allSettled([
+			const [bundleResult, analysisResult, oddsResult] = await Promise.allSettled([
 				buildFixtureBundle(fixtureId),
 				MatchAnalysis.findOne({ fixtureId, language }).select('analysis sections').lean(),
+				// Kursy meczu (mediana bukmacherów) — asystent pokoju też je zna.
+				fetchOddsSnapshot(fixtureId),
 			]);
 
 			if (bundleResult.status === 'fulfilled') bundle = bundleResult.value;
 			if (analysisResult.status === 'fulfilled') analysis = analysisResult.value;
+			if (oddsResult.status === 'fulfilled') odds = oddsResult.value;
 		}
 
 		const { text, meta } = await generateText({
@@ -121,6 +126,7 @@ export async function POST(request) {
 						analysisText: analysis?.analysis || null,
 						analysisSections: analysis?.sections || null,
 						language,
+						odds,
 					}),
 				},
 			],

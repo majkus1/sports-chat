@@ -15,6 +15,7 @@ import {
 } from '@/lib/ai/prompts/chatReply';
 import { MODEL_CHAT, MAX_TOKENS_CHAT } from '@/lib/ai/config';
 import { MAX_CHAT_MSG_LEN } from '@/lib/chatConstraints';
+import { fetchOddsSnapshot } from '@/lib/model/oddsShadowJob';
 
 export const maxDuration = 120;
 
@@ -112,13 +113,16 @@ export async function POST(request) {
 		 *
 		 * Brak danych meczu lub analizy nie blokuje rozmowy — asystent po prostu wie mniej.
 		 */
-		const [bundleResult, analysisResult] = await Promise.allSettled([
+		const [bundleResult, analysisResult, oddsResult] = await Promise.allSettled([
 			buildFixtureBundle(fixtureId),
 			MatchAnalysis.findOne({ fixtureId, language }).select('analysis sections').lean(),
+			// Kursy meczu (mediana bukmacherów, 10 minut w pamięci podręcznej) — asystent je zna.
+			fetchOddsSnapshot(String(fixtureId)),
 		]);
 
 		const bundle = bundleResult.status === 'fulfilled' ? bundleResult.value : null;
 		const analysis = analysisResult.status === 'fulfilled' ? analysisResult.value : null;
+		const odds = oddsResult.status === 'fulfilled' ? oddsResult.value : null;
 
 		/*
 		 * Jedno narzędzie: wiadomości z internetu. Wszystko inne (forma, tabela, składy,
@@ -144,6 +148,7 @@ export async function POST(request) {
 						analysisSections: analysis?.sections || null,
 						language,
 						private_: true,
+						odds,
 					}),
 				},
 			],
