@@ -269,7 +269,8 @@ node --experimental-loader ./test/helpers/alias.mjs lib/model/leagueCheck.mjs
 Koszt ~3 zapytania na ligę; wynik także w kolekcji `modelleaguechecks`.
 
 **Przebieg na serwerze 21.10.2026** (rok testowy od 21.10.2025, 166 zapytań): dopuszczone
-**19 z 49**, typy razem 5390 — obiecane 81,4%, trafione 78,8%. Najmocniejsze: Bułgaria (t 4,2;
+**19 z 49** — decyzją właściciela od razu na poziom 2 (pełna oferta, główna skuteczność), bez
+okresu próbnego; poziom 3 zostaje jako mechanizm dla lig na granicy w kolejnych przebiegach. Typy razem 5390 — obiecane 81,4%, trafione 78,8%. Najmocniejsze: Bułgaria (t 4,2;
 81/81%), Grecja (3,8; 82/82%), Egipt (3,8; 80/81%), ZEA, Izrael, Turcja 1. Lig, Ukraina, Serie B
 (2,8; 79/79%), Ligue 2. Odpadły m.in. 2. Bundesliga, LaLiga 2, Liga Portugal 2, Challenger Pro
 League, J2, A-League (model nie bije częstości ligi) i Eerste Divisie, League Two, 3. Liga, Chiny,

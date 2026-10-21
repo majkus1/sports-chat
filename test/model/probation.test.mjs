@@ -34,17 +34,17 @@ describe('okres próbny lig', () => {
 	test('pomocnicze: sprawdzona, próbna, spoza listy', () => {
 		assert.equal(isEstablishedLeague(39), true); // Premier League
 		assert.equal(isProbationLeague(39), false);
-		assert.equal(isProbationLeague(136), true); // Serie B — dopuszczona 21.10.2026
-		assert.equal(isEstablishedLeague(136), false);
+		assert.equal(isEstablishedLeague(136), true); // Serie B — dopisana 21.10.2026 od razu do pełnej oferty
+		assert.equal(isProbationLeague(136), false);
 		assert.equal(isEstablishedLeague(999999), false);
 		assert.equal(isProbationLeague(999999), false);
 		assert.deepEqual(MAIN_STATS_LEAGUES, { leagueTier: { $ne: PROBATION_TIER } });
 	});
 
-	test('typ dnia tylko z lig sprawdzonych', () => {
+	test('typ dnia tylko z lig sprawdzonych (poziom 1 przed 2, spoza listy odpada)', () => {
 		const now = new Date('2099-01-01T08:00:00Z');
 		const wpis = (leagueId, lift) => ({ leagueId, kickoff: '2099-01-01T18:00:00Z', hint: { lift } });
 		const kolejka = orderCandidates([wpis(999999, 40), wpis(136, 35), wpis(140, 15), wpis(39, 20)], { now });
-		assert.deepEqual(kolejka.map((w) => w.leagueId), [39, 140]);
+		assert.deepEqual(kolejka.map((w) => w.leagueId), [39, 140, 136]);
 	});
 });

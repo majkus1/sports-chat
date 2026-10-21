@@ -52,8 +52,8 @@ function wpis(date, h, probability, odds) {
 
 const LISTY = {
 	// Dzień publikacji: kupon dnia bierze cztery pierwsze (1,60 nie wchodzi — tam model przesadza).
-	// Najpewniejszy typ dnia jest z ligi w okresie próbnym (Serie B) — nie może trafić na żaden kupon.
-	[D[0]]: [{ ...wpis(D[0], 14, 95, 1.1), leagueId: 136, league: 'Serie B, Italy' }, wpis(D[0], 15, 90, 1.15), wpis(D[0], 16, 88, 1.2), wpis(D[0], 17, 86, 1.25), wpis(D[0], 18, 84, 1.3), wpis(D[0], 21, 70, 1.6)],
+	// Najpewniejszy typ dnia jest z ligi spoza sprawdzonych (okres próbny albo spoza listy) — nie może trafić na kupon.
+	[D[0]]: [{ ...wpis(D[0], 14, 95, 1.1), leagueId: 999999, league: 'Liga próbna' }, wpis(D[0], 15, 90, 1.15), wpis(D[0], 16, 88, 1.2), wpis(D[0], 17, 86, 1.25), wpis(D[0], 18, 84, 1.3), wpis(D[0], 21, 70, 1.6)],
 	[D[1]]: [wpis(D[1], 15, 89, 1.2), wpis(D[1], 17, 87, 1.22), wpis(D[1], 19, 85, 1.3)],
 	[D[2]]: [wpis(D[2], 15, 86, 1.18), wpis(D[2], 18, 83, 1.25)],
 	[D[3]]: [wpis(D[3], 14, 88, 1.15), wpis(D[3], 16, 86, 1.2), wpis(D[3], 18, 84, 1.25)],
@@ -117,7 +117,7 @@ describe('wybór kuponów', () => {
 		const id = (k) => k.legs.map((l) => l.fixtureId);
 		const wszystkie = [...id(dzienny), ...id(trzy), ...id(piec)];
 		assert.equal(new Set(wszystkie).size, wszystkie.length, 'mecze nie powtarzają się między kuponami');
-		assert.equal(wszystkie.includes(PROBNY), false, 'liga w okresie próbnym nie trafia na kupony');
+		assert.equal(wszystkie.includes(PROBNY), false, 'liga spoza sprawdzonych nie trafia na kupony');
 
 		const ponownie = await ensureCoupons({ now: o(D0, 10), ...opcje });
 		assert.deepEqual(ponownie.created, []);
