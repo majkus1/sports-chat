@@ -12,6 +12,7 @@ import LeagueHeading from '@/components/football/LeagueHeading';
 import { useGameDetailsModal } from '@/components/football/useGameDetailsModal';
 import FullScreenModal from '@/components/FullScreenModal';
 import Footer from '@/components/layout/Footer';
+import LiveCouponPanel from '@/components/live/LiveCouponPanel';
 
 export default function LiveClient() {
   const locale = useLocale();
@@ -77,6 +78,9 @@ export default function LiveClient() {
           {t('footbal')}
         </h1>
         <FootballMenu onResultsClick={() => setIsResultsModalOpen(true)} />
+
+        {/* Generator kuponu live — nad listą trwających meczów (`lib/live`). */}
+        <LiveCouponPanel />
 
         <div className="search-container" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <FaSearch size={20} style={{ color: 'var(--text)', flexShrink: 0 }} />

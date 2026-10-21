@@ -9,7 +9,7 @@ import { couponsUnlocked } from '@/lib/coupons/access';
  */
 export const dynamic = 'force-dynamic';
 
-const TYPES = new Set(['daily', 'days3', 'days5', 'weekend']);
+const TYPES = new Set(['daily', 'days3', 'days5', 'weekend', 'live']);
 const DAYS = new Set(['30', '90', 'all']);
 
 export async function GET(request) {

@@ -53,6 +53,10 @@ const LegSchema = new mongoose.Schema(
 		score: { type: String, default: null },
 		/** Tylko płatne kupony: czy AI sprawdziło wiadomości o tym meczu przed publikacją. */
 		news: { type: LegNewsSchema, default: null },
+		/** Kupon live: minuta i wynik w chwili wyboru oraz uzasadnienie AI. */
+		minute: { type: Number, default: null },
+		liveScore: { type: String, default: null },
+		why: { type: String, default: null },
 	},
 	{ _id: false }
 );
@@ -61,7 +65,7 @@ const CouponSchema = new mongoose.Schema(
 	{
 		/** `daily|days3|days5:YYYY-MM-DD` (dzień publikacji; dawny `weekend:` — data piątku). Jeden kupon na klucz. */
 		key: { type: String, required: true, unique: true },
-		type: { type: String, enum: ['daily', 'days3', 'days5', 'weekend'], required: true, index: true },
+		type: { type: String, enum: ['daily', 'days3', 'days5', 'weekend', 'live'], required: true, index: true },
 		/** Dzień publikacji w czasie polskim. */
 		date: { type: String, required: true, index: true },
 		legs: { type: [LegSchema], default: [] },
