@@ -41,6 +41,16 @@ export default function LiveCouponPanel() {
 		if (authKey) pobierz();
 	}, [authKey, pobierz]);
 
+	// Plan z liczbami: co 3 minuty (tyle żyje wspólny wynik na serwerze), tylko gdy karta jest widoczna.
+	const odblokowany = Boolean(dane?.unlocked);
+	useEffect(() => {
+		if (!odblokowany) return undefined;
+		const id = setInterval(() => {
+			if (document.visibilityState === 'visible') pobierz();
+		}, 3 * 60_000);
+		return () => clearInterval(id);
+	}, [odblokowany, pobierz]);
+
 	const godzina = (iso) =>
 		new Date(iso).toLocaleTimeString(locale === 'en' ? 'en-GB' : 'pl-PL', { timeZone: 'Europe/Warsaw', hour: '2-digit', minute: '2-digit' });
 
@@ -152,7 +162,7 @@ function Wynik({ c, wynik, godzina, laduje }) {
 										<span className="ml-1.5 whitespace-nowrap font-semibold tabular-nums text-muted">{l.liveScore}</span>
 									</span>
 									<span className="block text-xs text-muted">
-										<span className="font-semibold text-accent">{l.selection}</span> · {c.chances(l.market, l.model)}
+										<span className="font-semibold text-accent">{l.selection}</span> · {c.chances(l.market, l.model, l.source)}
 									</span>
 									{l.why && <span className="mt-1 block text-xs leading-relaxed text-text/80">{l.why}</span>}
 								</span>
@@ -176,7 +186,7 @@ function Wynik({ c, wynik, godzina, laduje }) {
 				</div>
 			)}
 			<p className="text-xs text-muted">
-				{c.analyzed(wynik.analyzed, wynik.withOdds)}
+				{c.analyzed(wynik.analyzed, wynik.withOdds, wynik.modelMatches)}
 				{!wynik.aiChecked && wynik.mode !== 'none' ? ` ${c.noAi}` : ''}
 			</p>
 			<p className="text-xs leading-relaxed text-muted">{c.warning}</p>

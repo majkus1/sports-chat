@@ -19,8 +19,11 @@ const {
 	liveSelections,
 	buildLiveCoupon,
 	bestLiveSingle,
+	lambdasFromOdds,
+	liveLeagueOk,
 	LIVE_COUPON,
 } = await import('@/lib/live/select');
+const { predictMarkets } = await import('@/lib/model/dixonColes');
 const { getLiveCoupon, lockedLiveDto } = await import('@/lib/live/service');
 
 describe('kursy na żywo', () => {
@@ -83,6 +86,38 @@ describe('wybór typów', () => {
 		const pojedynczy = bestLiveSingle([k(1, 95, 1.06), k(2, 66, 1.6), k(3, 60, 1.7), k(4, 40, 2.6)]);
 		assert.equal(pojedynczy.fixtureId, '2');
 		assert.equal(bestLiveSingle([k(1, 50, 1.6)]), null);
+	});
+});
+
+describe('ligi poza modelem', () => {
+	test('oczekiwane gole z kursów sprzed meczu odtwarzają szanse rynku', () => {
+		// Faworyt gospodarzy: 1,55 / 4,20 / 5,80, powyżej 2,5 po 1,80.
+		const l = lambdasFromOdds({ home: 1.55, draw: 4.2, away: 5.8, over25: 1.8 });
+		assert.ok(l.lambdaHome > l.lambdaAway);
+		const m = predictMarkets(l.lambdaHome, l.lambdaAway);
+		const suma = 1 / 1.55 + 1 / 4.2 + 1 / 5.8;
+		assert.ok(Math.abs(m.matchWinner.home - 1 / 1.55 / suma) < 0.02);
+		assert.ok(Math.abs(m.matchWinner.away - 1 / 5.8 / suma) < 0.02);
+		assert.equal(lambdasFromOdds({ home: 1.5, over25: 1.8 }), null);
+		assert.equal(lambdasFromOdds(null), null);
+	});
+
+	test('bez młodzieży, kobiet, rezerw i sparingów', () => {
+		assert.equal(liveLeagueOk('First Amateur Division'), true);
+		assert.equal(liveLeagueOk('Serie B'), true);
+		assert.equal(liveLeagueOk('UEFA Youth League'), false);
+		assert.equal(liveLeagueOk('Premier League U21'), false);
+		assert.equal(liveLeagueOk('Liga F Women'), false);
+		assert.equal(liveLeagueOk('Club Friendlies'), false);
+		assert.equal(liveLeagueOk(null), false);
+	});
+
+	test('źródło „market" — zgoda w obie strony (rozjazd ponad 6 pkt odpada)', () => {
+		const odds = { home: 1.2, away: 3.0 }; // rynek 83% i 33%
+		const model = { home: 0.86, away: 0.45 }; // +3 pkt ✓, +12 pkt ✗
+		assert.deepEqual(liveSelections({ odds, model, source: 'market' }).map((x) => x.key), ['home']);
+		assert.deepEqual(liveSelections({ odds, model }).map((x) => x.key), ['home', 'away']);
+		assert.equal(liveSelections({ odds, model, source: 'market' })[0].source, 'market');
 	});
 });
 

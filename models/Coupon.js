@@ -57,6 +57,8 @@ const LegSchema = new mongoose.Schema(
 		minute: { type: Number, default: null },
 		liveScore: { type: String, default: null },
 		why: { type: String, default: null },
+		/** Kupon live: skąd szansa — `model` (liga modelu) albo `market` (kursy sprzed meczu + wynik i minuta). */
+		source: { type: String, enum: ['model', 'market', null], default: null },
 	},
 	{ _id: false }
 );
