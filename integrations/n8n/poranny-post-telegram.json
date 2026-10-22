@@ -1,0 +1,213 @@
+{
+  "name": "Czat Sportowy — poranny post (typ dnia + kupon) na Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * *"
+            }
+          ]
+        }
+      },
+      "id": "a1c0e3f2-0001-4c1a-9a01-000000000001",
+      "name": "Codziennie 10:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "k1", "name": "baseUrl", "value": "https://czatsportowy.pl", "type": "string" },
+            { "id": "k2", "name": "telegramChannel", "value": "@czatsportowy", "type": "string" },
+            { "id": "k3", "name": "ownerChatId", "value": "WPISZ_SWOJ_CHAT_ID", "type": "string" },
+            { "id": "k4", "name": "model", "value": "gpt-5.6-luna", "type": "string" },
+            { "id": "k6", "name": "reasoningEffort", "value": "none", "type": "string" },
+            { "id": "k5", "name": "utm", "value": "utm_source=telegram&utm_medium=n8n&utm_campaign=poranny-post", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1c0e3f2-0001-4c1a-9a01-000000000002",
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.baseUrl }}/api/integrations/daily-brief",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "a1c0e3f2-0001-4c1a-9a01-000000000003",
+      "name": "Pobierz skrót dnia",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Czat Sportowy — x-internal-secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fakty dla modelu językowego i gotowy post awaryjny — liczby WYŁĄCZNIE ze skrótu dnia.\nconst cfg = $('Konfiguracja').first().json;\nconst b = $input.first().json;\nconst p = b.public || {};\nconst godz = (iso) => new Date(iso).toLocaleTimeString('pl-PL', { timeZone: 'Europe/Warsaw', hour: '2-digit', minute: '2-digit' });\nconst link = (url) => `${url}${url.includes('?') ? '&' : '?'}${cfg.utm}`;\nconst wynik = { won: 'trafiony', lost: 'chybiony', void: 'anulowany', pending: 'w grze' };\nconst kuponWynik = { won: 'wszedł', lost: 'nie wszedł', void: 'anulowany', pending: 'w grze', none: 'nie było kuponu' };\n\nconst fakty = [];\nconst szablon = [];\nconst dozwolone = new Set();\nconst liczby = (s) => (String(s ?? '').match(/\\d+(?:[.,]\\d+)?/g) || []).forEach((n) => dozwolone.add(String(Number(n.replace(',', '.')))));\ndozwolone.add('18');\n\nconst t = p.dailyPick;\nif (t) {\n  const linia = `TYP DNIA: ${t.match} (${t.league}), start ${godz(t.kickoff)}. Typ: ${t.selection}. Model: ${t.probability}% (zwykle w takich meczach ~${t.usually}%). Link: ${link(t.url)}`;\n  fakty.push(linia);\n  szablon.push(`⚽ Typ dnia: ${t.match}, ${godz(t.kickoff)}\\n👉 ${t.selection} — model ${t.probability}% (zwykle ~${t.usually}%)`);\n  liczby(linia);\n}\nconst k = p.coupon;\nif (k && k.legs?.length) {\n  const nogi = k.legs.map((l) => `- ${l.match}: ${l.selection} @ ${l.oddsText} (${godz(l.kickoff)})`).join('\\n');\n  const linia = `KUPON DNIA (za darmo): kurs łączny ${k.totalOddsText}, szansa według modelu ${k.chance}%. Mecze:\\n${nogi}`;\n  fakty.push(linia);\n  szablon.push(`🎟️ Kupon dnia: kurs ${k.totalOddsText}, szansa wg modelu ${k.chance}%\\n${nogi}`);\n  liczby(linia);\n}\nconst w = p.dailyPickYesterday;\nconst kw = p.couponYesterday;\nif (w || kw) {\n  const czesci = [];\n  if (w) czesci.push(`typ dnia ${w.match} — ${w.selection}: ${wynik[w.status] || w.status}${w.score ? ` (${w.score})` : ''}`);\n  if (kw) czesci.push(`kupon dnia: ${kuponWynik[kw.status] || kw.status}${kw.totalOddsText ? ` (kurs ${kw.totalOddsText})` : ''}`);\n  const linia = `WCZORAJ (podaj uczciwie, także przegrane): ${czesci.join('; ')}.`;\n  fakty.push(linia);\n  szablon.push(`📊 Wczoraj: ${czesci.join('; ')}`);\n  liczby(linia);\n}\nconst r = p.dailyPickRecord;\nconst a = p.accuracy30;\nif (r || a) {\n  const linia = `DOROBEK: typ dnia ${r?.won ?? 0} z ${r?.total ?? 0} trafionych; skuteczność 30 dni: ${a?.hitRate ?? '—'}% na ${a?.settled ?? 0} rozliczonych typach (zwykle w takich zdarzeniach ~${a?.usually ?? '—'}%).`;\n  fakty.push(linia);\n  liczby(linia);\n}\n\nconst stopka = `\\n\\nWszystkie typy i analizy: ${link(p.siteUrl + '/pl/typy-na-dzis')}\\nSzacunki, nie pewniaki. Serwis nie przyjmuje zakładów. 18+`;\nconst system = [\n  'Piszesz krótki, poranny post na kanał Telegram serwisu Czat Sportowy (analizy meczów piłkarskich oparte na modelu statystycznym).',\n  'ZASADY, KTÓRYCH NIE WOLNO ŁAMAĆ:',\n  '1. Liczby (procenty, kursy, godziny, wyniki, dorobek) przepisujesz WYŁĄCZNIE z FAKTÓW, co do znaku. Nie dodajesz żadnej innej liczby ani daty.',\n  '2. Nie piszesz: pewniak, pewna wygrana, gwarancja, zarobek, postaw, stawka; nie wymieniasz bukmacherów; nie zachęcasz do gry.',\n  '3. Wczorajszy wynik podajesz uczciwie, także gdy przegraliśmy — jednym zdaniem, bez tłumaczenia się.',\n  '4. Najwyżej 600 znaków, po polsku, konkretnie, 2–4 emoji. Bez hashtagów. Bez stopki i bez linku do strony głównej — dopisze je system.',\n  '5. Link do typu dnia przepisz dokładnie z FAKTÓW.'\n].join('\\n');\n\nreturn [{ json: {\n  maCo: Boolean(t || (k && k.legs?.length)),\n  fakty: fakty.join('\\n\\n'),\n  szablon: szablon.join('\\n\\n') + (t ? `\\n${link(t.url)}` : '') + stopka,\n  stopka,\n  dozwolone: [...dozwolone],\n  druzyny: t ? t.match.split(' – ') : [],\n  requestBody: {\n    model: cfg.model,\n    // Bez rozumowania: inaczej limit tokenów idzie na myślenie i odpowiedź przychodzi pusta.\n    ...(cfg.reasoningEffort ? { reasoning_effort: cfg.reasoningEffort } : {}),\n    max_completion_tokens: 700,\n    messages: [\n      { role: 'system', content: system },\n      { role: 'user', content: `FAKTY:\\n\\n${fakty.join('\\n\\n')}\\n\\nNapisz post.` }\n    ]\n  }\n} }];"
+      },
+      "id": "a1c0e3f2-0001-4c1a-9a01-000000000004",
+      "name": "Przygotuj fakty i szablon",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.maCo }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1c0e3f2-0001-4c1a-9a01-000000000005",
+      "name": "Jest co publikować?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.requestBody) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "a1c0e3f2-0001-4c1a-9a01-000000000006",
+      "name": "LLM pisze post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 200],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "openAiApi": {
+          "id": "",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Bezpiecznik: post od LLM idzie tylko wtedy, gdy nie zmyśla liczb i trzyma zasady. Inaczej — szablon z samych faktów.\nconst f = $('Przygotuj fakty i szablon').first().json;\nconst odp = $input.first().json;\nconst tekst = String(odp?.choices?.[0]?.message?.content || '').trim();\nconst powody = [];\n\nif (!tekst) powody.push('brak odpowiedzi modelu' + (odp?.error ? `: ${JSON.stringify(odp.error).slice(0, 120)}` : ''));\nif (tekst.length > 700) powody.push(`za długi (${tekst.length} znaków)`);\nif (/pewniak|pewn[aey] wygran|gwarant|zarob|postaw|stawk|\\bsts\\b|fortuna|betclic|superbet|etoto|totalbet|betfan|lvbet/i.test(tekst)) powody.push('zakazane słowo');\nconst dozwolone = new Set(f.dozwolone);\nconst obce = (tekst.match(/\\d+(?:[.,]\\d+)?/g) || []).map((n) => String(Number(n.replace(',', '.')))).filter((n) => !dozwolone.has(n));\nif (obce.length) powody.push(`liczby spoza faktów: ${[...new Set(obce)].join(', ')}`);\nif (f.druzyny.length && !f.druzyny.some((d) => tekst.includes(d))) powody.push('brak meczu typu dnia');\n\nconst ok = powody.length === 0;\nreturn [{ json: {\n  post: ok ? tekst + f.stopka : f.szablon,\n  zrodlo: ok ? 'llm' : 'szablon',\n  powody,\n  tokeny: odp?.usage?.total_tokens ?? null\n} }];"
+      },
+      "id": "a1c0e3f2-0001-4c1a-9a01-000000000007",
+      "name": "Walidacja (anty-halucynacje)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 200]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Konfiguracja').first().json.telegramChannel }}",
+        "text": "={{ $json.post }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "disable_web_page_preview": true
+        }
+      },
+      "id": "a1c0e3f2-0001-4c1a-9a01-000000000008",
+      "name": "Publikuj na kanale",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1540, 200],
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": "Telegram — bot Czat Sportowy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "c2",
+              "leftValue": "={{ $('Walidacja (anty-halucynacje)').first().json.zrodlo }}",
+              "rightValue": "szablon",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1c0e3f2-0001-4c1a-9a01-000000000009",
+      "name": "Użyto szablonu?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1760, 200]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Konfiguracja').first().json.ownerChatId }}",
+        "text": "=⚠️ Poranny post poszedł z szablonu, nie od LLM.\nPowody: {{ $('Walidacja (anty-halucynacje)').first().json.powody.join('; ') }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "a1c0e3f2-0001-4c1a-9a01-00000000000a",
+      "name": "Powiadom właściciela",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1980, 120],
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": "Telegram — bot Czat Sportowy"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Codziennie 10:00": { "main": [[{ "node": "Konfiguracja", "type": "main", "index": 0 }]] },
+    "Konfiguracja": { "main": [[{ "node": "Pobierz skrót dnia", "type": "main", "index": 0 }]] },
+    "Pobierz skrót dnia": { "main": [[{ "node": "Przygotuj fakty i szablon", "type": "main", "index": 0 }]] },
+    "Przygotuj fakty i szablon": { "main": [[{ "node": "Jest co publikować?", "type": "main", "index": 0 }]] },
+    "Jest co publikować?": { "main": [[{ "node": "LLM pisze post", "type": "main", "index": 0 }], []] },
+    "LLM pisze post": { "main": [[{ "node": "Walidacja (anty-halucynacje)", "type": "main", "index": 0 }]] },
+    "Walidacja (anty-halucynacje)": { "main": [[{ "node": "Publikuj na kanale", "type": "main", "index": 0 }]] },
+    "Publikuj na kanale": { "main": [[{ "node": "Użyto szablonu?", "type": "main", "index": 0 }]] },
+    "Użyto szablonu?": { "main": [[{ "node": "Powiadom właściciela", "type": "main", "index": 0 }], []] }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw"
+  },
+  "pinData": {}
+}

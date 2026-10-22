@@ -1,0 +1,145 @@
+{
+  "name": "Czat Sportowy — wieczorny raport dla właściciela (KPI, koszty AI, alarmy)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 23 * * *"
+            }
+          ]
+        }
+      },
+      "id": "b2d1f4a3-0002-4c1a-9a01-000000000001",
+      "name": "Codziennie 23:30",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "k1", "name": "baseUrl", "value": "https://czatsportowy.pl", "type": "string" },
+            { "id": "k2", "name": "ownerChatId", "value": "WPISZ_SWOJ_CHAT_ID", "type": "string" },
+            { "id": "k3", "name": "model", "value": "gpt-5.6-luna", "type": "string" },
+            { "id": "k5", "name": "reasoningEffort", "value": "none", "type": "string" },
+            { "id": "k4", "name": "spendAlertShare", "value": 0.7, "type": "number" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b2d1f4a3-0002-4c1a-9a01-000000000002",
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.baseUrl }}/api/integrations/daily-brief",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "b2d1f4a3-0002-4c1a-9a01-000000000003",
+      "name": "Pobierz skrót dnia",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Czat Sportowy — x-internal-secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// KPI i alarmy liczy KOD (deterministycznie). LLM dostaje gotowe liczby tylko do zredagowania raportu.\nconst cfg = $('Konfiguracja').first().json;\nconst b = $input.first().json;\nconst p = b.public || {};\nconst o = b.ops || {};\nconst alarmy = [];\nconst status = (s) => ({ pending: 'w grze', won: 'trafiony', lost: 'chybiony', void: 'anulowany', none: 'nie powstał' })[s] || s;\nconst typ = (t) => ({ days3: 'kupon 3-dniowy', days5: 'kupon 5-dniowy' })[t] || t;\n\nconst wydatek = o.aiSpendTodayUsd;\nif (Number.isFinite(wydatek) && Number.isFinite(o.aiSpendCapUsd) && wydatek >= cfg.spendAlertShare * o.aiSpendCapUsd) {\n  alarmy.push(`Wydatki na AI ${wydatek} USD — ${Math.round((100 * wydatek) / o.aiSpendCapUsd)}% dziennego progu (${o.aiSpendCapUsd} USD).`);\n}\nif (p.dailyPick?.status === 'lost') alarmy.push(`Typ dnia chybiony: ${p.dailyPick.match} (${p.dailyPick.score || '—'}).`);\nif (p.coupon?.status === 'lost') {\n  const winne = (p.coupon.legs || []).filter((l) => l.status === 'lost').map((l) => `${l.match} ${l.score || ''}`.trim());\n  alarmy.push(`Kupon dnia nie wszedł — zawiodło: ${winne.join(', ') || '—'}.`);\n}\nif (p.coupon?.status === 'none') alarmy.push('Dziś nie powstał kupon dnia (za mało typów zgodnych z rynkiem).');\nconst a = p.accuracy30 || {};\nif (Number.isFinite(a.hitRate) && Number.isFinite(a.usually) && a.settled >= 30 && a.hitRate < a.usually + 10) {\n  alarmy.push(`Skuteczność 30 dni ${a.hitRate}% — mniej niż 10 pkt nad normą (${a.usually}%).`);\n}\nif ((o.newUsers24h ?? 0) === 0) alarmy.push('Brak nowych rejestracji w ostatniej dobie.');\nfor (const c of o.paidCouponsToday || []) {\n  if (c.droppedByNewsCheck > 0) alarmy.push(`${typ(c.type)}: sprawdzanie wiadomości odrzuciło ${c.droppedByNewsCheck} typ(ów).`);\n}\n\nconst uzycie = (o.usage24h || []).map((u) => `${u.kind}: ${u.calls} wywołań, ${u.users} użytk., ${u.costUsd} USD`).join('; ') || 'brak';\nconst kpi = [\n  `Data: ${b.date}`,\n  `Typ dnia: ${p.dailyPick ? `${p.dailyPick.match} — ${p.dailyPick.selection} (${p.dailyPick.probability}%) → ${status(p.dailyPick.status)}${p.dailyPick.score ? ` ${p.dailyPick.score}` : ''}` : 'brak'}`,\n  `Dorobek typu dnia: ${p.dailyPickRecord?.won ?? 0}/${p.dailyPickRecord?.total ?? 0}`,\n  `Kupon dnia: ${p.coupon ? `${status(p.coupon.status)}${p.coupon.totalOddsText ? `, kurs ${p.coupon.totalOddsText}, szansa ${p.coupon.chance}%` : ''}` : 'brak'}`,\n  `Kupony płatne dziś: ${(o.paidCouponsToday || []).map((c) => `${typ(c.type)}: ${status(c.status)} (kurs ${c.totalOdds}, ${c.legs} typów)`).join('; ') || 'brak'}`,\n  `Skuteczność 30 dni: ${a.hitRate ?? '—'}% na ${a.settled ?? 0} typach (norma ~${a.usually ?? '—'}%)`,\n  `AI dziś: ${wydatek ?? '—'} USD z ${o.aiSpendCapUsd ?? '—'} USD progu; koszt 24h z dziennika: ${(o.usage24h || []).reduce((s, u) => s + u.costUsd, 0).toFixed(3)} USD; użycie: ${uzycie}`,\n  `Użytkownicy: +${o.newUsers24h ?? 0} w 24h, razem ${o.usersTotal ?? '—'}`\n].join('\\n');\n\nconst surowy = `🌙 Raport dnia\\n\\n${kpi}${alarmy.length ? `\\n\\n⚠️ Alarmy:\\n- ${alarmy.join('\\n- ')}` : '\\n\\n✅ Bez alarmów.'}`;\n\nreturn [{ json: {\n  kpi,\n  alarmy,\n  surowy,\n  requestBody: {\n    model: cfg.model,\n    ...(cfg.reasoningEffort ? { reasoning_effort: cfg.reasoningEffort } : {}),\n    max_completion_tokens: 600,\n    messages: [\n      { role: 'system', content: 'Jesteś analitykiem produktu. Z podanych KPI i alarmów piszesz właścicielowi serwisu krótki raport na Telegram po polsku: 3–5 punktów najważniejszych rzeczy z dnia i jedno konkretne zalecenie na jutro. Liczby przepisujesz dokładnie z danych, nie dodajesz własnych. Gdy są alarmy — zacznij od nich. Najwyżej 700 znaków.' },\n      { role: 'user', content: `KPI:\\n${kpi}\\n\\nALARMY:\\n${alarmy.length ? alarmy.join('\\n') : 'brak'}` }\n    ]\n  }\n} }];"
+      },
+      "id": "b2d1f4a3-0002-4c1a-9a01-000000000004",
+      "name": "KPI i alarmy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.requestBody) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "b2d1f4a3-0002-4c1a-9a01-000000000005",
+      "name": "LLM redaguje raport",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 300],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "openAiApi": {
+          "id": "",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gdy LLM zawiedzie — raport i tak idzie, z surowych KPI. Liczby pod spodem zawsze z kodu.\nconst f = $('KPI i alarmy').first().json;\nconst tekst = String($input.first().json?.choices?.[0]?.message?.content || '').trim();\nconst wiadomosc = tekst ? `${tekst}\\n\\n— — —\\n${f.kpi}` : f.surowy;\nreturn [{ json: { wiadomosc: wiadomosc.slice(0, 4000), zrodlo: tekst ? 'llm' : 'surowe KPI', alarmy: f.alarmy.length } }];"
+      },
+      "id": "b2d1f4a3-0002-4c1a-9a01-000000000006",
+      "name": "Złóż wiadomość",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Konfiguracja').first().json.ownerChatId }}",
+        "text": "={{ $json.wiadomosc }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "disable_web_page_preview": true
+        }
+      },
+      "id": "b2d1f4a3-0002-4c1a-9a01-000000000007",
+      "name": "Wyślij właścicielowi",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1320, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": "Telegram — bot Czat Sportowy"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Codziennie 23:30": { "main": [[{ "node": "Konfiguracja", "type": "main", "index": 0 }]] },
+    "Konfiguracja": { "main": [[{ "node": "Pobierz skrót dnia", "type": "main", "index": 0 }]] },
+    "Pobierz skrót dnia": { "main": [[{ "node": "KPI i alarmy", "type": "main", "index": 0 }]] },
+    "KPI i alarmy": { "main": [[{ "node": "LLM redaguje raport", "type": "main", "index": 0 }]] },
+    "LLM redaguje raport": { "main": [[{ "node": "Złóż wiadomość", "type": "main", "index": 0 }]] },
+    "Złóż wiadomość": { "main": [[{ "node": "Wyślij właścicielowi", "type": "main", "index": 0 }]] }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw"
+  },
+  "pinData": {}
+}
