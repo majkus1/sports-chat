@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Coins, TriangleAlert } from 'lucide-react';
 import { Link } from '@/i18n/routing';
+import { planMessageParams } from '@/lib/billing/planTexts';
 
 /**
  * Stan konta: plan, termin jego ważności, saldo kredytów i zużycie każdego limitu.
@@ -151,7 +152,7 @@ export default function PlanSummary({ className = '' }) {
 			 * bo bez niego pozostała część przypisu dotyczy czegoś nieznanego.
 			 */}
 			<p className="mt-3 text-xs leading-relaxed text-muted">
-				{t('quota_shared_note')} {t('quota_reset_note')}{' '}
+				{t('quota_shared_note')} {t('quota_reset_note', planMessageParams(locale).quota_reset_note)}{' '}
 				<Link href="/cennik" className="footer-link underline">
 					{t('see_plans')}
 				</Link>

@@ -1,5 +1,6 @@
 import PricingClient from '@/components/pricing/PricingClient';
 import { buildMetadata } from '@/lib/seo/metadata';
+import { pricingMetaDescription } from '@/lib/billing/planTexts';
 
 /**
  * Trasa serwerowa: dostarcza metadane, treść renderuje komponent kliencki.
@@ -15,10 +16,8 @@ export async function generateMetadata({ params }) {
 		locale,
 		path: '/cennik',
 		title: locale === 'en' ? 'Plans, limits and credit packs' : 'Plany i limity — darmowy start',
-		description:
-			locale === 'en'
-				? 'Start free: 5 analyses and 20 assistant questions a month plus a welcome week. Need more — buy credits once or pick a monthly plan.'
-				: 'Zacznij za darmo: 5 analiz i 20 pytań miesięcznie plus tydzień powitalny. Potrzebujesz więcej — dokup kredyty albo wybierz plan miesięczny.',
+		// Liczby z planów — opis w wynikach wyszukiwania nie może obiecywać innych limitów niż karty.
+		description: pricingMetaDescription(locale),
 	});
 }
 

@@ -1,10 +1,7 @@
-import { generateStructured, AiRefusalError } from '@/lib/ai';
-import { MATCH_ANALYSIS_SCHEMA } from '@/lib/ai/schemas';
-import { ANALYSIS_SYSTEM_PROMPT, buildAnalysisPrompt } from '@/lib/ai/prompts/matchAnalysis';
-import { MODEL_ANALYSIS, MODEL_ANALYSIS_FAST, MAX_TOKENS_ANALYSIS } from '@/lib/ai/config';
+import { AiRefusalError } from '@/lib/ai';
 import {
 	ANALYSIS_MESSAGES,
-	finalizeAnalysis,
+	generateAnalysis,
 	prepareAnalysis,
 	resolveLanguage,
 } from '@/lib/analysis/service';
@@ -15,8 +12,8 @@ export const maxDuration = 300;
  * Wygenerowanie analizy w jednym żądaniu.
  *
  * Odpowiednik trasy strumieniowej dla klientów, którym nie zależy na podglądzie w trakcie
- * (albo dla których strumień zawiódł). Cała logika limitów i zapisu jest wspólna —
- * patrz lib/analysis/service.js.
+ * (albo dla których strumień zawiódł). Cała logika limitów, generowania i zapisu jest wspólna
+ * (także z asystentem) — patrz lib/analysis/service.js.
  */
 export async function POST(request) {
 	let body;
@@ -55,26 +52,8 @@ export async function POST(request) {
 	}
 
 	try {
-		// Ten sam podział co w trasie strumieniowej — patrz analysis-stream/route.js.
-		const naZywo = prepared.bundle.fixture.status.isLive;
-
-		const { data: sections, meta } = await generateStructured({
-			model: naZywo ? MODEL_ANALYSIS_FAST : MODEL_ANALYSIS,
-			fast: naZywo,
-			system: ANALYSIS_SYSTEM_PROMPT,
-			user: buildAnalysisPrompt(prepared.bundle, language),
-			schema: MATCH_ANALYSIS_SCHEMA,
-			maxTokens: MAX_TOKENS_ANALYSIS,
-		});
-
 		// Sekcje po związaniu z modelem liczbowym — to one są zapisane, więc to one idą do klienta.
-		const { analysisText, sections: gotowe } = await finalizeAnalysis({
-			fixtureId,
-			language,
-			sections,
-			meta,
-			...prepared,
-		});
+		const { analysisText, sections: gotowe } = await generateAnalysis(prepared, { fixtureId, language });
 
 		return Response.json({ analysis: analysisText, sections: gotowe, cached: false }, { status: 200 });
 	} catch (error) {

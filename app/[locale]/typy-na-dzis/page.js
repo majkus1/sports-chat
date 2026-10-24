@@ -25,8 +25,8 @@ import { accuracyHref } from '@/lib/urlState';
  *
  * Renderowana na serwerze przy każdym żądaniu (dane zmieniają się w ciągu dnia), więc robot
  * dostaje gotowy HTML: typ dnia z liczbami i powodami, listę dzisiejszych typów modelu
- * (za kłódką poza typem dnia — tak widzi je robot i gość), kupon dnia i weekendowy (za darmo,
- * z kursami — `lib/coupons`), wczorajszy wynik i dorobek.
+ * (za kłódką poza typem dnia — tak widzi je robot i gość), kupony: dnia za darmo, 3- i 5-dniowy
+ * za kłódką bez planu (z kursami — `lib/coupons`), typy z wyższym kursem, wczorajszy wynik i dorobek.
  * Liczenie jest tanie: model i plakietki siedzą w pamięci procesu, typ dnia w bazie.
  *
  * Adres bez segmentu dyscypliny i po polsku — krótki i dokładnie taki, jak fraza.

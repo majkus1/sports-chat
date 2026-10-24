@@ -122,9 +122,20 @@ function Zablokowany({ c, teaser }) {
 function Wynik({ c, wynik, godzina, laduje }) {
 	if (!wynik) return null;
 	const legs = wynik.mode === 'coupon' ? wynik.coupon.legs : wynik.mode === 'single' ? [wynik.single] : [];
+	const top = (wynik.top || []).slice(0, 3);
 	return (
 		<div className={cn('flex flex-col gap-3 pt-1 transition-opacity', laduje && 'opacity-60')}>
-			{wynik.mode === 'none' ? (
+			{wynik.mode === 'none' && top.length > 0 ? (
+				/* Bez kuponu i bez pojedynczego typu w widełkach — ale typy, które przeszły zasady i AI, są. */
+				<>
+					<p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-accent">
+						<Sparkles size={13} aria-hidden="true" />
+						{c.topLabel(godzina(wynik.generatedAt))}
+					</p>
+					<p className="text-xs leading-relaxed text-muted">{c.topNote}</p>
+					<ListaTypow c={c} legs={top} />
+				</>
+			) : wynik.mode === 'none' ? (
 				<p className="rounded-[var(--radius-ui)] bg-surface-2 px-4 py-3 text-sm text-muted">{wynik.analyzed > 0 && wynik.withOdds === 0 ? c.noOdds(wynik.analyzed) : c.none(wynik.analyzed)}</p>
 			) : (
 				<>
@@ -147,29 +158,7 @@ function Wynik({ c, wynik, godzina, laduje }) {
 						</div>
 						<p className="pb-0.5 text-sm text-muted">{c.legs(legs.length)}</p>
 					</div>
-					<ul className="mt-1 divide-y divide-border overflow-hidden rounded-[var(--radius-ui)] border border-border">
-						{legs.map((l) => (
-							<li key={`${l.fixtureId}-${l.key}`} className="flex items-start gap-3 px-4 py-3">
-								<span className="mt-0.5 inline-flex w-11 shrink-0 flex-col items-center rounded-md bg-surface-2 py-1 leading-tight">
-									<Radio size={11} aria-hidden="true" className="text-loss" />
-									<span className="text-xs font-bold tabular-nums text-text">{l.minute}&apos;</span>
-								</span>
-								<span className="min-w-0 flex-1">
-									<span className="block text-sm font-bold leading-snug text-text [overflow-wrap:anywhere]">
-										<Link href={`/mecz/${l.fixtureId}`} className="text-text no-underline hover:underline">
-											{l.homeName} – {l.awayName}
-										</Link>
-										<span className="ml-1.5 whitespace-nowrap font-semibold tabular-nums text-muted">{l.liveScore}</span>
-									</span>
-									<span className="block text-xs text-muted">
-										<span className="font-semibold text-accent">{l.selection}</span> · {c.chances(l.market, l.model, l.source)}
-									</span>
-									{l.why && <span className="mt-1 block text-xs leading-relaxed text-text/80">{l.why}</span>}
-								</span>
-								<span className="shrink-0 rounded-md bg-surface-2 px-2 py-1 text-sm font-bold tabular-nums text-text">{c.odds(l.odds)}</span>
-							</li>
-						))}
-					</ul>
+					<ListaTypow c={c} legs={legs} />
 				</>
 			)}
 
@@ -191,5 +180,34 @@ function Wynik({ c, wynik, godzina, laduje }) {
 			</p>
 			<p className="text-xs leading-relaxed text-muted">{c.warning}</p>
 		</div>
+	);
+}
+
+/** Typy live: minuta, mecz z wynikiem, selekcja, szanse, uzasadnienie AI i kurs. */
+function ListaTypow({ c, legs }) {
+	return (
+		<ul className="mt-1 divide-y divide-border overflow-hidden rounded-[var(--radius-ui)] border border-border">
+			{legs.map((l) => (
+				<li key={`${l.fixtureId}-${l.key}`} className="flex items-start gap-3 px-4 py-3">
+					<span className="mt-0.5 inline-flex w-11 shrink-0 flex-col items-center rounded-md bg-surface-2 py-1 leading-tight">
+						<Radio size={11} aria-hidden="true" className="text-loss" />
+						<span className="text-xs font-bold tabular-nums text-text">{l.minute}&apos;</span>
+					</span>
+					<span className="min-w-0 flex-1">
+						<span className="block text-sm font-bold leading-snug text-text [overflow-wrap:anywhere]">
+							<Link href={`/mecz/${l.fixtureId}`} className="text-text no-underline hover:underline">
+								{l.homeName} – {l.awayName}
+							</Link>
+							<span className="ml-1.5 whitespace-nowrap font-semibold tabular-nums text-muted">{l.liveScore}</span>
+						</span>
+						<span className="block text-xs text-muted">
+							<span className="font-semibold text-accent">{l.selection}</span> · {c.chances(l.market, l.model, l.source)}
+						</span>
+						{l.why && <span className="mt-1 block text-xs leading-relaxed text-text/80">{l.why}</span>}
+					</span>
+					<span className="shrink-0 rounded-md bg-surface-2 px-2 py-1 text-sm font-bold tabular-nums text-text">{c.odds(l.odds)}</span>
+				</li>
+			))}
+		</ul>
 	);
 }

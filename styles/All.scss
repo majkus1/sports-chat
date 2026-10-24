@@ -524,7 +524,10 @@
 	top: 111px; /* Zaczyna się poniżej górnego menu */
 	left: 0;
 	bottom: 0;
+	// Menu z rozwiniętymi działami bywa wyższe niż ekran telefonu — przewija się w środku,
+	// a dojechanie do końca nie przewija już strony pod spodem.
 	overflow-y: auto;
+	overscroll-behavior: contain;
 	z-index: 9999;
 }
 

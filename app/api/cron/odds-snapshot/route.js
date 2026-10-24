@@ -12,7 +12,7 @@ export const maxDuration = 600;
  * Ten sam sekret, co pozostałe zadania; woła je harmonogram z `server.js` co 20 minut.
  * `?budget=N` ogranicza liczbę zapytań do dostawcy w jednym przebiegu (domyślnie 250).
  *
- * Po kursach ten sam przebieg składa kupon dnia i weekendowy, gdy przyszła ich pora, i rozlicza
+ * Po kursach ten sam przebieg składa kupony dnia, 3- i 5-dniowy (od 9:30), i rozlicza
  * typy kuponów po meczach (`lib/coupons/service.js`). Każda część ma własny `try` — błąd
  * kuponu nie może zabrać zdjęcia kursów i odwrotnie.
  */

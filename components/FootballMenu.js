@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Blocks, CircleHelp, Sparkles } from 'lucide-react';
+import { Blocks, CircleHelp, ListChecks, Sparkles } from 'lucide-react';
 import { Link, usePathname } from '@/i18n/routing';
 import GuideModal from '@/components/football/GuideModal';
 
@@ -71,6 +71,13 @@ export default function FootballMenu({ onResultsClick }) {
 	const primaryItems = menuItems.slice(0, VISIBLE_ON_MOBILE);
 	const secondaryItems = menuItems.slice(VISIBLE_ON_MOBILE);
 
+	/*
+	 * „Typy na dziś" — poza pasem zakładek, bo pas jest pełny (patrz odnośnik „Wszystkie narzędzia"
+	 * niżej). Na komputerze stoi obok tego odnośnika, w rzędzie plakietki „Piłka nożna"; na telefonie
+	 * jest pierwszą pozycją pod „⋯". Wcześniej z paska piłki nie było do tej strony drogi wcale.
+	 */
+	const todayItem = { href: '/typy-na-dzis', label: t('today_picks_menu'), key: 'typy-na-dzis' };
+
 	const isActive = (item) => !item.isButton && pathname === item.href;
 	const naAsystencie = pathname === '/pilka-nozna/asystent';
 
@@ -102,12 +109,22 @@ export default function FootballMenu({ onResultsClick }) {
 				 * 1280 px), więc każda kolejna pozycja zrzucałaby pigułkę asystenta do drugiego rzędu.
 				 * Pozycja bezwzględna nie zabiera miejsca w pasie; plakietka stoi nad menu na każdej
 				 * z sześciu stron, które go używają. Na telefonie krótszy napis, żeby zmieścić się obok.
+				 *
+				 * Na komputerze w tym samym rzędzie stoją też „Typy na dziś" — miejsca jest tam dość
+				 * (szacunkowo plakietka i dwa odnośniki to ~450 px przy co najmniej ~560 px szerokości
+				 * treści, gdy obok stoi panel boczny). Na telefonie ich tu nie ma — są pod „⋯".
 				 */}
-				<Link href="/narzedzia" className="football-tools-link">
-					<Blocks size={14} aria-hidden="true" />
-					<span className="football-tools-short">{t('tools_menu')}</span>
-					<span className="football-tools-long">{t('tools_menu_all')}</span>
-				</Link>
+				<div className="football-top-links">
+					<Link href={todayItem.href} className="football-tools-link football-today-link">
+						<ListChecks size={14} aria-hidden="true" />
+						<span>{todayItem.label}</span>
+					</Link>
+					<Link href="/narzedzia" className="football-tools-link">
+						<Blocks size={14} aria-hidden="true" />
+						<span className="football-tools-short">{t('tools_menu')}</span>
+						<span className="football-tools-long">{t('tools_menu_all')}</span>
+					</Link>
+				</div>
 
 				{primaryItems.map((item) => (
 					<span key={item.key} className="football-menu-item">
@@ -157,7 +174,7 @@ export default function FootballMenu({ onResultsClick }) {
 
 						{isMenuExpanded && (
 							<div className="menu-expanded">
-								{secondaryItems.map((item) => (
+								{[todayItem, ...secondaryItems].map((item) => (
 									<MenuItem
 										key={item.key}
 										item={item}
@@ -208,13 +225,19 @@ export default function FootballMenu({ onResultsClick }) {
           align-items: center;
         }
 
-        /* Wszystkie narzędzia: w rzędzie plakietki „Piłka nożna" nad paskiem, przy prawej
-           krawędzi. 14 px to górny margines paska (.choose-time), 28 px — wysokość plakietki,
-           więc odnośnik stoi w jednej linii z nią i nie przesuwa niczego w pasie. */
-        .football-tools-link {
+        /* Wszystkie narzędzia (i na komputerze Typy na dziś): w rzędzie plakietki „Piłka nożna"
+           nad paskiem, przy prawej krawędzi. 14 px to górny margines paska (.choose-time), 28 px —
+           wysokość plakietki, więc odnośniki stoją w jednej linii z nią i nie przesuwają niczego w pasie. */
+        .football-top-links {
           position: absolute;
           right: 0;
           bottom: calc(100% + 14px);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .football-tools-link {
           display: inline-flex;
           align-items: center;
           gap: 5px;
@@ -333,7 +356,12 @@ export default function FootballMenu({ onResultsClick }) {
             display: inline-flex;
           }
 
-          /* Obok plakietki na telefonie mieści się tylko krótki napis (320 px: 143 + 107 z 280). */
+          /* Obok plakietki na telefonie mieści się tylko krótki napis (320 px: 143 + 107 z 280).
+             Typy na dziś się nie mieszczą — na telefonie są pierwszą pozycją pod „⋯". */
+          .football-today-link {
+            display: none;
+          }
+
           .football-tools-short {
             display: inline;
           }

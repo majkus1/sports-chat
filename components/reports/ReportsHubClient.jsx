@@ -21,6 +21,7 @@ import { Link } from '@/i18n/routing';
 import { useUrlState } from '@/lib/hooks/useUrlState';
 import { useScrollMemory } from '@/lib/hooks/useScrollMemory';
 import { isObjectIdParam } from '@/lib/urlState';
+import { planMessageParams } from '@/lib/billing/planTexts';
 
 /** Rodzaj raportu: typy modelu albo „Wyższe kursy" (typy z kursem od 2,0). */
 const VARIANTS = ['standard', 'value'];
@@ -193,7 +194,9 @@ export default function ReportsHubClient() {
 									<Lock size={18} aria-hidden="true" />
 								</span>
 								<p className="text-sm font-semibold text-text">{t('report_login_title')}</p>
-								<p className="max-w-sm text-sm leading-relaxed text-muted">{t('report_login_hint')}</p>
+								<p className="max-w-sm text-sm leading-relaxed text-muted">
+									{t('report_login_hint', planMessageParams(locale).report_login_hint)}
+								</p>
 							</CardContent>
 						</Card>
 					) : (

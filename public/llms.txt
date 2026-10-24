@@ -1,8 +1,9 @@
 # Czat Sportowy
 
-> Serwis piłkarski łączący analizy meczów generowane przez model językowy, czat na żywo
-> w pokoju przy każdym spotkaniu oraz typy rozliczane automatycznie po meczu, z jawną
-> statystyką trafień i chybień. Dostępny po polsku i po angielsku.
+> Serwis piłkarski: własny model statystyczny oznacza mecze, w których widzi przewagę, model
+> językowy tłumaczy dlaczego, a każdy typ jest rozliczany automatycznie po meczu, z jawną
+> statystyką trafień i chybień. Do tego kupony, asystent AI i czat na żywo w pokoju przy
+> każdym spotkaniu. Dostępny po polsku i po angielsku.
 
 Operator: ML Devworks Michał Lipka, Kraków, Polska. Kontakt: office@ml-devworks.com
 
@@ -11,15 +12,31 @@ Operator: ML Devworks Michał Lipka, Kraków, Polska. Kontakt: office@ml-devwork
 - NIE jest bukmacherem: nie urządza zakładów wzajemnych, nie przyjmuje stawek i nie wypłaca wygranych.
 - Typowanie służy rozrywce i porównaniu skuteczności między użytkownikami; nie ma nagród pieniężnych.
 - Treści mają charakter informacyjny i statystyczny; nie są poradą bukmacherską.
+- Kursy pojawiają się wyłącznie przy kuponach i typach z wyższym kursem: mediana kilku
+  bukmacherów, bez nazw i linków, zawsze obok szansy. Szacunki, nie pewniaki.
 - Serwis jest przeznaczony dla osób pełnoletnich.
 
 ## Funkcje
 
-- Analiza przedmeczowa — ocena spotkania na podstawie formy, tabeli, bilansu bezpośrednich
-  meczów, składów, kontuzji i statystyk drużynowych.
-- Analiza meczu na żywo — odczyt trwającego spotkania na podstawie wyniku, wydarzeń i statystyk.
-- Raport AI — krótka lista spotkań wartych uwagi w najbliższych godzinach lub dniach.
-- Asystent w czacie — wywoływany wzmianką @AI w pokoju meczowym, zna komplet danych o meczu.
+- Typy na dziś i typ dnia — najmocniejsze typy modelu na dziś (wieczorem także na jutro).
+  Typ dnia jest odkryty dla każdego; pozostałe typy z liczbami w planach Pro i VIP
+  oraz przez 7 dni po założeniu konta.
+- Kupony — codziennie o 9:30: kupon dnia (za darmo) oraz kupony na 3 i 5 dni (Pro, VIP,
+  okres próbny), kurs łączny 2,4–2,8, najwyżej 4 typy na kuponie dnia i 5 na pozostałych.
+  Każdy kupon rozliczany publicznie.
+- Kupon live — generator kuponu z trwających meczów (Pro, VIP, okres próbny).
+- Wyższe kursy — typy z kursem od 2,0, przy każdym szansa według rynku i według modelu:
+  raport AI w wariancie „Wyższe kursy" oraz asystent. Osobny bilans w Skuteczności.
+- Analiza przedmeczowa — model liczy szanse i typy, model językowy opisuje formę, tabelę,
+  bilans bezpośrednich meczów, składy, kontuzje i ryzyka.
+- Analiza meczu na żywo — odczyt trwającego spotkania z wynikiem, wydarzeniami i statystykami
+  (Pro i VIP).
+- Raport AI — najmocniejsze typy modelu z całej oferty na najbliższe 24 godziny albo 3 dni.
+- Asystent AI — rozmowa o całej ofercie: mecze, liczby modelu, kupony, skuteczność. W Pro i VIP
+  na prośbę wyszukuje wiadomości w internecie (kontuzje, składy), zawsze ze źródłem. W pokoju
+  meczowym wywoływany wzmianką @AI.
+- Poranny mail — codziennie o 8:00 typy modelu na dziś i rozliczenie wczorajszych
+  (Pro, VIP, okres próbny).
 - Typy użytkowników — wystawiane przed pierwszym gwizdkiem, rozliczane automatycznie
   na podstawie oficjalnego wyniku.
 - Kolejka tygodniowa — wspólny zestaw dwunastu meczów dla wszystkich i ranking resetowany co tydzień.
@@ -27,10 +44,13 @@ Operator: ML Devworks Michał Lipka, Kraków, Polska. Kontakt: office@ml-devwork
 ## Ceny
 
 - Plan darmowy: 5 analiz i 20 pytań do asystenta miesięcznie, bez raportów. Bez karty płatniczej.
-- Pula powitalna dla nowego konta: 10 analiz, 30 pytań i 2 raporty, ważna 7 dni.
-- Pakiety kredytów bez abonamentu: 5 kredytów za 19 zł, 15 za 39 zł, 40 za 79 zł.
+- Okres próbny nowego konta: 7 dni z typami modelu z liczbami, wszystkimi kuponami i porannym
+  mailem, a do tego 10 analiz, 30 pytań i 2 raporty.
+- Pro: 49 zł za 30 dni — 100 analiz, 150 pytań, 12 raportów, 30 wyszukiwań wiadomości.
+- VIP: 99 zł za 30 dni — 200 analiz, 250 pytań, 30 raportów, 60 wyszukiwań wiadomości.
+- Plany kupuje się jak bilet: płatność jednorazowa, nic nie odnawia się automatycznie.
+- Pakiety kredytów: 5 kredytów za 19 zł, 15 za 39 zł, 40 za 79 zł.
   Analiza kosztuje 1 kredyt, raport 3 kredyty. Kredyty nie tracą ważności.
-- Plany miesięczne: Pro 49 zł, VIP 99 zł.
 - Płatności: karta, BLIK, Przelewy24 (Stripe).
 
 ## Dyscypliny
@@ -41,17 +61,24 @@ Kolejne sporty są w planach.
 ## Skąd pochodzą dane
 
 Dane sportowe od komercyjnego dostawcy (terminarze, wyniki na żywo, składy, kontuzje,
-tabele, statystyki). Treści generują modele językowe Anthropic i OpenAI. Model nie ma
-dostępu do internetu w trakcie pisania analizy.
+tabele, statystyki). Szanse i typy liczy własny model statystyczny; treści opisowe generują
+modele językowe Anthropic i OpenAI i nie mogą zmieniać liczb. Analizy i raporty powstają bez
+dostępu do internetu; wiadomości z internetu sprawdza wyłącznie asystent na prośbę użytkownika
+oraz kontrola płatnych kuponów przed publikacją.
 
 ## Najważniejsze adresy
 
 - Strona główna: https://czatsportowy.pl/pl
+- Wszystkie narzędzia: https://czatsportowy.pl/pl/narzedzia
+- Typy na dziś i kupony: https://czatsportowy.pl/pl/typy-na-dzis
 - Mecze przedmeczowe: https://czatsportowy.pl/pl/pilka-nozna/przedmeczowe
-- Mecze na żywo: https://czatsportowy.pl/pl/pilka-nozna/live
+- Mecze na żywo i kupon live: https://czatsportowy.pl/pl/pilka-nozna/live
+- Asystent AI: https://czatsportowy.pl/pl/pilka-nozna/asystent
 - Raport AI: https://czatsportowy.pl/pl/pilka-nozna/ai-agent
+- Raport „Wyższe kursy": https://czatsportowy.pl/pl/pilka-nozna/ai-agent?variant=value
 - Kolejka tygodniowa: https://czatsportowy.pl/pl/pilka-nozna/kolejka
-- Skuteczność analiz: https://czatsportowy.pl/pl/pilka-nozna/skutecznosc
+- Skuteczność: https://czatsportowy.pl/pl/pilka-nozna/skutecznosc
+- Jak to działa: https://czatsportowy.pl/pl/jak-to-dziala
 - Plany i limity: https://czatsportowy.pl/pl/cennik
 - Blog: https://czatsportowy.pl/pl/blog
 - Regulamin: https://czatsportowy.pl/pl/regulamin

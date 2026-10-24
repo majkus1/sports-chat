@@ -21,14 +21,16 @@ import {
 	buildValueReportPrompt,
 } from '@/lib/ai/prompts/reportValue';
 import { recordValuePicks } from '@/lib/value/service';
+import { CREDIT_COSTS, PLAN_PASS_DAYS } from '@/lib/billing/plans';
+import { KREDYTY, odmien } from '@/lib/landing/plural';
 
 export const maxDuration = 300;
 
 /**
  * Generowanie raportu AI strumieniem (SSE po POST — wzorzec z analysis-stream).
  *
- * Raport wymaga sesji: wynik zapisuje się na koncie, a limit tygodniowy liczy się
- * po użytkowniku. Zdarzenia: `status` (selecting | generating), `partial`, `done`, `error`.
+ * Raport wymaga sesji: wynik zapisuje się na koncie, a limit (miesięczny, w planie płatnym
+ * 30-dniowy) liczy się po użytkowniku. Zdarzenia: `status` (selecting | generating), `partial`, `done`, `error`.
  *
  * `variant: 'value'` — raport „Wyższe kursy" (`lib/reports/value.js`): typy z kursem od 2,0,
  * z kursem i szansą rynku w treści, rozliczane w osobnym bilansie (`ValuePick`), nie w głównej
@@ -39,8 +41,12 @@ const PARTIAL_INTERVAL_MS = 220;
 
 const MESSAGES = {
 	pl: {
-		limit: 'Wykorzystałeś limit raportów w tym okresie ({limit}). W planie płatnym odnawia się co 30 dni od zakupu, w darmowym — pierwszego dnia miesiąca.',
-		noReports: 'Raporty AI są dostępne w planie Pro i VIP. Nowe konto dostaje 2 raporty na start.',
+		limit: `Wykorzystałeś limit raportów w tym okresie ({limit}). W planie płatnym odnawia się co ${PLAN_PASS_DAYS} dni od zakupu, w darmowym — pierwszego dnia miesiąca.`,
+		/*
+		 * Widzi to konto bez puli raportów i bez kredytów — czyli po okresie próbnym (w nim pula
+		 * jest doliczona i kończy się komunikatem `limit`). Stąd droga dalej, a nie „2 na start".
+		 */
+		noReports: `Raporty AI są w planach Pro i VIP. Bez planu raport kosztuje ${CREDIT_COSTS.report} ${odmien(CREDIT_COSTS.report, KREDYTY)}.`,
 		busy: 'Generowanie raportów jest chwilowo wstrzymane. Spróbuj ponownie później.',
 		failed: 'Nie udało się wygenerować raportu. Spróbuj ponownie za chwilę.',
 		refused: 'Model nie mógł przygotować raportu.',
@@ -49,8 +55,8 @@ const MESSAGES = {
 		emptySummary: 'Spróbuj ponownie, gdy terminarz będzie bogatszy — raport pokazuje tylko typy, które dane wspierają wyraźnie.',
 	},
 	en: {
-		limit: 'You have used the report limit for this period ({limit}). On a paid plan it renews every 30 days from purchase; on the free plan, on the first of the month.',
-		noReports: 'AI reports are available on the Pro and VIP plans. New accounts get 2 to start.',
+		limit: `You have used the report limit for this period ({limit}). On a paid plan it renews every ${PLAN_PASS_DAYS} days from purchase; on the free plan, on the first of the month.`,
+		noReports: `AI reports come with the Pro and VIP plans. Without a plan a report costs ${CREDIT_COSTS.report} credits.`,
 		busy: 'Report generation is paused for now. Please try again later.',
 		failed: 'Could not generate the report. Please try again in a moment.',
 		refused: 'The model could not prepare the report.',

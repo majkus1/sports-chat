@@ -10,31 +10,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { PLAN_PASS_DAYS, PUBLIC_PLANS, QUOTA_PERIODS } from '@/lib/billing/plans';
+import { FEATURE_ROWS, QUOTA_ROWS, planMessageParams } from '@/lib/billing/planTexts';
 import CreditPacks from '@/components/billing/CreditPacks';
 import PurchaseConsentDialog from '@/components/billing/PurchaseConsentDialog';
 import { cn } from '@/lib/utils';
 
-/**
- * Pozycje cennika — te same w karcie planu i w słowniczku pod kartami.
+/*
+ * Pozycje cennika (`QUOTA_ROWS`, `FEATURE_ROWS`) — te same w karcie planu i w słowniczku pod kartami.
  *
  * Pierwsza wersja pokazywała „Wyszukiwań wiadomości przez asystenta miesięcznie: 0" z zieloną
  * fajką i bez słowa, czym to jest. Użytkownik nie wiedział, czy to funkcja asystenta, czy
  * osobna usługa, a zero z fajką wyglądało jak coś, co ma. Teraz: krótka nazwa, okres przy
  * liczbie, zero jako kreska, a znaczenie każdej pozycji jednym zdaniem w słowniczku niżej —
- * raz, nie trzy razy w trzech kartach.
+ * raz, nie trzy razy w trzech kartach. Lista i liczby do zdań: `lib/billing/planTexts.js`.
  */
-const QUOTA_ROWS = [
-	['analysis', 'pricing_analyses', 'pricing_what_analyses'],
-	['analysisView', 'pricing_analysis_view', 'pricing_what_analysis_view'],
-	['aiChat', 'pricing_ai_chat', 'pricing_what_ai_chat'],
-	['aiNews', 'pricing_ai_news', 'pricing_what_ai_news'],
-	['report', 'pricing_reports', 'pricing_what_reports'],
-];
-const FEATURE_ROWS = [
-	['model_hints', 'pricing_model_hints', 'pricing_what_model_hints'],
-	['live_analysis', 'pricing_live_analysis', 'pricing_what_live_analysis'],
-	['morning_email', 'pricing_morning_email', 'pricing_what_morning_email'],
-];
 
 /** Limit: liczba z okresem, `null` jako „bez limitu", zero jako kreska — nie fajka przy zerze. */
 function LimitRow({ kind, label, value }) {
@@ -84,6 +73,8 @@ export default function PricingClient() {
 	const t = useTranslations('common');
 	const locale = useLocale();
 	const [entitlements, setEntitlements] = useState(null);
+	// Liczby do zdań cennika (okres próbny, 30 dni, przedział kuponów) — z planów, nie z tłumaczeń.
+	const liczby = planMessageParams(locale);
 
 	/*
 	 * Komunikat po powrocie ze Stripe'a.
@@ -164,7 +155,7 @@ export default function PricingClient() {
 			{/* Pula powitalna to główny argument za założeniem konta — musi być widoczna
 			    obok cen, a nie schowana w regulaminie. */}
 			<p className="mt-3 inline-flex rounded-full border border-accent bg-accent-soft px-3 py-1.5 text-sm font-semibold text-accent">
-				{t('pricing_trial')}
+				{t('pricing_trial', liczby.pricing_trial)}
 			</p>
 
 			{paymentResult && (
@@ -227,7 +218,7 @@ export default function PricingClient() {
 										<LimitRow key={kind} kind={kind} label={t(labelKey)} value={plan.limits[kind]} />
 									))}
 									{FEATURE_ROWS.map(([feature, labelKey]) => (
-										<FeatureRow key={feature} label={t(labelKey)} on={plan.features.includes(feature)} />
+										<FeatureRow key={labelKey} label={t(labelKey)} on={plan.features.includes(feature)} />
 									))}
 								</ul>
 
@@ -277,17 +268,17 @@ export default function PricingClient() {
 					{t('pricing_glossary_title')}
 				</h2>
 				<dl className="mt-3 grid gap-x-8 gap-y-4 sm:grid-cols-2">
-					{[...QUOTA_ROWS, ...FEATURE_ROWS].map(([key, labelKey, whatKey]) => (
-						<div key={key}>
+					{[...QUOTA_ROWS, ...FEATURE_ROWS].map(([, labelKey, whatKey]) => (
+						<div key={labelKey}>
 							<dt className="text-sm font-semibold text-text">{t(labelKey)}</dt>
-							<dd className="mt-0.5 text-sm leading-relaxed text-muted">{t(whatKey)}</dd>
+							<dd className="mt-0.5 text-sm leading-relaxed text-muted">{t(whatKey, liczby[whatKey])}</dd>
 						</div>
 					))}
 				</dl>
 			</section>
 
 			<p className="mt-6 max-w-2xl text-xs leading-relaxed text-muted">
-				{t('pricing_one_off_note')}
+				{t('pricing_one_off_note', liczby.pricing_one_off_note)}
 			</p>
 
 			{planError && <p className="mt-4 text-sm text-loss">{planError}</p>}

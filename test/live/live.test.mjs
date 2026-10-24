@@ -63,13 +63,14 @@ describe('wybór typów', () => {
 		assert.equal(legVeto('over25', { home: 1, away: 1 }), false);
 	});
 
-	test('model musi zgadzać się z rynkiem (najwyżej 3 pkt mniej)', () => {
+	test('rynek co najmniej tak pewny jak my: wyliczenie najwyżej 3 pkt powyżej i 15 pkt poniżej rynku', () => {
 		const s = liveSelections({
-			odds: { home: 1.1, away: 3.0, over25: 1.25 },
-			model: { home: 0.9, away: 0.2, over25: 0.7 },
+			odds: { home: 1.1, away: 3.0, over25: 1.25, '1X': 1.05, X2: 2.0 },
+			model: { home: 0.9, away: 0.2, over25: 0.7, '1X': 0.7, X2: 0.6 },
 		});
-		// home: rynek 91%, model 90% ✓; away: rynek 33%, model 20% ✗; over25: rynek 80%, model 70% ✗
-		assert.deepEqual(s.map((x) => x.key), ['home']);
+		// home: rynek 91%, my 90% ✓; away: 33% / 20% ✓ (rynek pewniejszy o 13); over25: 80% / 70% ✓;
+		// 1X: 95% / 70% ✗ (rynek pewniejszy o 25 — widzi coś, czego my nie); X2: 50% / 60% ✗ (my pewniejsi o 10)
+		assert.deepEqual(s.map((x) => x.key), ['home', 'away', 'over25']);
 	});
 
 	const k = (id, model, odds, key = 'home') => ({ fixtureId: String(id), key, model, odds, market: Math.round(100 / odds) });
@@ -81,11 +82,11 @@ describe('wybór typów', () => {
 		assert.ok(kupon.legs.every((l) => l.odds < 1.4));
 	});
 
-	test('bez kuponu — najlepszy pojedynczy typ (kurs 1,30–2,10, model ≥ rynek); bez niego nic', () => {
+	test('bez kuponu — najlepszy pojedynczy typ (kurs 1,30–2,10, najwyższa szansa); bez niego nic', () => {
 		assert.equal(buildLiveCoupon([k(1, 95, 1.06)]), null);
-		const pojedynczy = bestLiveSingle([k(1, 95, 1.06), k(2, 66, 1.6), k(3, 60, 1.7), k(4, 40, 2.6)]);
+		const pojedynczy = bestLiveSingle([k(1, 95, 1.06), k(2, 58, 1.6), k(3, 55, 1.7), k(4, 40, 2.6)]);
 		assert.equal(pojedynczy.fixtureId, '2');
-		assert.equal(bestLiveSingle([k(1, 50, 1.6)]), null);
+		assert.equal(bestLiveSingle([k(1, 50, 2.6), k(2, 95, 1.06)]), null);
 	});
 });
 
@@ -112,11 +113,11 @@ describe('ligi poza modelem', () => {
 		assert.equal(liveLeagueOk(null), false);
 	});
 
-	test('źródło „market" — zgoda w obie strony (rozjazd ponad 6 pkt odpada)', () => {
+	test('źródło „market" — ta sama zgoda co model, z oznaczeniem źródła', () => {
 		const odds = { home: 1.2, away: 3.0 }; // rynek 83% i 33%
 		const model = { home: 0.86, away: 0.45 }; // +3 pkt ✓, +12 pkt ✗
 		assert.deepEqual(liveSelections({ odds, model, source: 'market' }).map((x) => x.key), ['home']);
-		assert.deepEqual(liveSelections({ odds, model }).map((x) => x.key), ['home', 'away']);
+		assert.deepEqual(liveSelections({ odds, model }).map((x) => x.key), ['home']);
 		assert.equal(liveSelections({ odds, model, source: 'market' })[0].source, 'market');
 	});
 });

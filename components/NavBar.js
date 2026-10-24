@@ -32,7 +32,12 @@ export default function NavBar({ onLanguageChange }) {
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobileLinksMenuOpen, setMobileLinksMenuOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
-  const [isSportsOpen, setIsSportsOpen] = useState(false);
+  /*
+   * Działy dyscyplin rozwinięte od razu: zwinięte kosztowały trzecie kliknięcie (☰ → kategoria →
+   * dział), a to w nich jest większość tego, po co ktoś otwiera menu. Zwinąć wciąż można.
+   * Na niskim ekranie menu przewija się w środku (`.mobile-dropdown` ma `overflow-y: auto`).
+   */
+  const [isSportsOpen, setIsSportsOpen] = useState(true);
   const [isForgotOpen, setForgotOpen] = useState(false);
 
   const t = useTranslations('common');
