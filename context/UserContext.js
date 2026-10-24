@@ -9,8 +9,12 @@ import {
   useMemo,
   useRef,
 } from 'react';
-import { refreshAccessToken } from '@/lib/authFetch';
+import { ensureFreshAccess, installAuthFetch, noteSession, refreshAccessToken } from '@/lib/authFetch';
 import { ACCESS_REFRESH_INTERVAL_MS } from '@/lib/authConstants';
+
+// Przed pierwszym renderem: efekty dzieci (pobieranie analiz, kuponów) startują wcześniej niż
+// efekty tego dostawcy, więc instalacja w `useEffect` przepuściłaby pierwsze żądania.
+installAuthFetch();
 
 export const UserContext = createContext(null);
 
@@ -55,12 +59,14 @@ export function UserProvider({ children }) {
 
         if (res.ok) {
           const data = await res.json();
+          noteSession({ authed: true, accessExpiresAt: data.accessExpiresAt });
           setUser(data);
           setIsAuthed(true);
           return true;
         }
 
         if (res.status !== 401) {
+          noteSession({ authed: false });
           setUser(null);
           setIsAuthed(false);
           return false;
@@ -68,6 +74,7 @@ export function UserProvider({ children }) {
 
         const r = await refreshAccessToken();
         if (!r.ok) {
+          noteSession({ authed: false });
           setUser(null);
           setIsAuthed(false);
           return false;
@@ -75,6 +82,7 @@ export function UserProvider({ children }) {
 
         res = await fetch('/api/auth/me', { credentials: 'include' });
         if (res.status === 401) {
+          noteSession({ authed: false });
           setUser(null);
           setIsAuthed(false);
           return false;
@@ -82,6 +90,7 @@ export function UserProvider({ children }) {
 
         if (res.ok) {
           const data = await res.json();
+          noteSession({ authed: true, accessExpiresAt: data.accessExpiresAt });
           setUser(data);
           setIsAuthed(true);
           // Bez przeładowania strony: refreshAccessToken() wyemitował już ACCESS_REFRESH_EVENT,
@@ -89,6 +98,7 @@ export function UserProvider({ children }) {
           return true;
         }
 
+        noteSession({ authed: false });
         setUser(null);
         setIsAuthed(false);
         return false;
@@ -131,9 +141,10 @@ export function UserProvider({ children }) {
         tabHiddenAtRef.current = Date.now();
         return;
       }
-      if (document.visibilityState !== 'visible' || tabHiddenAtRef.current == null) {
-        return;
-      }
+      if (document.visibilityState !== 'visible') return;
+      // Każdy powrót do karty: odśwież token, jeśli wygasł albo zaraz wygaśnie (bez żądania, gdy świeży).
+      ensureFreshAccess();
+      if (tabHiddenAtRef.current == null) return;
       const delta = Date.now() - tabHiddenAtRef.current;
       tabHiddenAtRef.current = null;
       if (delta > 60_000) {
@@ -143,6 +154,23 @@ export function UserProvider({ children }) {
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [refreshUser]);
+
+  /**
+   * Powrót po uśpieniu laptopa albo utracie sieci: karta mogła cały czas być „widoczna", więc
+   * `visibilitychange` nie przychodzi, a zegar odnawiania stał. Termin tokenu sprawdzamy wtedy
+   * przy skupieniu okna i powrocie sieci.
+   */
+  useEffect(() => {
+    const sprawdz = () => {
+      ensureFreshAccess();
+    };
+    window.addEventListener('focus', sprawdz);
+    window.addEventListener('online', sprawdz);
+    return () => {
+      window.removeEventListener('focus', sprawdz);
+      window.removeEventListener('online', sprawdz);
+    };
+  }, []);
 
   /**
    * Cichy refresh zanim access token wygaśnie.

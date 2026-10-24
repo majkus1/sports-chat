@@ -9,6 +9,7 @@ import {
   clearAuthCookiesRouteHandler,
   compareRefreshToken,
   hashRefreshToken,
+  ACCESS_TTL_MIN,
 } from '@/lib/auth';
 
 export async function POST(request) {
@@ -61,7 +62,7 @@ export async function POST(request) {
 
     await setAuthCookiesRouteHandler({ accessToken: newAccess, refreshToken: newRefresh });
 
-    return Response.json({ ok: true }, { status: 200 });
+    return Response.json({ ok: true, accessExpiresAt: Date.now() + ACCESS_TTL_MIN * 60 * 1000 }, { status: 200 });
   } catch (err) {
     if (process.env.NODE_ENV === 'development') {
       console.error('refresh error:', err);

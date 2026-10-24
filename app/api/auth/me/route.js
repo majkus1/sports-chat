@@ -32,6 +32,8 @@ export async function GET(request) {
       // Własna rola — interfejs pokazuje administratorowi skróty (np. post na X).
       // Uprawnień nie daje: każda trasa admina sprawdza rolę w bazie sama.
       role: user.role || 'user',
+      // Kiedy wygasa token dostępu — klient odświeża go zawczasu, także po uśpieniu laptopa.
+      accessExpiresAt: session.accessExpiresAt ?? null,
     }, { status: 200 });
   } catch (err) {
     if (process.env.NODE_ENV === 'development') {
