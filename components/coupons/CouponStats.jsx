@@ -6,9 +6,11 @@ import { cn } from '@/lib/utils';
 /**
  * Skuteczność kuponów (zakładki „Kupon dnia", „Kupon 3-dniowy" i „Kupon 5-dniowy" w skuteczności).
  *
- * Najważniejsze zestawienie: ile kuponów weszło wobec tego, ile zapowiadał model. Kupon ~2,0
- * z szansą 45% wchodzi mniej niż co drugi dzień — i to jest w porządku, jeśli wchodzi tyle,
- * ile obiecano. Dlatego kolor procentu zależy od obietnicy, nie od tego, czy przekracza 50%.
+ * Najważniejsze zestawienie: ile kuponów weszło wobec tego, ile zapowiadał model. Kupon ~2,5
+ * z szansą ~35–40% wchodzi mniej więcej co trzeci–drugi raz — i to jest w porządku, jeśli wchodzi
+ * tyle, ile obiecano. Dlatego kolor procentu zależy od obietnicy, nie od tego, czy przekracza 50%.
+ * Bilans obejmuje też kupony sprzed zmiany zasad (25.10.2026: ok. 2,0 i 3,0) — mówi o tym
+ * `c.rulesNote` pod kartą.
  *
  * @param {{ stats: object, c: object, locale: string, type: 'daily'|'weekend' }} props
  *   `stats` z `couponStats`, `c` z `couponContent`
@@ -72,7 +74,11 @@ export default function CouponStats({ stats, c, locale, type }) {
 				</CardContent>
 			</Card>
 
-			<p className="text-xs leading-relaxed text-muted">{c.statsHint}</p>
+			<p className="text-xs leading-relaxed text-muted">
+				{c.statsHint}
+				{/* Kupon live ma własne zasady — dopisek o zmianie dotyczy dnia, 3- i 5-dniowego. */}
+				{c.rulesNote && ['daily', 'days3', 'days5'].includes(type) && ` ${c.rulesNote}`}
+			</p>
 
 			{stats.recent?.length > 0 && (
 				<section className="flex flex-col gap-3">

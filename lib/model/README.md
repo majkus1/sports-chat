@@ -244,6 +244,29 @@ danych: ≥ 300 zakładów reguły „plakietka", zwrot > 0, CLV ≥ 0, trafnoś
 pod obietnicą. Nawet wtedy po podatku 12% zakład wychodzi na plus dopiero przy zwrocie
 powyżej ~14%, więc zakładka nie może obiecywać zarobku.
 
+## Plakietki według kursu — pomiar pod kupony (24.10.2026)
+
+Ten sam dziennik prognoz, 27 dni (27.09–23.10.2026), plakietki z porannym kursem i wynikiem
+w ligach sprawdzonych, mecze 12:00–23:00 (tak jak na kupon). Rynek = 1/kurs (z marżą).
+
+| kurs plakietki | typów | model obiecywał | trafione | rynek |
+|---|---|---|---|---|
+| 1,05–1,20 | 93 | 82,6% | 90,3% ±3,1 | 88,6% |
+| 1,20–1,30 | 86 | 77,0% | 80,2% ±4,3 | 80,5% |
+| 1,30–1,40 | 73 | 73,6% | 76,7% ±4,9 | 74,6% |
+| 1,40–1,50 | 51 | 70,5% | 56,9% ±6,9 | 69,7% |
+| 1,50–1,60 | 34 | 70,9% | 52,9% ±8,6 | 64,9% |
+| 1,60–1,80 | 26 | 66,2% | 50,0% ±9,8 | 60,2% |
+
+Poniżej 1,40 model trafia tyle, ile obiecuje, albo więcej; od 1,40 przesadza o 13–18 pkt —
+żywe dane potwierdzają eksperyment z archiwów. Drugi wniosek: w przedziale 1,05–1,40 typy,
+przy których model był PEWNIEJSZY od bukmacherów (szansa modelu > 1/kurs), trafiły 73%
+(51/70) przy obiecanych 83%, a te, przy których rynek był co najmniej tak pewny jak model —
+87% (158/182) przy obiecanych 76%. Rozbieżność „w górę" to tu raczej błąd modelu niż okazja.
+Wnioski weszły do zasad kuponów od 25.10.2026 (`lib/coupons/build.js`: granica 1,40 zostaje,
+nowy warunek zgody rynku z modelem, kurs łączny 2,4–2,8 z jak najmniejszej liczby typów —
+tam też symulacja wariantów). Próba mała; pomiar warto powtórzyć po kolejnym miesiącu.
+
 ## Nowe ligi — sprawdzian i okres próbny (od października 2026)
 
 Każda liga ma własne dopasowanie, więc dopisanie nowej NIE zmienia prognoz w pozostałych.

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Sparkles } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
@@ -8,6 +9,10 @@ import AnalysisPanel from '@/components/match/AnalysisPanel';
 import AnalysisChat from '@/components/match/AnalysisChat';
 import WidgetFrame from '@/components/match/WidgetFrame';
 import CommunityPicks from '@/components/picks/CommunityPicks';
+import { useUrlState } from '@/lib/hooks/useUrlState';
+
+/** Zakładki panelu danych — także dopuszczalne wartości `?tab=` w adresie pokoju meczowego. */
+const TABS = ['analysis', 'feed', 'stats', 'recent', 'h2h', 'lineups', 'standings', 'picks'];
 
 function Empty({ children }) {
 	return <p className="px-1 py-6 text-center text-sm text-muted">{children}</p>;
@@ -321,14 +326,24 @@ export default function MatchDataTabs({
 	const widgets = widgetSources(bundle.fixture, locale);
 	const isLive = bundle.fixture.status?.isLive;
 
+	/*
+	 * W trwającym meczu na wierzchu ląduje przebieg, nie analiza: kto wchodzi w trakcie,
+	 * chce najpierw zobaczyć, co się właśnie dzieje. Domyślna zakładka liczy się raz, przy
+	 * montowaniu, więc mecz, który rozpocznie się przy otwartej stronie, nie przestawi
+	 * zakładki pod palcami czytającego.
+	 *
+	 * Wybrana zakładka jest w adresie (`?tab=h2h`): odświeżenie, powrót z innej strony i wysłany
+	 * link otwierają tę samą. Przebieg tylko tam, gdzie jest widget — inaczej `?tab=feed` z meczu
+	 * na żywo otwierałby pustą zakładkę w meczu bez danych na żywo.
+	 */
+	const [defaultTab] = useState(() => (isLive && widgets.game ? 'feed' : 'analysis'));
+	const [tab, setTab] = useUrlState('tab', {
+		allowed: widgets.game ? TABS : TABS.filter((v) => v !== 'feed'),
+		fallback: defaultTab,
+	});
+
 	return (
-		/*
-		 * W trwającym meczu na wierzchu ląduje przebieg, nie analiza: kto wchodzi w trakcie,
-		 * chce najpierw zobaczyć, co się właśnie dzieje. Wartość początkowa działa przy
-		 * montowaniu, więc mecz, który rozpocznie się przy otwartej stronie, nie przestawi
-		 * zakładki pod palcami czytającego.
-		 */
-		<Tabs defaultValue={isLive && widgets.game ? 'feed' : 'analysis'} className={className}>
+		<Tabs value={tab} onValueChange={setTab} className={className}>
 			<TabsList>
 				<TabsTrigger value="analysis">{t('analysis_title')}</TabsTrigger>
 				{widgets.game && (

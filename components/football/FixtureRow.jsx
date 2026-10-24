@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl';
 import { BarChart3, ChevronRight, Lock, Sparkles, Swords } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
+import { couponContent } from '@/lib/coupons/content';
 
 /**
  * Wiersz meczu na listach przedmeczowej i live.
@@ -48,8 +49,13 @@ function WidgetButton({ title, onClick, children }) {
  *
  * Wariant z kłódką jest odnośnikiem do cennika i ma włączone zdarzenia wskaźnika, tak jak
  * przyciski widgetów — inaczej kliknięcie przechwyciłby odnośnik pokrywający cały kafelek.
+ *
+ * ZNACZNIKI „Typ dnia" i „W kuponie…" — żeby było widać, które plakietki z listy trafiły do typu
+ * dnia i kuponów (selekcja przy takim meczu pochodzi z zapisu kuponu, `lib/coupons/marks.js`).
+ * Znacznik kuponu prowadzi do „Typów na dziś", gdzie stoi cały kupon. Płatne kupony przychodzą
+ * tu tylko w planie z liczbami — decyduje serwer, komponent pokazuje to, co dostał.
  */
-function ModelHint({ hint, t }) {
+function ModelHint({ hint, t, locale }) {
 	if (!hint) return null;
 
 	const baza = 'inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-[11px] font-bold uppercase tracking-wide';
@@ -73,26 +79,42 @@ function ModelHint({ hint, t }) {
 		);
 	}
 
-	const opis = t('model_hint_title', {
-		selection: hint.selection,
-		probability: hint.probability,
-		lift: hint.lift,
-	});
+	// Przewaga bywa nieznana tylko przy zapisie bez normy — wtedy bez „+…" zamiast „+null".
+	const lift = Number.isFinite(hint.lift) ? hint.lift : null;
+	const opis =
+		lift === null
+			? `${hint.selection} — ${hint.probability}%`
+			: t('model_hint_title', { selection: hint.selection, probability: hint.probability, lift });
 
 	const plakietka = (
 		<span title={opis} aria-label={opis} className={cn(baza, 'bg-accent text-accent-fg tabular-nums')}>
 			<Sparkles size={12} aria-hidden="true" />
 			{hint.label}
-			<span className="font-semibold opacity-90">+{hint.lift}</span>
+			{lift !== null && <span className="font-semibold opacity-90">+{lift}</span>}
 		</span>
 	);
-	// Typ dnia — odkryty dla wszystkich; podpis mówi, dlaczego ten jeden jest bez kłódki.
-	if (!hint.daily) return plakietka;
+	const kupony = Array.isArray(hint.coupons) ? hint.coupons : [];
+	if (!hint.daily && !kupony.length) return plakietka;
+
+	const c = couponContent(locale);
+	const znacznik = 'rounded-md border border-accent px-1.5 py-1 text-[10px] font-bold uppercase tracking-wide text-accent';
 	return (
-		<span className="inline-flex shrink-0 items-center gap-1">
-			<span className="rounded-md border border-accent px-1.5 py-1 text-[10px] font-bold uppercase tracking-wide text-accent">
-				{t('daily_pick')}
-			</span>
+		<span className="inline-flex flex-wrap items-center gap-1">
+			{/* Typ dnia — odkryty dla wszystkich; podpis mówi, dlaczego ten jeden jest bez kłódki. */}
+			{hint.daily && <span className={znacznik}>{t('daily_pick')}</span>}
+			{kupony.map((type) =>
+				c.mark[type] ? (
+					<Link
+						key={type}
+						href="/typy-na-dzis"
+						title={c.markTitle(type)}
+						onClick={(event) => event.stopPropagation()}
+						className={cn(znacznik, 'pointer-events-auto no-underline transition-colors hover:bg-accent hover:text-accent-fg')}
+					>
+						{c.mark[type]}
+					</Link>
+				) : null
+			)}
 			{plakietka}
 		</span>
 	);
@@ -197,9 +219,10 @@ export default function FixtureRow({
 				)}
 
 				{/* Drugi rząd na telefonie, wcięty pod nazwy; od `sm` ciąg dalszy tej samej linii. */}
-				<div className="flex basis-full items-center gap-1.5 pl-[calc(3rem+0.75rem)] sm:shrink-0 sm:basis-auto sm:pl-0">
+				{/* `flex-wrap` na telefonie: ze znacznikami typu dnia i kuponu rząd bywa szerszy niż ekran. */}
+				<div className="flex basis-full flex-wrap items-center gap-1.5 pl-[calc(3rem+0.75rem)] sm:shrink-0 sm:basis-auto sm:flex-nowrap sm:pl-0">
 					{/* Plakietka modelu przed widgetami: to ona niesie informację, widgety są narzędziami. */}
-					<ModelHint hint={modelHint} t={t} />
+					<ModelHint hint={modelHint} t={t} locale={locale} />
 
 					{hasTeamIds && (
 						<div className="pointer-events-auto flex shrink-0 items-center gap-1.5">

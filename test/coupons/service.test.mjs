@@ -9,17 +9,23 @@ import { setupEnv } from '../helpers/setup.mjs';
  * wspólna z produkcją), z plakietkami i kursami podstawionymi zamiast dostawcy, ze sprzątaniem.
  *
  * Sprawdzamy: kupony powstają dopiero po 9:30 i raz — dnia, 3-dniowy i 5-dniowy, każdy z innymi
- * meczami; płatne bez planu przychodzą bez meczów; typ płatnego kuponu z ryzykiem w wiadomościach
- * wypada i wchodzi następny; gdy nie da się ich złożyć — do południa nic,
- * potem „bez kuponu"; nieudane pobranie kursów wstrzymuje kupon; rozliczenie zamyka kupon od
- * pierwszego chybionego i pokazuje wynik w statystyce.
+ * meczami, kurs łączny 2,4–2,8 (od 25.10.2026); płatne bez planu przychodzą bez meczów; typ
+ * płatnego kuponu z ryzykiem w wiadomościach wypada i wchodzi następny; gdy nie da się ich
+ * złożyć — do południa nic, potem „bez kuponu"; nieudane pobranie kursów wstrzymuje kupon;
+ * rozliczenie zamyka kupon od pierwszego chybionego i pokazuje wynik w statystyce; nogi kuponów
+ * dla listy meczów — płatne tylko z planem.
+ *
+ * Plakietki w danych niżej mają szansę nie wyższą niż wynika z kursu (szansa × kurs ≤ 100) —
+ * inaczej kupon by ich nie wziął (`marketAgrees`).
  */
 
 setupEnv();
 await mongoose.connect(process.env.DATABASE_URL, { serverSelectionTimeoutMS: 20000 });
 
 const Coupon = (await import('@/models/Coupon')).default;
-const { ensureCoupons, settleCoupons, couponsOverview, couponStats, couponDates } = await import('@/lib/coupons/service');
+const { ensureCoupons, settleCoupons, couponsOverview, couponStats, couponDates, couponLegsForDate } = await import(
+	'@/lib/coupons/service'
+);
 const { localDate, localMidnight } = await import('@/lib/time');
 
 const PREFIX = `9${crypto.randomInt(10_000_000, 99_999_999)}`;
@@ -50,25 +56,29 @@ function wpis(date, h, probability, odds) {
 	};
 }
 
+/** Cztery typy po ~1,25 (kurs łączny 2,50) — jedyny zestaw, z którego da się złożyć kupon dnia. */
+const czteryNaDzien = (date) => [wpis(date, 15, 80, 1.25), wpis(date, 16, 79, 1.25), wpis(date, 17, 78, 1.26), wpis(date, 18, 77, 1.27)];
+
 const LISTY = {
-	// Dzień publikacji: kupon dnia bierze cztery pierwsze (1,60 nie wchodzi — tam model przesadza).
+	// Dzień publikacji: kupon dnia bierze cztery typy po ~1,25 (1,60 nie wchodzi — tam model przesadza).
 	// Najpewniejszy typ dnia jest z ligi spoza sprawdzonych (okres próbny albo spoza listy) — nie może trafić na kupon.
-	[D[0]]: [{ ...wpis(D[0], 14, 95, 1.1), leagueId: 999999, league: 'Liga próbna' }, wpis(D[0], 15, 90, 1.15), wpis(D[0], 16, 88, 1.2), wpis(D[0], 17, 86, 1.25), wpis(D[0], 18, 84, 1.3), wpis(D[0], 21, 70, 1.6)],
-	[D[1]]: [wpis(D[1], 15, 89, 1.2), wpis(D[1], 17, 87, 1.22), wpis(D[1], 19, 85, 1.3)],
-	[D[2]]: [wpis(D[2], 15, 86, 1.18), wpis(D[2], 18, 83, 1.25)],
-	[D[3]]: [wpis(D[3], 14, 88, 1.15), wpis(D[3], 16, 86, 1.2), wpis(D[3], 18, 84, 1.25)],
-	[D[4]]: [wpis(D[4], 14, 87, 1.2), wpis(D[4], 16, 85, 1.22), wpis(D[4], 18, 83, 1.3), wpis(D[4], 20, 82, 1.28)],
-	// Za mało typów do kursu 2,0.
-	[WTOREK]: [wpis(WTOREK, 20, 85, 1.2), wpis(WTOREK, 21, 80, 1.2)],
+	[D[0]]: [{ ...wpis(D[0], 14, 90, 1.1), leagueId: 999999, league: 'Liga próbna' }, ...czteryNaDzien(D[0]), wpis(D[0], 21, 62, 1.6)],
+	// Kolejne dni: typy po ~1,35 — 3- i 5-dniowy wychodzą z trzech.
+	[D[1]]: [wpis(D[1], 15, 74, 1.35), wpis(D[1], 17, 73, 1.36), wpis(D[1], 19, 72, 1.37)],
+	[D[2]]: [wpis(D[2], 15, 74, 1.34), wpis(D[2], 18, 73, 1.35)],
+	[D[3]]: [wpis(D[3], 14, 75, 1.33), wpis(D[3], 16, 74, 1.34), wpis(D[3], 18, 73, 1.36)],
+	[D[4]]: [wpis(D[4], 14, 74, 1.35), wpis(D[4], 16, 73, 1.36), wpis(D[4], 18, 72, 1.38)],
+	// Za mało typów do kursu 2,4.
+	[WTOREK]: [wpis(WTOREK, 20, 80, 1.2), wpis(WTOREK, 21, 80, 1.2)],
 	// Dość typów, ale kursu najpewniejszego meczu nie da się pobrać.
-	[SRODA]: [wpis(SRODA, 22, 92, 1.1), wpis(SRODA, 22, 85, 1.3), wpis(SRODA, 22, 84, 1.3), wpis(SRODA, 22, 83, 1.3)],
-	// Sprawdzanie wiadomości: drugi typ 3-dniowego (87%) ma „kontuzję lidera".
-	[R[0]]: [wpis(R[0], 15, 90, 1.15), wpis(R[0], 16, 88, 1.2), wpis(R[0], 17, 86, 1.25), wpis(R[0], 18, 84, 1.3)],
-	[R[1]]: [wpis(R[1], 15, 89, 1.2), wpis(R[1], 16, 87, 1.22), wpis(R[1], 17, 85, 1.3), wpis(R[1], 18, 80, 1.25)],
-	[R[2]]: [wpis(R[2], 15, 86, 1.18), wpis(R[2], 16, 83, 1.25), wpis(R[2], 17, 81, 1.2)],
+	[SRODA]: [wpis(SRODA, 22, 90, 1.1), wpis(SRODA, 22, 77, 1.3), wpis(SRODA, 22, 76, 1.31), wpis(SRODA, 22, 75, 1.33)],
+	// Sprawdzanie wiadomości: drugi typ z R[1] (76%) wchodzi do najlepszego 3-dniowego i ma „kontuzję lidera".
+	[R[0]]: czteryNaDzien(R[0]),
+	[R[1]]: [wpis(R[1], 15, 74, 1.35), wpis(R[1], 16, 76, 1.31), wpis(R[1], 17, 73, 1.36), wpis(R[1], 18, 72, 1.37)],
+	[R[2]]: [wpis(R[2], 15, 74, 1.34), wpis(R[2], 16, 71, 1.38), wpis(R[2], 17, 72, 1.36)],
 	// Próg wydatków przekroczony — płatny kupon bez sprawdzenia.
-	[S[0]]: [wpis(S[0], 15, 90, 1.15), wpis(S[0], 16, 88, 1.2), wpis(S[0], 17, 86, 1.25), wpis(S[0], 18, 84, 1.3)],
-	[S[1]]: [wpis(S[1], 15, 89, 1.2), wpis(S[1], 16, 87, 1.22), wpis(S[1], 17, 85, 1.3), wpis(S[1], 18, 83, 1.25)],
+	[S[0]]: czteryNaDzien(S[0]),
+	[S[1]]: [wpis(S[1], 15, 74, 1.35), wpis(S[1], 16, 73, 1.36), wpis(S[1], 17, 72, 1.37), wpis(S[1], 18, 71, 1.38)],
 };
 const RYZYKOWNY = LISTY[R[1]][1].fixtureId;
 const PROBNY = LISTY[D[0]][0].fixtureId;
@@ -109,11 +119,16 @@ describe('wybór kuponów', () => {
 		assert.deepEqual(r.created, klucze(D[0]));
 
 		const [dzienny, trzy, piec] = await Promise.all(klucze(D[0]).map((key) => Coupon.findOne({ key }).lean()));
-		assert.ok(dzienny.totalOdds >= 2 && dzienny.totalOdds <= 2.6);
-		assert.ok(dzienny.legs.every((l) => l.odds < 1.4 && localDate(l.kickoff) === D[0]));
-		assert.ok(trzy.totalOdds >= 2 && trzy.totalOdds <= 2.6);
+		for (const k of [dzienny, trzy, piec]) {
+			assert.ok(k.totalOdds >= 2.4 && k.totalOdds <= 2.8, `${k.key}: ${k.totalOdds}`);
+			assert.ok(k.legs.every((l) => l.odds < 1.4 && l.odds * l.probability <= 100));
+		}
+		assert.equal(dzienny.totalOdds, 2.5);
+		assert.equal(dzienny.legs.length, 4);
+		assert.ok(dzienny.legs.every((l) => localDate(l.kickoff) === D[0]));
+		assert.equal(trzy.legs.length, 3, 'z kursami ~1,35 wystarczą trzy typy');
 		assert.ok(trzy.legs.every((l) => D.slice(0, 3).includes(localDate(l.kickoff))));
-		assert.ok(piec.totalOdds >= 3 && piec.totalOdds <= 3.9);
+		assert.ok(piec.legs.length <= 5);
 		const id = (k) => k.legs.map((l) => l.fixtureId);
 		const wszystkie = [...id(dzienny), ...id(trzy), ...id(piec)];
 		assert.equal(new Set(wszystkie).size, wszystkie.length, 'mecze nie powtarzają się między kuponami');
@@ -122,6 +137,25 @@ describe('wybór kuponów', () => {
 		const ponownie = await ensureCoupons({ now: o(D0, 10), ...opcje });
 		assert.deepEqual(ponownie.created, []);
 		assert.equal(await Coupon.countDocuments({ date: D[0] }), 3);
+	});
+
+	test('nogi kuponów dla listy meczów: kupon dnia dla każdego, płatne tylko z planem', async () => {
+		const [dzienny, trzy, piec] = await Promise.all(klucze(D[0]).map((key) => Coupon.findOne({ key }).lean()));
+		const gosc = await couponLegsForDate(D[0]);
+		assert.ok(gosc.every((l) => l.type === 'daily'));
+		assert.deepEqual(
+			gosc.map((l) => l.fixtureId).sort(),
+			dzienny.legs.map((l) => l.fixtureId).sort()
+		);
+		assert.ok(gosc.every((l) => l.key === 'home' && l.selection && Number.isFinite(l.probability) && l.base === 45));
+
+		// Następny dzień: kupon dnia go nie obejmuje, płatne tak — bez planu nie ma nic, nawet znacznika.
+		assert.deepEqual(await couponLegsForDate(D[1]), []);
+		const plan = await couponLegsForDate(D[1], { unlocked: true });
+		const zDrugiegoDnia = [...trzy.legs, ...piec.legs].filter((l) => localDate(l.kickoff) === D[1]).map((l) => l.fixtureId);
+		assert.ok(plan.length > 0);
+		assert.deepEqual(plan.map((l) => l.fixtureId).sort(), zDrugiegoDnia.sort());
+		assert.ok(plan.every((l) => l.type === 'days3' || l.type === 'days5'));
 	});
 
 	test('bez planu płatne kupony przychodzą bez meczów; kupon dnia zawsze z meczami', async () => {
@@ -173,7 +207,7 @@ describe('wiadomości przed publikacją płatnego kuponu', () => {
 		);
 		assert.equal(trzy.newsCheck.checked, trzy.legs.length + 1);
 		assert.ok(trzy.legs.every((l) => l.news?.verdict === 'ok'));
-		assert.ok(trzy.totalOdds >= 2);
+		assert.ok(trzy.totalOdds >= 2.4 && trzy.totalOdds <= 2.8);
 
 		const plan = await couponsOverview({ now: o(R[0], 11), unlocked: true });
 		assert.deepEqual(plan.days3.newsCheck.dropped.map((d) => d.reason), ['kontuzja lidera']);

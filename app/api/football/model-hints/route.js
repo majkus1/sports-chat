@@ -4,6 +4,8 @@ import { getAuthenticatedUser } from '@/lib/auth';
 import { hasFeature } from '@/lib/billing/entitlements';
 import { hintsForDate } from '@/lib/model/hints';
 import { getDailyPick, topWithDaily } from '@/lib/daily/service';
+import { couponLegsForDate } from '@/lib/coupons/service';
+import { hintPresenter } from '@/lib/coupons/marks';
 import { localDate } from '@/lib/time';
 
 /**
@@ -59,13 +61,26 @@ export async function GET(request) {
 			dzienny = null;
 		}
 		const dziennyId = dzienny ? String(dzienny.fixtureId) : null;
-		const jestDzienny = (fixtureId) => dziennyId !== null && dziennyId === String(fixtureId);
-		// Sam fakt, bez liczb — patrz komentarz na górze.
-		const pokaz = (fixtureId, hint) =>
-			full || jestDzienny(fixtureId) ? { ...hint, ...(jestDzienny(fixtureId) ? { daily: true } : {}) } : { locked: true };
+		/*
+		 * Typ dnia i nogi kuponów z tego dnia — z zapisu, żeby przy meczu stała ta sama selekcja
+		 * co na karcie typu dnia i na kuponie, ze znacznikiem „W kuponie…" (`lib/coupons/marks.js`).
+		 * Kupon dnia jest za darmo; płatne kupony tylko z planem — bez planu nawet o nie nie pytamy.
+		 */
+		let nogi = [];
+		try {
+			await connectToDb();
+			nogi = await couponLegsForDate(date, { unlocked: full });
+		} catch {
+			nogi = [];
+		}
+		const { present, fixtureIds } = hintPresenter({ full, daily: dzienny, couponLegs: nogi });
+		// Bez planu: sam fakt, bez liczb — patrz komentarz na górze; typ dnia i kupon dnia odkryte.
+		const pokaz = (fixtureId, hint) => present(fixtureId, hint) ?? { locked: true };
 
 		const out = {};
 		for (const [fixtureId, hint] of byId) out[fixtureId] = pokaz(fixtureId, hint);
+		// Mecz z zapisu, którego plakietki model już nie pokazuje (przeliczył się po publikacji kuponu).
+		for (const fixtureId of fixtureIds) if (!out[fixtureId]) out[fixtureId] = pokaz(fixtureId, null);
 
 		/*
 		 * Lista jest posortowana po przewadze; panel dostaje mecz, godzinę i ligę zawsze,

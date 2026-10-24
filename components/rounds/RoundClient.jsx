@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { initialsFromName } from '@/components/ui/Avatar';
 import { cn } from '@/lib/utils';
+import { useScrollMemory } from '@/lib/hooks/useScrollMemory';
 
 /**
  * Kolejka tygodniowa — wspólny zestaw meczów dla wszystkich.
@@ -52,6 +53,13 @@ export default function RoundClient() {
 	useEffect(() => {
 		load();
 	}, [load]);
+
+	/*
+	 * Kolejka nie ma przełączników, które warto trzymać w adresie — jest jedna, bieżąca. Ma za to
+	 * dwanaście meczów z odnośnikami do pokoju meczowego, ładowanych po zapytaniu: bez tego
+	 * „Wstecz" z meczu na dole listy wracało na górę strony.
+	 */
+	useScrollMemory(true, !isLoading);
 
 	const round = data?.round;
 	const isOpen = round?.status === 'open';

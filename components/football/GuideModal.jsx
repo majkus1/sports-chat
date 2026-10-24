@@ -26,6 +26,7 @@ const ADRESY = {
 	asystent: '/pilka-nozna/asystent',
 	kolejka: '/pilka-nozna/kolejka',
 	skutecznosc: '/pilka-nozna/skutecznosc',
+	narzedzia: '/narzedzia',
 };
 
 const IKONY = { list: List, click: MousePointerClick, check: BadgeCheck };
@@ -209,6 +210,15 @@ export default function GuideModal({ open, onClose }) {
 									{tab.name}
 								</Link>
 							))}
+						{/* Pełna lista funkcji w kafelkach — przewodnik pokazuje tylko najważniejsze. */}
+						<Link
+							href={ADRESY.narzedzia}
+							onClick={onClose}
+							className="inline-flex items-center gap-1 rounded-full border border-accent/60 px-2.5 py-1 text-xs font-semibold text-accent no-underline transition-colors hover:bg-accent-soft"
+						>
+							{g.tabs.all}
+							<ArrowRight size={12} aria-hidden="true" />
+						</Link>
 					</div>
 
 					<p className="mt-4 text-[11px] leading-relaxed text-muted">{g.footnote}</p>

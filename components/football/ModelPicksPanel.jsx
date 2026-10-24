@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl';
 import { ChevronRight, Lock, Sparkles } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
+import { couponContent } from '@/lib/coupons/content';
 
 /**
  * „Model widzi" — najmocniejsze typy modelu na wybrany dzień, obok listy meczów.
@@ -19,6 +20,10 @@ import { cn } from '@/lib/utils';
  * plakietkach listy: wiadomo ILE model ma do powiedzenia, nie CO. Wyjątek to typ dnia:
  * odkryty dla wszystkich, zawsze na pierwszym miejscu i wyróżniony — to jedyny konkret,
  * który darmowy użytkownik dostaje od razu, więc nie może ginąć wśród kłódek.
+ *
+ * Typ z kuponu dnia też jest odkryty (kupon dnia jest za darmo) i ma znacznik „W kuponie dnia";
+ * znaczniki płatnych kuponów przychodzą z serwera tylko w planie z liczbami. Selekcja przy takim
+ * typie pochodzi z zapisu kuponu — ta sama co na kuponie (`lib/coupons/marks.js`).
  */
 
 function czas(iso, locale) {
@@ -28,6 +33,8 @@ function czas(iso, locale) {
 function Pick({ pick, locale, t }) {
 	const locked = !pick.hint || pick.hint.locked;
 	const daily = Boolean(pick.hint?.daily);
+	const kupony = !locked && Array.isArray(pick.hint?.coupons) ? pick.hint.coupons : [];
+	const c = kupony.length ? couponContent(locale) : null;
 	return (
 		<Link
 			href={`/mecz/${pick.fixtureId}`}
@@ -39,9 +46,25 @@ function Pick({ pick, locale, t }) {
 				daily && 'border-accent/70 bg-accent-soft/40 lg:border-l-[3px] lg:border-l-accent lg:bg-accent-soft/30'
 			)}
 		>
-			{pick.hint?.daily && (
-				<span className="w-fit rounded-md border border-accent px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent">
-					{t('daily_pick')} · {t('daily_pick_free')}
+			{(daily || kupony.length > 0) && (
+				// Spany, nie odnośniki: cała karta już jest odnośnikiem do meczu.
+				<span className="flex flex-wrap gap-1">
+					{daily && (
+						<span className="w-fit rounded-md border border-accent px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent">
+							{t('daily_pick')} · {t('daily_pick_free')}
+						</span>
+					)}
+					{kupony.map((type) =>
+						c.mark[type] ? (
+							<span
+								key={type}
+								title={c.markTitle(type)}
+								className="w-fit rounded-md border border-accent px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent"
+							>
+								{c.mark[type]}
+							</span>
+						) : null
+					)}
 				</span>
 			)}
 			<p className="truncate text-sm font-bold text-text">
@@ -56,7 +79,9 @@ function Pick({ pick, locale, t }) {
 				<p className="text-sm text-text">
 					<span className="font-semibold text-accent">{pick.hint.selection}</span>
 					<span className="tabular-nums"> · {pick.hint.probability}%</span>
-					<span className="text-muted"> ({t('model_sees_usual', { base: Math.round(pick.hint.base) })})</span>
+					{Number.isFinite(pick.hint.base) && (
+						<span className="text-muted"> ({t('model_sees_usual', { base: Math.round(pick.hint.base) })})</span>
+					)}
 				</p>
 			)}
 			<p className="mt-auto flex items-center gap-1 text-xs text-muted">

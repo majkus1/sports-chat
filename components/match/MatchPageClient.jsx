@@ -15,9 +15,13 @@ import { shouldRefresh } from '@/lib/football/refreshPolicy';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
+import { useUrlState } from '@/lib/hooks/useUrlState';
+import { PREMATCH_LIST_KEY, PREMATCH_PATH, prematchBackHref } from '@/lib/urlState';
 
 /** Co ile sprawdzamy, czy jest się po co odzywać do serwera. */
 const TICK_MS = 60_000;
+/** Panele na wąskim ekranie — także dopuszczalne wartości `?panel=`. */
+const PANELS = ['chat', 'data'];
 
 /**
  * Pokój meczowy.
@@ -34,6 +38,26 @@ export default function MatchPageClient({ params }) {
 	const [bundle, setBundle] = useState(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState(null);
+
+	/*
+	 * Na telefonie czat i dane są dwiema zakładkami; wybrana jest w adresie (`?panel=data`),
+	 * żeby powrót z innej strony nie przerzucał z analizy z powrotem na czat.
+	 */
+	const [panel, setPanel] = useUrlState('panel', { allowed: PANELS, fallback: 'chat' });
+
+	/*
+	 * „Wróć do listy" prowadzi na listę przedmeczową z ostatnio oglądanym dniem i frazą
+	 * (PrematchClient zapisuje je w sessionStorage), a nie na dzisiejszą od góry. Odczyt po
+	 * zamontowaniu — na serwerze pamięci przeglądarki nie ma, a odnośnik musi się zgadzać z HTML-em.
+	 */
+	const [backHref, setBackHref] = useState(PREMATCH_PATH);
+	useEffect(() => {
+		try {
+			setBackHref(prematchBackHref(window.sessionStorage.getItem(PREMATCH_LIST_KEY)));
+		} catch {
+			/* bez pamięci — czysta lista */
+		}
+	}, []);
 
 	const language = locale === 'pl' ? 'pl' : 'en';
 	const { analysis, isGenerating, isPartial, stage, start, setExisting } = useAnalysisStream({
@@ -134,7 +158,7 @@ export default function MatchPageClient({ params }) {
 				<p className="py-10 text-center text-muted">{error || t('match_not_found')}</p>
 				<div className="text-center">
 					<Button asChild variant="outline">
-						<Link href="/pilka-nozna/przedmeczowe">{t('match_room_back')}</Link>
+						<Link href={backHref}>{t('match_room_back')}</Link>
 					</Button>
 				</div>
 			</AppShell>
@@ -216,7 +240,7 @@ export default function MatchPageClient({ params }) {
 
 	return (
 		<AppShell contentClassName="mx-auto w-full max-w-6xl">
-			<BackLink href="/pilka-nozna/przedmeczowe" label={t('match_room_back')} />
+			<BackLink href={backHref} label={t('match_room_back')} />
 
 			<MatchHeader
 				fixture={bundle.fixture}
@@ -230,7 +254,7 @@ export default function MatchPageClient({ params }) {
 				<div className="h-[calc(100vh-16rem)] min-h-[26rem]">{chatPanel}</div>
 			</div>
 
-			<Tabs defaultValue="chat" className="mt-6 lg:hidden">
+			<Tabs value={panel} onValueChange={setPanel} className="mt-6 lg:hidden">
 				<TabsList className="w-full">
 					<TabsTrigger value="chat" className="flex-1">
 						{t('match_room_chat')}

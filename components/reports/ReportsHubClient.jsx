@@ -18,6 +18,12 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Link } from '@/i18n/routing';
+import { useUrlState } from '@/lib/hooks/useUrlState';
+import { useScrollMemory } from '@/lib/hooks/useScrollMemory';
+import { isObjectIdParam } from '@/lib/urlState';
+
+/** Rodzaj raportu: typy modelu albo „Wyższe kursy" (typy z kursem od 2,0). */
+const VARIANTS = ['standard', 'value'];
 
 /**
  * Hub Raportu AI.
@@ -25,6 +31,9 @@ import { Link } from '@/i18n/routing';
  * Zastępuje formularz „podaj maila" ze starego agenta: raport generuje się na miejscu,
  * typy pojawiają się na żywo w miarę pisania, a wynik zapisuje się na koncie w sekcji
  * „Moje raporty". Dostęp wymaga zalogowania — raport musi mieć właściciela.
+ *
+ * Rodzaj raportu i ostatnio wygenerowany raport są w adresie (`?variant=value&report=<id>`),
+ * żeby wejście w mecz z listy typów i „Wstecz" nie zostawiało pustego huba.
  */
 export default function ReportsHubClient() {
 	const t = useTranslations('common');
@@ -36,9 +45,18 @@ export default function ReportsHubClient() {
 	const { gameId: detailsGameId, close: closeGameDetails } = useGameDetailsModal();
 
 	const [myReports, setMyReports] = useState(null);
-	/** Rodzaj raportu: typy modelu albo „Wyższe kursy" (typy z kursem od 2,0). */
-	const [variant, setVariant] = useState('standard');
+	const [variant, setVariant] = useUrlState('variant', { allowed: VARIANTS, fallback: 'standard' });
 	const [usage, setUsage] = useState(null);
+	/*
+	 * Wygenerowany raport w adresie (`?report=<id>`).
+	 *
+	 * Raport przychodzi strumieniem i dotąd żył tylko w stanie strony: kliknięcie meczu z listy
+	 * typów i „Wstecz" zostawiało pusty hub, choć raport — opłacony limitem — leżał zapisany
+	 * w „Moich raportach". Po zakończeniu generowania adres wskazuje zapis, a powrót albo
+	 * odświeżenie wczytuje go z konta (API odda wyłącznie raport właściciela).
+	 */
+	const [shownId, setShownId] = useUrlState('report', { allowed: isObjectIdParam, fallback: '' });
+	const [savedReport, setSavedReport] = useState(null);
 
 	const { report, isGenerating, isPartial, stage, candidateCount, start } = useReportStream({
 		language,
@@ -71,25 +89,61 @@ export default function ReportsHubClient() {
 		loadUsage();
 	}, [isAuthed, loadMyReports, loadUsage]);
 
-	// Po zakończonym generowaniu lista i licznik są nieaktualne.
+	// Po zakończonym generowaniu lista i licznik są nieaktualne, a adres wskazuje nowy zapis.
 	useEffect(() => {
 		if (report.reportId) {
+			setShownId(report.reportId);
 			loadMyReports();
 			loadUsage();
 		}
-	}, [report.reportId, loadMyReports, loadUsage]);
+	}, [report.reportId, setShownId, loadMyReports, loadUsage]);
+
+	// Powrót albo odświeżenie z `?report=` — raport z konta, bo stan strumienia zniknął razem ze stroną.
+	useEffect(() => {
+		if (!isAuthed || !shownId || shownId === report.reportId || savedReport?.id === shownId) return undefined;
+		let cancelled = false;
+		(async () => {
+			try {
+				const res = await fetch(`/api/reports/${shownId}`, { credentials: 'include' });
+				if (cancelled) return;
+				if (res.ok) {
+					const data = await res.json();
+					if (!cancelled) setSavedReport(data);
+				} else if (res.status === 404) {
+					// Usunięty albo cudzy (link od kogoś innego) — adres przestaje go wskazywać.
+					setShownId('');
+				}
+			} catch {
+				/* bez zapisanego raportu hub działa jak zwykle */
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [isAuthed, shownId, report.reportId, savedReport?.id, setShownId]);
+
+	/** Raport z adresu — tylko gdy na ekranie nie stoi nic świeższego (generowanie, błąd, nowy raport). */
+	const restored =
+		!isGenerating && !report.sections && !report.error && savedReport && savedReport.id === shownId
+			? savedReport
+			: null;
+
+	// Lista raportów i raport z adresu wyznaczają wysokość strony — dopiero z nimi jest dokąd wracać.
+	useScrollMemory(true, myReports !== null && (!shownId || Boolean(restored) || Boolean(report.sections)));
 
 	const removeReport = async (id) => {
 		try {
 			const res = await fetch(`/api/reports/${id}`, { method: 'DELETE', credentials: 'include' });
-			if (res.ok) setMyReports((prev) => (prev || []).filter((r) => r.id !== id));
+			if (res.ok) {
+				setMyReports((prev) => (prev || []).filter((r) => r.id !== id));
+				if (id === shownId) setShownId('');
+			}
 		} catch {
 			/* nieusunięty raport zostaje na liście */
 		}
 	};
 
 	const typeLabel = (type) => (type === 'threeDays' ? t('report_type_3d') : t('report_type_24h'));
-	const VARIANTS = ['standard', 'value'];
 
 	const generationCards = [
 		{
@@ -185,7 +239,11 @@ export default function ReportsHubClient() {
 											<p className="flex-1 text-sm leading-relaxed text-muted">{description}</p>
 											<Button
 												variant="accent"
-												onClick={() => start(type, variant)}
+												onClick={() => {
+													// Nowy raport zastępuje ten z adresu — zapisze się sam po zakończeniu.
+													setShownId('');
+													start(type, variant);
+												}}
 												disabled={isGenerating}
 												className="rounded-full"
 											>
@@ -202,7 +260,7 @@ export default function ReportsHubClient() {
 							</div>
 
 							{/* Stan generowania: etapy selekcji i pisania, typy wpadają na żywo. */}
-							{(isGenerating || report.sections || report.error) && (
+							{(isGenerating || report.sections || report.error || restored) && (
 								<div className="mt-8">
 									{isGenerating && !report.sections && (
 										<Card>
@@ -240,6 +298,8 @@ export default function ReportsHubClient() {
 									{report.sections && (
 										<ReportPicks sections={report.sections} isPartial={isPartial} />
 									)}
+
+									{restored && <ReportPicks sections={restored.sections} />}
 								</div>
 							)}
 

@@ -8,20 +8,31 @@ import FootballMenu from '@/components/FootballMenu';
 import FullScreenModal from '@/components/FullScreenModal';
 import Footer from '@/components/layout/Footer';
 import { useGameDetailsModal } from '@/components/football/useGameDetailsModal';
-import AccuracyPanel from '@/components/stats/AccuracyPanel';
+import AccuracyPanel, {
+	ACCURACY_RANGES,
+	DEFAULT_KIND,
+	DEFAULT_RANGE,
+	PUBLIC_KINDS,
+} from '@/components/stats/AccuracyPanel';
 import Leaderboard from '@/components/stats/Leaderboard';
+import { useUrlState } from '@/lib/hooks/useUrlState';
 
 /**
  * Publiczna skuteczność wszystkich typów wygenerowanych w serwisie.
  *
  * Strona jest dostępna bez logowania i celowo pokazuje też typy chybione, pominięte
  * i oczekujące. To jedyny sposób, żeby uzasadnić płatny plan czymś innym niż obietnicą.
+ *
+ * Zakładka i okres są w adresie (`?kind=coupon_3d&days=30`): wejście w mecz z listy kuponów
+ * i „Wstecz" wraca do tej samej zakładki, a z innych stron można linkować prosto do niej.
  */
 export default function AccuracyPageClient() {
 	const t = useTranslations('common');
 	const locale = useLocale();
 	const [isResultsModalOpen, setIsResultsModalOpen] = useState(false);
 	const { gameId: detailsGameId, close: closeGameDetails } = useGameDetailsModal();
+	const [kind, setKind] = useUrlState('kind', { allowed: PUBLIC_KINDS, fallback: DEFAULT_KIND });
+	const [days, setDays] = useUrlState('days', { allowed: ACCURACY_RANGES, fallback: DEFAULT_RANGE });
 
 	return (
 		<>
@@ -40,7 +51,12 @@ export default function AccuracyPageClient() {
 					</h2>
 					<p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{t('accuracy_intro')}</p>
 
-					<AccuracyPanel scope="global" className="mt-6" />
+					<AccuracyPanel
+						scope="global"
+						className="mt-6"
+						view={{ kind, setKind, days, setDays }}
+						rememberScroll
+					/>
 
 					<section className="mt-10">
 						<h2 className="font-display text-xl font-bold uppercase tracking-wide text-text">

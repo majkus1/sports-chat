@@ -11,6 +11,7 @@ import {
 	Trophy,
 	Users,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/routing';
 import BallIcon from '@/components/icons/BallIcon';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -122,6 +123,8 @@ export function Problem({ content }) {
 }
 
 export function Features({ content }) {
+	// Etykieta odnośnika z tłumaczeń, obok „Narzędzi" w menu i stopce — `landingContent` to tekst sprzedażowy.
+	const t = useTranslations('common');
 	return (
 		<Section titleId="features-title">
 			<SectionTitle id="features-title">{content.title}</SectionTitle>
@@ -144,6 +147,12 @@ export function Features({ content }) {
 					);
 				})}
 			</div>
+
+			{/* Kafelki wyżej to skrót — pełna lista (kupony, kupon live, poranny mail…) jest na stronie narzędzi. */}
+			<CtaLink href="/narzedzia" variant="outline" className="mt-8">
+				{t('tools_see_all')}
+				<ArrowRight size={18} aria-hidden="true" />
+			</CtaLink>
 		</Section>
 	);
 }

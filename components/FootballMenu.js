@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { CircleHelp, Sparkles } from 'lucide-react';
+import { Blocks, CircleHelp, Sparkles } from 'lucide-react';
 import { Link, usePathname } from '@/i18n/routing';
 import GuideModal from '@/components/football/GuideModal';
 
@@ -96,6 +96,19 @@ export default function FootballMenu({ onResultsClick }) {
 	return (
 		<>
 			<div ref={wrapperRef} className="choose-time football-menu-wrapper">
+				{/*
+				 * Wszystkie narzędzia — w rzędzie plakietki „Piłka nożna", po prawej, a nie w pasie.
+				 * Pas jest pełny: na stronach z panelem bocznym zajmuje 783 z 790 px (zmierzone przy
+				 * 1280 px), więc każda kolejna pozycja zrzucałaby pigułkę asystenta do drugiego rzędu.
+				 * Pozycja bezwzględna nie zabiera miejsca w pasie; plakietka stoi nad menu na każdej
+				 * z sześciu stron, które go używają. Na telefonie krótszy napis, żeby zmieścić się obok.
+				 */}
+				<Link href="/narzedzia" className="football-tools-link">
+					<Blocks size={14} aria-hidden="true" />
+					<span className="football-tools-short">{t('tools_menu')}</span>
+					<span className="football-tools-long">{t('tools_menu_all')}</span>
+				</Link>
+
 				{primaryItems.map((item) => (
 					<span key={item.key} className="football-menu-item">
 						<MenuItem item={item} isActive={isActive(item)} />
@@ -195,6 +208,51 @@ export default function FootballMenu({ onResultsClick }) {
           align-items: center;
         }
 
+        /* Wszystkie narzędzia: w rzędzie plakietki „Piłka nożna" nad paskiem, przy prawej
+           krawędzi. 14 px to górny margines paska (.choose-time), 28 px — wysokość plakietki,
+           więc odnośnik stoi w jednej linii z nią i nie przesuwa niczego w pasie. */
+        .football-tools-link {
+          position: absolute;
+          right: 0;
+          bottom: calc(100% + 14px);
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          height: 28px;
+          padding: 0 11px 0 9px;
+          border: 1px solid var(--border);
+          border-radius: 999px;
+          background: var(--surface);
+          color: var(--text);
+          font-family: 'Roboto Condensed', sans-serif;
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          text-decoration: none;
+          white-space: nowrap;
+          transition: border-color 0.15s ease, background 0.15s ease;
+        }
+
+        .football-tools-link svg {
+          flex-shrink: 0;
+          color: var(--accent);
+        }
+
+        .football-tools-link:hover {
+          border-color: var(--accent);
+          background: var(--accent-soft);
+        }
+
+        .football-tools-link:focus-visible {
+          outline: 2px solid var(--ring);
+          outline-offset: 2px;
+        }
+
+        .football-tools-short {
+          display: none;
+        }
+
         /* Asystent: pigułka akcji po prawej stronie paska, nie kolejna zakładka. */
         .assistant-pill {
           display: inline-flex;
@@ -273,6 +331,15 @@ export default function FootballMenu({ onResultsClick }) {
         @media (max-width: 768px) {
           .menu-dots-button {
             display: inline-flex;
+          }
+
+          /* Obok plakietki na telefonie mieści się tylko krótki napis (320 px: 143 + 107 z 280). */
+          .football-tools-short {
+            display: inline;
+          }
+
+          .football-tools-long {
+            display: none;
           }
 
           /* Na telefonie asystent dostaje własny rząd pod zakładkami — szeroki, łatwy do trafienia kciukiem. */

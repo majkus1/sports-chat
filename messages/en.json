@@ -535,6 +535,9 @@
 		"blog_cta": "Want to test this on a specific match? Generate an analysis and ask the assistant — the first ones are free.",
 		"blog_cta_link": "See upcoming matches",
 		"pricing_buy_days": "Buy {days} days",
-		"pricing_one_off_note": "Plans work like a ticket: you pay for 30 days and the account returns to free afterwards. Nothing renews automatically and there is nothing to cancel. That is also why you can pay by card, BLIK or Przelewy24 — recurring payments support cards only."
+		"pricing_one_off_note": "Plans work like a ticket: you pay for 30 days and the account returns to free afterwards. Nothing renews automatically and there is nothing to cancel. That is also why you can pay by card, BLIK or Przelewy24 — recurring payments support cards only.",
+		"tools_menu": "Tools",
+		"tools_menu_all": "All tools",
+		"tools_see_all": "See all tools"
 	}
 }

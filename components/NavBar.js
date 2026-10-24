@@ -14,13 +14,15 @@ import LanguageSwitcher from './LanguageSwitcher';
 import ThemeToggle from './theme/ThemeToggle';
 import Logo from './Logo';
 import BallIcon from './icons/BallIcon';
-import { ChevronDown, CreditCard, Home, LayoutGrid, Menu, Send, User, X } from 'lucide-react';
+import { Blocks, ChevronDown, CreditCard, Home, LayoutGrid, Menu, Send, User, X } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { SITE_LINKS, SPORT_CATEGORIES } from '@/lib/navigation';
+import { ACCOUNT_PANEL_EVENT } from '@/lib/tools/accountPanel';
 
 /** Ikony trzymane przy widoku, żeby lib/navigation.js pozostał czystymi danymi. */
 const SITE_LINK_ICONS = {
   '/': Home,
+  '/narzedzia': Blocks,
   '/cennik': CreditCard,
 };
 
@@ -77,6 +79,23 @@ export default function NavBar({ onLanguageChange }) {
     };
     window.addEventListener('czat:auth', onAuth);
     return () => window.removeEventListener('czat:auth', onAuth);
+  }, [isAuthed]);
+
+  /*
+   * Panel konta na żądanie (`openAccountPanel()` z lib/tools/accountPanel.js — np. kafelek
+   * „Poranny mail" na stronie narzędzi). Działa jak kliknięcie ikony konta: zalogowany widzi
+   * panel, gość formularz logowania.
+   */
+  useEffect(() => {
+    const onAccount = () => {
+      setMobileLinksMenuOpen(false);
+      setForgotOpen(false);
+      setRegisterModalOpen(false);
+      setLoginModalOpen(!isAuthed);
+      setMobileMenuOpen(true);
+    };
+    window.addEventListener(ACCOUNT_PANEL_EVENT, onAccount);
+    return () => window.removeEventListener(ACCOUNT_PANEL_EVENT, onAccount);
   }, [isAuthed]);
 
   /** Wybór pozycji zamyka menu — inaczej po przejściu zostaje otwarte na nowej stronie. */

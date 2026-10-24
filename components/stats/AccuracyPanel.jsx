@@ -13,6 +13,8 @@ import { useAuthKey } from '@/context/UserContext';
 import { valueContent } from '@/lib/value/content';
 import { cn } from '@/lib/utils';
 import { LEAGUE_TIERS, PROBATION_TIER } from '@/lib/football/leagues';
+import { useScrollMemory } from '@/lib/hooks/useScrollMemory';
+import { ACCURACY_DEFAULT_KIND, ACCURACY_DEFAULT_RANGE } from '@/lib/urlState';
 
 /**
  * Skuteczność typów — wspólny widok dla trzech miejsc: publicznej zakładki, huba raportów
@@ -34,8 +36,20 @@ const VALUE_KIND = 'value';
 /** Ligi w okresie próbnym (`PROBATION_TIER`) — osobny licznik, poza główną liczbą; pigułka tylko, gdy takie ligi są. */
 const PROBATION_KIND = 'new_leagues';
 const MA_LIGI_PROBNE = [...LEAGUE_TIERS.values()].includes(PROBATION_TIER);
+/** Zakładki z osobnym bilansem — druga grupa pigułek, tylko w publicznej skuteczności. */
+const EXTRA_KINDS = [...Object.keys(COUPON_KINDS), VALUE_KIND, ...(MA_LIGI_PROBNE ? [PROBATION_KIND] : [])];
 const AUTHORS = ['ai', 'user'];
 const RANGES = ['30', '90', 'all'];
+
+/*
+ * Dopuszczalne wartości dla strony, która trzyma wybór w adresie (`?kind=`, `?days=`) —
+ * ta sama lista co pigułki, więc w adresie nie da się ustawić zakładki, której nie ma.
+ */
+export const PUBLIC_KINDS = [...KINDS, ...EXTRA_KINDS];
+export const ACCURACY_RANGES = RANGES;
+// Domyślne w `lib/urlState`, bo odnośniki do zakładek składają też strony serwerowe.
+export const DEFAULT_KIND = ACCURACY_DEFAULT_KIND;
+export const DEFAULT_RANGE = ACCURACY_DEFAULT_RANGE;
 
 /**
  * Duży wskaźnik skuteczności — pierwsza rzecz, na którą patrzy odwiedzający.
@@ -128,12 +142,32 @@ function BreakdownRow({ row, t }) {
 	);
 }
 
-export default function AccuracyPanel({ scope = 'global', compact = false, defaultKind = 'all', className }) {
+/**
+ * @param {object} props
+ * @param {{ kind: string, setKind: Function, days: string, setDays: Function }} [props.view]
+ *   rodzaj i okres sterowane z zewnątrz — publiczna skuteczność trzyma je w adresie, żeby
+ *   „Wstecz" z meczu, odświeżenie i wysłany link otwierały tę samą zakładkę. Bez `view`
+ *   (profil, hub raportów) wybór żyje tylko w komponencie: tam panel jest dodatkiem do innej
+ *   strony i nie powinien dopisywać jej parametrów.
+ * @param {boolean} [props.rememberScroll] przywracanie przewinięcia po powrocie (`useScrollMemory`)
+ */
+export default function AccuracyPanel({
+	scope = 'global',
+	compact = false,
+	defaultKind = DEFAULT_KIND,
+	className,
+	view = null,
+	rememberScroll = false,
+}) {
 	const t = useTranslations('common');
 	const locale = useLocale();
 
-	const [kind, setKind] = useState(defaultKind);
-	const [days, setDays] = useState('90');
+	const [localKind, setLocalKind] = useState(defaultKind);
+	const [localDays, setLocalDays] = useState(DEFAULT_RANGE);
+	const kind = view ? view.kind : localKind;
+	const setKind = view ? view.setKind : setLocalKind;
+	const days = view ? view.days : localDays;
+	const setDays = view ? view.setDays : setLocalDays;
 	/*
 	 * Czyje typy liczymy: własnoręcznie wystawione czy pochodzące z wygenerowanych analiz.
 	 *
@@ -206,6 +240,9 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 		load();
 	}, [load]);
 
+	// Treść panelu przychodzi po zapytaniu — dopiero wtedy strona ma wysokość, na którą da się wrócić.
+	useScrollMemory(rememberScroll, !isLoading);
+
 	const s = data?.summary;
 	const cc = couponContent(locale);
 	const vc = valueContent(locale);
@@ -216,7 +253,7 @@ export default function AccuracyPanel({ scope = 'global', compact = false, defau
 	 */
 	const grupy = [
 		{ key: 'kind', label: t('accuracy_filter_kind'), items: KINDS },
-		...(scope === 'me' ? [] : [{ key: 'extra', label: cc.filterLabel, items: [...Object.keys(COUPON_KINDS), VALUE_KIND, ...(MA_LIGI_PROBNE ? [PROBATION_KIND] : [])] }]),
+		...(scope === 'me' ? [] : [{ key: 'extra', label: cc.filterLabel, items: EXTRA_KINDS }]),
 	];
 	const kupon = COUPON_KINDS[kind];
 

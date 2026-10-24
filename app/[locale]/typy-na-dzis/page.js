@@ -11,9 +11,11 @@ import { hintsForDate } from '@/lib/model/hints';
 import { todayPicksContent } from '@/lib/landing/todayPicks';
 import { couponsOverview } from '@/lib/coupons/service';
 import { couponContent } from '@/lib/coupons/content';
+import { hintPresenter } from '@/lib/coupons/marks';
 import { buildMetadata } from '@/lib/seo/metadata';
 import { JsonLd, breadcrumbLd } from '@/lib/seo/jsonLd';
 import { localDate } from '@/lib/time';
+import { accuracyHref } from '@/lib/urlState';
 
 /**
  * „Typy na dziś" — publiczna strona pod frazę, którą ludzie wpisują codziennie.
@@ -28,6 +30,9 @@ import { localDate } from '@/lib/time';
  */
 
 export const dynamic = 'force-dynamic';
+
+/** Typ kuponu → zakładka skuteczności (`?kind=`), na którą prowadzi jego dorobek. */
+const ZAKLADKA_KUPONU = { daily: 'coupon_daily', days3: 'coupon_3d', days5: 'coupon_5d' };
 
 function ladnaData(locale, date = new Date()) {
 	return new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'pl-PL', {
@@ -60,17 +65,23 @@ export default async function Page({ params }) {
 	let lista = [];
 	let listaJutro = [];
 	const jutro = localDate(new Date(), 1);
-	/** Lista dnia dla strony: typ dnia odkryty, reszta za kłódką (plan odkrywa ją u klienta). */
-	const doListy = (list, dziennyId) =>
-		list.slice(0, 12).map((w) => ({
+	/**
+	 * Lista dnia dla strony: typ dnia i kupon dnia odkryte, reszta za kłódką (plan odkrywa ją
+	 * u klienta). Selekcja typu dnia i nóg kuponu — z zapisu, ta sama co na kartach wyżej
+	 * (`lib/coupons/marks.js`); bieżąca plakietka po przeliczeniu modelu bywa inna.
+	 */
+	const doListy = (list, daily, couponLegs = []) => {
+		const { present } = hintPresenter({ full: false, daily, couponLegs });
+		return list.slice(0, 12).map((w) => ({
 			fixtureId: w.fixtureId,
 			home: w.home,
 			away: w.away,
 			league: w.league,
 			kickoff: w.kickoff,
-			// Gość i robot widzą typ tylko przy typie dnia — reszta za kłódką, jak na liście meczów.
-			hint: w.fixtureId === dziennyId ? { ...w.hint, daily: true } : { locked: true },
+			// Gość i robot widzą typ tylko przy typie dnia i kuponie dnia — reszta za kłódką, jak na liście meczów.
+			hint: present(w.fixtureId, w.hint) ?? { locked: true },
 		}));
+	};
 	try {
 		await connectToDb();
 		/*
@@ -87,7 +98,11 @@ export default async function Page({ params }) {
 		]);
 		kupony = kup;
 		overview = ov || (await dailyOverviewCached());
-		lista = doListy(hinty.list, overview.today?.fixtureId);
+		lista = doListy(
+			hinty.list,
+			overview.today,
+			(kupony?.today?.legs || []).map((l) => ({ ...l, type: 'daily' }))
+		);
 		/*
 		 * Wieczorem (dzisiejszy typ dnia już trwa) strona pokazuje typ dnia na jutro — wtedy także
 		 * jutrzejszą listę. Bez niej najmocniejszy jutrzejszy typ ze strony głównej nie miał tu
@@ -95,7 +110,7 @@ export default async function Page({ params }) {
 		 */
 		if (overview.tomorrow) {
 			const jutroHinty = await withTimeout(hintsForDate(jutro), 8000, { list: [] });
-			listaJutro = doListy(jutroHinty.list, overview.tomorrow.fixtureId);
+			listaJutro = doListy(jutroHinty.list, overview.tomorrow);
 		}
 	} catch (error) {
 		console.warn('[typy-na-dzis] dane niedostępne:', error.message);
@@ -162,16 +177,28 @@ export default async function Page({ params }) {
 					</h2>
 					<div className="mt-3 flex flex-col gap-3">
 						{yesterday && <DailyPickCard pick={yesterday} c={c} label={c.yesterday} locale={locale} compact />}
-						{record.total > 0 && <p className="text-sm font-semibold text-text">{c.record(record.won, record.total)}</p>}
+						{/* Dorobek prowadzi prosto do swojej zakładki skuteczności — „dotąd", więc cały okres. */}
+						{record.total > 0 && (
+							<Link
+								href={accuracyHref({ kind: 'daily', days: 'all' })}
+								className="self-start text-sm font-semibold text-text no-underline hover:underline"
+							>
+								{c.record(record.won, record.total)}
+							</Link>
+						)}
 						{kupony?.yesterday?.legs?.length > 0 && (
 							<CouponCard coupon={kupony.yesterday} c={k} label={k.yesterday} locale={locale} compact />
 						)}
 						{['daily', 'days3', 'days5'].map(
 							(typ) =>
 								kupony?.record?.[typ]?.total > 0 && (
-									<p key={typ} className="text-sm font-semibold text-text">
+									<Link
+										key={typ}
+										href={accuracyHref({ kind: ZAKLADKA_KUPONU[typ], days: 'all' })}
+										className="self-start text-sm font-semibold text-text no-underline hover:underline"
+									>
 										{k.record(typ, kupony.record[typ].won, kupony.record[typ].total)}
-									</p>
+									</Link>
 								)
 						)}
 					</div>

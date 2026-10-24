@@ -9,7 +9,9 @@ export default function LanguageSwitcher({ onLanguageChange }) {
   const pathname = usePathname();
 
   const switchLanguage = (newLocale) => {
-    router.replace(pathname, { locale: newLocale });
+    // Z parametrami adresu (zakładka, okres, dzień) — zmiana języka nie może cofać widoku do domyślnego.
+    const search = typeof window !== 'undefined' ? window.location.search : '';
+    router.replace(`${pathname}${search}`, { locale: newLocale });
     if (onLanguageChange) {
       onLanguageChange();
     }

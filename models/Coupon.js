@@ -1,8 +1,9 @@
 import mongoose from 'mongoose';
 
 /**
- * Kupon dnia (łączny kurs ok. 2,0, za darmo), 3-dniowy (ok. 2,0) i 5-dniowy (ok. 3,0) — dwa
- * ostatnie w planie Pro i VIP. Do 18.10.2026 był też weekendowy (zostaje w historii).
+ * Kupon dnia (za darmo), 3-dniowy i 5-dniowy — dwa ostatnie w planie Pro i VIP. Od 25.10.2026
+ * wszystkie z kursem łącznym 2,4–2,8 (wcześniej ok. 2,0, 2,0 i 3,0 — starsze zapisy zostają, jakie
+ * były). Do 18.10.2026 był też weekendowy (zostaje w historii).
  *
  * Wybierany RAZ (pierwszy przebieg po 9:30, codziennie każdy rodzaj) i już się nie zmienia —
  * to obietnica publiczna, rozliczana po meczach. Gdy pula dnia nie pozwala złożyć kuponu

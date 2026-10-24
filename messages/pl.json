@@ -535,6 +535,9 @@
 		"blog_cta": "Chcesz sprawdzić to na konkretnym meczu? Wygeneruj analizę i dopytaj asystenta — pierwsze analizy są za darmo.",
 		"blog_cta_link": "Zobacz najbliższe mecze",
 		"pricing_buy_days": "Kup dostęp na {days} dni",
-		"pricing_one_off_note": "Plany kupujesz jak bilet: opłacasz 30 dni i po tym czasie konto samo wraca do darmowego. Nic nie pobiera się automatycznie, nie trzeba niczego wypowiadać. Dzięki temu zapłacisz kartą, BLIK-iem albo Przelewami24 — płatności cykliczne obsługują wyłącznie karty."
+		"pricing_one_off_note": "Plany kupujesz jak bilet: opłacasz 30 dni i po tym czasie konto samo wraca do darmowego. Nic nie pobiera się automatycznie, nie trzeba niczego wypowiadać. Dzięki temu zapłacisz kartą, BLIK-iem albo Przelewami24 — płatności cykliczne obsługują wyłącznie karty.",
+		"tools_menu": "Narzędzia",
+		"tools_menu_all": "Wszystkie narzędzia",
+		"tools_see_all": "Zobacz wszystkie narzędzia"
 	}
 }

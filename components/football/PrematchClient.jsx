@@ -19,6 +19,9 @@ import { useAuthKey } from '@/context/UserContext';
 import MorningEmailPrompt from '@/components/billing/MorningEmailPrompt';
 import { Link } from '@/i18n/routing';
 import BeatLoader from 'react-spinners/BeatLoader';
+import { replaceSearchParams, useUrlSearch, useUrlState } from '@/lib/hooks/useUrlState';
+import { useScrollMemory } from '@/lib/hooks/useScrollMemory';
+import { isPageParam, PREMATCH_LIST_KEY } from '@/lib/urlState';
 
 export default function PrematchClient() {
   const locale = useLocale();
@@ -29,7 +32,6 @@ export default function PrematchClient() {
    */
   const [modelHints, setModelHints] = useState({});
   const [modelTop, setModelTop] = useState({ picks: [], count: 0, full: false });
-  const [searchTerm, setSearchTerm] = useState('');
   const [isResultsModalOpen, setIsResultsModalOpen] = useState(false);
   const [isH2HModalOpen, setIsH2HModalOpen] = useState(false);
   const [isTeamStatsModalOpen, setIsTeamStatsModalOpen] = useState(false);
@@ -63,32 +65,49 @@ export default function PrematchClient() {
     return dates;
   };
 
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const today = new Date();
-    return `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
-  });
-  const [isLoadingFixtures, setIsLoadingFixtures] = useState(false);
+  /*
+   * Dzień, fraza i strona listy są w adresie (`?date=2026-10-25&q=legia&page=2`), a nie tylko
+   * w stanie komponentu: wejście w mecz i „Wstecz", odświeżenie albo wysłany link otwierają tę
+   * samą listę. Dziś, pusta fraza i pierwsza strona to brak parametru; dzień spoza pięciu
+   * najbliższych (stary link) wraca do dziś.
+   */
+  const dateOptions = getDateOptions();
+  const todayKey = dateOptions[0].formatted;
+  const [selectedDate] = useUrlState('date', { allowed: dateOptions.map((d) => d.formatted), fallback: todayKey });
+  const [pageParam, setPageParam] = useUrlState('page', { allowed: isPageParam, fallback: '1' });
+  const currentPage = Number(pageParam);
+  const setCurrentPage = (n) => setPageParam(String(n));
+  // Zmiana dnia zaczyna od pierwszej strony — jednym zapisem adresu, żeby nie zgubić frazy.
+  const setSelectedDate = (date) => replaceSearchParams({ date: date === todayKey ? null : date, page: null });
 
-  // Stronicowanie liczy serwer — tu trzymamy tylko bieżącą stronę i metadane z odpowiedzi.
-  const [currentPage, setCurrentPage] = useState(1);
+  // `true` od startu: do pierwszej odpowiedzi lista jest w drodze, a nie pusta.
+  const [isLoadingFixtures, setIsLoadingFixtures] = useState(true);
+
+  // Stronicowanie liczy serwer — tu trzymamy tylko metadane z odpowiedzi (bieżąca strona jest w adresie).
   const [paging, setPaging] = useState({ total: 0, totalPages: 1, pageSize: 50 });
 
   /*
    * Wyszukiwanie idzie do serwera, więc nie może strzelać przy każdej literze.
-   * Odbijamy wpisywanie o 400 ms i dopiero ustabilizowaną frazę wysyłamy w zapytaniu.
+   * Odbijamy wpisywanie o 400 ms i dopiero ustabilizowaną frazę zapisujemy w adresie (`?q=`),
+   * a z niego idzie zapytanie. Nowa fraza zaczyna od pierwszej strony.
    */
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 400);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
+  const [searchTerm, setSearchTerm, debouncedSearch] = useUrlSearch('q', { delay: 400, alsoClear: ['page'] });
 
-  // Zmiana dnia albo frazy zaczyna od pierwszej strony.
+  // Ostatni widok listy — „Wróć do listy" na stronie meczu prowadzi tu z tym samym dniem i frazą.
   useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedDate, debouncedSearch]);
+    try {
+      window.sessionStorage.setItem(PREMATCH_LIST_KEY, window.location.search);
+    } catch {
+      /* bez pamięci powrót prowadzi na czystą listę */
+    }
+  }, [selectedDate, debouncedSearch, currentPage]);
 
-  // Auto-update selected date at midnight
+  /*
+   * O północy lista przeskakuje na nowe „dziś": dzień znika z adresu, a licznik wymusza render,
+   * w którym pięć dni liczy się od nowa (bez parametru adres się nie zmienia, więc sam
+   * `useSearchParams` niczego by nie przerysował).
+   */
+  const [, setMidnightTick] = useState(0);
   useEffect(() => {
     const updateDateAtMidnight = () => {
       const now = new Date();
@@ -99,10 +118,9 @@ export default function PrematchClient() {
       const msUntilMidnight = tomorrow.getTime() - now.getTime();
       
       const timeoutId = setTimeout(() => {
-        const today = new Date();
-        const newDate = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
-        setSelectedDate(newDate);
-        
+        replaceSearchParams({ date: null, page: null });
+        setMidnightTick((n) => n + 1);
+
         // Set up next midnight update
         updateDateAtMidnight();
       }, msUntilMidnight);
@@ -134,6 +152,11 @@ export default function PrematchClient() {
         const response = await axios.get(`/api/football/fixtures?${params.toString()}`);
         setFixtures(response.data.response || []);
         setPaging(response.data.paging || { total: 0, totalPages: 1 });
+        // Stary link ze stroną spoza zakresu — serwer oddał ostatnią istniejącą, adres idzie za nim.
+        const servedPage = response.data.paging?.page;
+        if (servedPage && servedPage !== currentPage) {
+          replaceSearchParams({ page: servedPage > 1 ? String(servedPage) : null });
+        }
       } catch (e) {
         if (process.env.NODE_ENV === 'development') {
         console.error('Fixtures load error:', e);
@@ -173,6 +196,9 @@ export default function PrematchClient() {
       cancelled = true;
     };
   }, [selectedDate, authKey]);
+
+  // Lista przychodzi z serwera — przewinięcie sprzed wejścia w mecz wraca, gdy jest już na ekranie.
+  useScrollMemory(true, !isLoadingFixtures);
 
   const totalPages = paging.totalPages;
 

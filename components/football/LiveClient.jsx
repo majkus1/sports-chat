@@ -13,11 +13,20 @@ import { useGameDetailsModal } from '@/components/football/useGameDetailsModal';
 import FullScreenModal from '@/components/FullScreenModal';
 import Footer from '@/components/layout/Footer';
 import LiveCouponPanel from '@/components/live/LiveCouponPanel';
+import { useUrlSearch } from '@/lib/hooks/useUrlState';
+import { useScrollMemory } from '@/lib/hooks/useScrollMemory';
 
 export default function LiveClient() {
   const locale = useLocale();
   const [fixtures, setFixtures] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  /** Pierwsza odpowiedź z listą — dopiero wtedy strona ma wysokość, na którą da się wrócić. */
+  const [isLoaded, setIsLoaded] = useState(false);
+  /*
+   * Fraza w adresie (`?q=`): po wejściu w mecz i „Wstecz" lista jest dalej przefiltrowana.
+   * Filtr działa na liście w przeglądarce, więc pole reaguje od razu, a adres dostaje frazę
+   * po krótkim odbiciu — nie przy każdej literze.
+   */
+  const [searchTerm, setSearchTerm] = useUrlSearch('q', { delay: 300 });
   const [isResultsModalOpen, setIsResultsModalOpen] = useState(false);
   const [isTeamStatsModalOpen, setIsTeamStatsModalOpen] = useState(false);
   const [isH2HModalOpen, setIsH2HModalOpen] = useState(false);
@@ -43,11 +52,15 @@ export default function LiveClient() {
         if (process.env.NODE_ENV === 'development') {
           console.error('Error loading live fixtures:', error);
         }
+      } finally {
+        setIsLoaded(true);
       }
     };
 
     loadFixtures();
   }, []);
+
+  useScrollMemory(true, isLoaded);
 
 
 
