@@ -11,6 +11,9 @@ import { hintsForDate } from '@/lib/model/hints';
 import { todayPicksContent } from '@/lib/landing/todayPicks';
 import { couponsOverview } from '@/lib/coupons/service';
 import { couponContent } from '@/lib/coupons/content';
+import ValueTeaser from '@/components/value/ValueTeaser';
+import { valueContent } from '@/lib/value/content';
+import { valueStats } from '@/lib/value/service';
 import { hintPresenter } from '@/lib/coupons/marks';
 import { buildMetadata } from '@/lib/seo/metadata';
 import { JsonLd, breadcrumbLd } from '@/lib/seo/jsonLd';
@@ -60,6 +63,7 @@ export default async function Page({ params }) {
 	const k = couponContent(locale);
 	const dzis = localDate();
 	let kupony = null;
+	let wyzsze = null;
 
 	let overview = { today: null, tomorrow: null, yesterday: null, record: { won: 0, total: 0 } };
 	let lista = [];
@@ -97,6 +101,8 @@ export default async function Page({ params }) {
 			couponsOverview().catch(() => null),
 		]);
 		kupony = kup;
+		// Bilans typów z wyższym kursem — sam odczyt; brak nie blokuje strony.
+		wyzsze = await withTimeout(valueStats({ recent: 0 }), 3000, null).catch(() => null);
 		overview = ov || (await dailyOverviewCached());
 		lista = doListy(
 			hinty.list,
@@ -150,6 +156,14 @@ export default async function Page({ params }) {
 					<p className="mt-3 text-xs leading-relaxed text-muted">{k.how}</p>
 				</section>
 			)}
+
+			{/* Wyższe kursy obok kuponów — dotąd tylko w przełączniku raportu i w asystencie. */}
+			<section className="mt-8" aria-labelledby="wyzsze-kursy">
+				<h2 id="wyzsze-kursy" className="sr-only">
+					{valueContent(locale).teaserTitle}
+				</h2>
+				<ValueTeaser c={valueContent(locale)} stats={wyzsze} />
+			</section>
 
 			{/* Pusta lista (brak typów albo dane nie zdążyły) — bez nagłówka „0 typów". */}
 			{lista.length > 0 && (

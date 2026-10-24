@@ -158,6 +158,12 @@ describe('narzędzia: słowa', () => {
 			for (const tool of kafelki) assert.ok(!tool.pl && !tool.en, `${tool.id}: teksty drugiego języka w kafelku`);
 		});
 
+		test(`${locale}: wyższe kursy otwierają raport od razu w wariancie „Wyższe kursy"`, () => {
+			const kafelek = kafelki.find((t) => t.id === 'wyzszy-kurs');
+			assert.equal(kafelek.href, '/pilka-nozna/ai-agent?variant=value');
+			assert.equal(c.groups.find((g) => g.tools.includes(kafelek))?.id, 'asystent-i-raporty');
+		});
+
 		test(`${locale}: pytanie do asystenta doklejone do adresu`, () => {
 			for (const tool of kafelki.filter((t) => t.ask)) {
 				assert.ok(tool.href.startsWith('/pilka-nozna/asystent?q='), tool.href);

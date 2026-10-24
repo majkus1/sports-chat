@@ -16,6 +16,8 @@ import { JsonLd, faqLd, organizationLd, webApplicationLd, websiteLd } from '@/li
 import { MethodTeaser } from '@/components/method/MethodSections';
 import DailyPickTeaser from '@/components/landing/DailyPickTeaser';
 import CouponTeaser from '@/components/coupons/CouponTeaser';
+import ValueTeaser from '@/components/value/ValueTeaser';
+import { valueContent } from '@/lib/value/content';
 import { landingContent } from '@/lib/landing/content';
 import { methodContent } from '@/lib/landing/method';
 import { faqItems } from '@/lib/landing/faq';
@@ -99,6 +101,12 @@ export default async function HomePage({ params }) {
 			{/* Typ dnia pod nagłówkiem — konkretny dowód, zanim ktoś przewinie do opisu funkcji. */}
 			<DailyPickTeaser />
 			<CouponTeaser />
+			{/* Wyższe kursy pod kuponami — bez liczb (strona główna nie pyta bazy o bilans). */}
+			<section className="px-5 pb-12" aria-label={valueContent(locale).teaserTitle}>
+				<div className="mx-auto w-full max-w-4xl">
+					<ValueTeaser c={valueContent(locale)} compact />
+				</div>
+			</section>
 			<Problem content={content.problem} />
 			<Features content={content.features} />
 			<HowItWorks content={content.how} />
