@@ -125,7 +125,7 @@ function Wynik({ c, wynik, godzina, laduje }) {
 	return (
 		<div className={cn('flex flex-col gap-3 pt-1 transition-opacity', laduje && 'opacity-60')}>
 			{wynik.mode === 'none' ? (
-				<p className="rounded-[var(--radius-ui)] bg-surface-2 px-4 py-3 text-sm text-muted">{c.none(wynik.analyzed)}</p>
+				<p className="rounded-[var(--radius-ui)] bg-surface-2 px-4 py-3 text-sm text-muted">{wynik.analyzed > 0 && wynik.withOdds === 0 ? c.noOdds(wynik.analyzed) : c.none(wynik.analyzed)}</p>
 			) : (
 				<>
 					<p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-accent">
