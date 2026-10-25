@@ -1,6 +1,7 @@
-import { Check, Clock, Minus, Radio, ShieldCheck, Ticket, X } from 'lucide-react';
+import { CalendarClock, Check, Clock, Minus, Radio, ShieldCheck, Ticket, X } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
+import { legScheduleNote } from '@/lib/coupons/content';
 
 /**
  * Karta kuponu (dnia, 3- albo 5-dniowego) — bez stanu, renderowana na serwerze („Typy na dziś")
@@ -108,6 +109,7 @@ export default function CouponCard({ coupon, c, label, locale, compact = false, 
 					const s = legState(l, teraz);
 					const { Ikona, ton } = IKONY[s] || IKONY.pending;
 					const mecz = `${l.home} – ${l.away}`;
+					const terminarz = legScheduleNote(l, locale);
 					return (
 						<li key={l.fixtureId} className="flex items-center gap-3 px-5 py-2.5 sm:px-6">
 							<span className="w-11 shrink-0 text-center leading-tight">
@@ -130,6 +132,13 @@ export default function CouponCard({ coupon, c, label, locale, compact = false, 
 									<span className="font-semibold text-accent">{l.selection}</span> · {l.probability}%
 									{!compact && l.league ? ` · ${l.league}` : ''}
 								</span>
+								{/* Terminarz tylko przy sygnale: „Legia: w czwartek mecz w Lidze Konferencji (3 dni przerwy)". */}
+								{terminarz && (
+									<span className="mt-0.5 flex items-start gap-1 text-[11px] leading-snug text-muted">
+										<CalendarClock size={12} aria-hidden="true" className="mt-px shrink-0" />
+										<span className="[overflow-wrap:anywhere]">{terminarz}</span>
+									</span>
+								)}
 							</span>
 							<span className="shrink-0 rounded-md bg-surface-2 px-2 py-1 text-sm font-bold tabular-nums text-text">
 								{c.odds(l.odds)}

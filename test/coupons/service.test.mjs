@@ -39,6 +39,11 @@ const WTOREK = '2099-03-03';
 const SRODA = '2099-05-06';
 const R = [0, 1, 2].map((i) => localDate(o('2099-07-01', 12), i));
 const S = [0, 1].map((i) => localDate(o('2099-09-01', 12), i));
+// 01.11.2099 to niedziela — czwartek przed nią (29.10) daje „3 dni przerwy".
+const T = [0, 1].map((i) => localDate(o('2099-11-01', 12), i));
+/** Losowe identyfikatory drużyn — terminarz (podstawiony) liczy się po nich. */
+let druzyna = crypto.randomInt(800_000_000, 900_000_000);
+const zDruzynami = (w) => ({ ...w, homeId: ++druzyna, awayId: ++druzyna });
 
 /** Plakietka z listy dnia (`hintsForDate().list`) i jej kurs (dla podstawionego dostawcy). */
 const kursy = new Map();
@@ -79,6 +84,9 @@ const LISTY = {
 	// Próg wydatków przekroczony — płatny kupon bez sprawdzenia.
 	[S[0]]: czteryNaDzien(S[0]),
 	[S[1]]: [wpis(S[1], 15, 74, 1.35), wpis(S[1], 16, 73, 1.36), wpis(S[1], 17, 72, 1.37), wpis(S[1], 18, 71, 1.38)],
+	// Terminarz: niedziela T[0] (kupon dnia) i poniedziałek T[1] (3-dniowy) — z drużynami, każdy typ z inną parą.
+	[T[0]]: czteryNaDzien(T[0]).map(zDruzynami),
+	[T[1]]: [wpis(T[1], 15, 74, 1.35), wpis(T[1], 17, 73, 1.36), wpis(T[1], 19, 72, 1.37)].map(zDruzynami),
 };
 const RYZYKOWNY = LISTY[R[1]][1].fixtureId;
 const PROBNY = LISTY[D[0]][0].fixtureId;
@@ -92,9 +100,11 @@ const opcje = {
 	// Wiadomości bez zastrzeżeń — testy niżej podstawiają własne werdykty. Nigdy prawdziwe wyszukiwanie.
 	checkNews: async () => ({ verdict: 'ok', reason: null, sources: [{ title: 'Źródło', url: 'https://example.com' }] }),
 	newsBudget: async () => true,
+	// Terminarz drużyn — nigdy prawdziwe API; test niżej podstawia własny.
+	scheduleFor: async () => null,
 };
 const klucze = (date) => ['daily', 'days3', 'days5'].map((t) => `${t}:${date}`);
-const NASZE = { date: { $in: [D[0], WTOREK, SRODA, R[0], S[0]] } };
+const NASZE = { date: { $in: [D[0], WTOREK, SRODA, R[0], S[0], T[0]] } };
 
 after(async () => {
 	await Coupon.deleteMany(NASZE);
@@ -233,6 +243,83 @@ describe('wiadomości przed publikacją płatnego kuponu', () => {
 		assert.equal(wywolan, 0);
 		assert.equal(trzy.newsCheck.skipped, 'spend_cap');
 		assert.equal(trzy.newsCheck.checked, 0);
+	});
+});
+
+describe('terminarz przy typach kuponu', () => {
+	test('notka tylko przy typie z sygnałem, wiadomości dostają terminarz, płatne nogi bez planu niewidoczne', async () => {
+		const { buildMatchSchedule } = await import('@/lib/football/schedule');
+		const { newsPrompt } = await import('@/lib/coupons/news');
+		const { legScheduleNote } = await import('@/lib/coupons/content');
+
+		const FLAGA_DNIA = LISTY[T[0]][0]; // gospodarz grał w czwartek w Lidze Konferencji
+		const FLAGA_3DNI = LISTY[T[1]][1]; // gość gra za 2 dni w Lidze Mistrzów
+		let nr = 7000;
+		const wiersz = (date, leagueId, league, homeId, awayId, gole = null) => ({
+			fixture: { id: ++nr, date, status: { short: gole ? 'FT' : 'NS' } },
+			league: { id: leagueId, name: league, country: 'World', round: null },
+			teams: { home: { id: homeId, name: 'x' }, away: { id: awayId, name: 'y' } },
+			goals: gole || { home: null, away: null },
+		});
+		const DZIEN = 86_400_000;
+		const listy = (teamId, match) => {
+			const k = new Date(match.kickoff).getTime();
+			const zwykle = {
+				recent: [wiersz(new Date(k - 7 * DZIEN).toISOString(), 106, 'Ekstraklasa', teamId, 1, { home: 1, away: 0 })],
+				upcoming: [wiersz(new Date(k + 7 * DZIEN).toISOString(), 106, 'Ekstraklasa', 2, teamId)],
+			};
+			if (match.fixtureId === FLAGA_DNIA.fixtureId && teamId === FLAGA_DNIA.homeId) {
+				return { ...zwykle, recent: [wiersz('2099-10-29T19:00:00Z', 848, 'UEFA Europa Conference League', teamId, 3, { home: 2, away: 1 })] };
+			}
+			if (match.fixtureId === FLAGA_3DNI.fixtureId && teamId === FLAGA_3DNI.awayId) {
+				return { ...zwykle, upcoming: [wiersz('2099-11-04T20:00:00Z', 2, 'UEFA Champions League', 4, teamId)] };
+			}
+			return zwykle;
+		};
+		const teraz = o(T[0], 9, 40);
+		const scheduleFor = async (match) =>
+			buildMatchSchedule(match, { home: listy(match.homeId, match), away: listy(match.awayId, match) }, { now: teraz.getTime() });
+		const sprawdzone = [];
+		const checkNews = async (leg) => {
+			sprawdzone.push(leg);
+			return { verdict: 'ok', reason: null, sources: [] };
+		};
+
+		const r = await ensureCoupons({ now: teraz, ...opcje, checkNews, scheduleFor });
+		assert.ok(r.created.includes(`daily:${T[0]}`) && r.created.includes(`days3:${T[0]}`), JSON.stringify(r));
+
+		const dzienny = await Coupon.findOne({ key: `daily:${T[0]}` }).lean();
+		assert.deepEqual(dzienny.legs.filter((l) => l.schedule).map((l) => l.fixtureId), [FLAGA_DNIA.fixtureId]);
+		const notka = dzienny.legs.find((l) => l.fixtureId === FLAGA_DNIA.fixtureId).schedule;
+		assert.equal(notka.pl, `${FLAGA_DNIA.home}: w czwartek mecz w Lidze Konferencji (3 dni przerwy)`);
+		assert.equal(notka.en, `${FLAGA_DNIA.home}: Conference League match on Thursday (3 days' rest)`);
+		assert.ok(dzienny.legs.filter((l) => l.fixtureId !== FLAGA_DNIA.fixtureId).every((l) => l.schedule === null));
+		// Pomocnicze pola (drużyny, pełny terminarz) nie trafiają do bazy.
+		assert.ok(dzienny.legs.every((l) => l.teamSchedule === undefined && l.homeId === undefined));
+
+		const trzy = await Coupon.findOne({ key: `days3:${T[0]}` }).lean();
+		const zRotacja = trzy.legs.find((l) => l.fixtureId === FLAGA_3DNI.fixtureId);
+		assert.equal(zRotacja.schedule.pl, `${FLAGA_3DNI.away}: za 2 dni (śr.) mecz w Lidze Mistrzów — ryzyko rotacji składu`);
+		assert.equal(trzy.legs.filter((l) => l.schedule).length, 1);
+
+		// Wiadomości sprawdzały płatny kupon z terminarzem w poleceniu; kupon dnia — bez sprawdzania.
+		assert.ok(sprawdzone.length >= trzy.legs.length);
+		assert.ok(sprawdzone.every((l) => l.teamSchedule && typeof l.teamSchedule === 'object'));
+		const polecenie = newsPrompt(sprawdzone.find((l) => l.fixtureId === FLAGA_3DNI.fixtureId));
+		assert.match(polecenie, /TERMINARZ — POPRZEDNI I NASTĘPNY MECZ/);
+		assert.match(polecenie, /oceń ryzyko rotacji i zmęczenia/);
+
+		// Interfejs: notka w karcie przy typie z sygnałem; płatny kupon bez planu — bez nóg, więc i bez notek.
+		const gosc = await couponsOverview({ now: o(T[0], 11) });
+		const noga = gosc.today.legs.find((l) => l.fixtureId === FLAGA_DNIA.fixtureId);
+		assert.equal(legScheduleNote(noga, 'pl'), notka.pl);
+		assert.equal(legScheduleNote(noga, 'en'), notka.en);
+		assert.ok(gosc.today.legs.filter((l) => l !== noga).every((l) => legScheduleNote(l, 'pl') === null));
+		assert.equal(gosc.days3.locked, true);
+		assert.deepEqual(gosc.days3.legs, []);
+		assert.doesNotMatch(JSON.stringify(gosc.days3), /rotacji/);
+		const plan = await couponsOverview({ now: o(T[0], 11), unlocked: true });
+		assert.equal(legScheduleNote(plan.days3.legs.find((l) => l.fixtureId === FLAGA_3DNI.fixtureId), 'pl'), zRotacja.schedule.pl);
 	});
 });
 

@@ -134,6 +134,10 @@ export async function fixturesByIds() {
 export async function teamRecentFixtures() {
 	return [];
 }
+/** Najbliższe mecze drużyny (terminarz, `lib/football/schedule.js`) — w atrapie pusto. */
+export async function teamNextFixtures() {
+	return [];
+}
 export async function teamStatistics() {
 	return null;
 }

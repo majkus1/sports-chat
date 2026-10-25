@@ -22,6 +22,13 @@ const LegNewsSchema = new mongoose.Schema(
 	{ _id: false }
 );
 
+/**
+ * Notka terminarza przy typie (`lib/football/schedule.js`, od 25.10.2026) — zapisywana TYLKO, gdy
+ * któraś drużyna ma sygnał: puchar w środku tygodnia, krótka przerwa, ważny mecz kilka dni później.
+ * W obu językach, bo kupon zapisujemy raz, a karta renderuje się w języku czytelnika.
+ */
+const LegScheduleSchema = new mongoose.Schema({ pl: String, en: String }, { _id: false });
+
 /** Typ odrzucony po sprawdzeniu wiadomości — pokazywany przy kuponie, żeby było widać, co AI odsiało. */
 const DroppedLegSchema = new mongoose.Schema(
 	{
@@ -54,6 +61,8 @@ const LegSchema = new mongoose.Schema(
 		score: { type: String, default: null },
 		/** Tylko płatne kupony: czy AI sprawdziło wiadomości o tym meczu przed publikacją. */
 		news: { type: LegNewsSchema, default: null },
+		/** Terminarz drużyn tego meczu — krótka notka tylko przy sygnale, inaczej `null`. */
+		schedule: { type: LegScheduleSchema, default: null },
 		/** Kupon live: minuta i wynik w chwili wyboru oraz uzasadnienie AI. */
 		minute: { type: Number, default: null },
 		liveScore: { type: String, default: null },

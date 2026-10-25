@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { Sparkles } from 'lucide-react';
+import { CalendarClock, Sparkles } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { Card, CardContent } from '@/components/ui/Card';
 import AnalysisPanel from '@/components/match/AnalysisPanel';
@@ -180,17 +180,50 @@ function RecentTeam({ teamName, data }) {
 	);
 }
 
+/**
+ * Notki terminarza nad ostatnimi meczami — TYLKO przy sygnale (puchar w środku tygodnia, krótka
+ * przerwa, ważny mecz za kilka dni). Liczone na serwerze w pakiecie (`lib/football/schedule.js`),
+ * w obu językach; zwykły terminarz nie dostaje żadnego dopisku.
+ */
+function ScheduleNotes({ notes }) {
+	const t = useTranslations('common');
+	if (!notes?.length) return null;
+	return (
+		<div className="rounded-[var(--radius-ui)] bg-surface-2 px-3 py-2 text-xs leading-relaxed text-muted">
+			<p className="font-semibold text-text">{t('schedule_title')}</p>
+			<ul className="mt-0.5 flex flex-col gap-0.5">
+				{notes.map((note) => (
+					<li key={note} className="flex items-start gap-1.5">
+						<CalendarClock size={13} aria-hidden="true" className="mt-px shrink-0 text-accent" />
+						<span className="[overflow-wrap:anywhere]">{note}</span>
+					</li>
+				))}
+			</ul>
+		</div>
+	);
+}
+
 function RecentFormTab({ bundle }) {
 	const t = useTranslations('common');
+	const locale = useLocale();
 	const recent = bundle.recentForm;
+	const notes = bundle.schedule?.notes?.[locale === 'en' ? 'en' : 'pl'];
 	if (!recent?.home?.matches?.length && !recent?.away?.matches?.length) {
-		return <Empty>{t('no_recent')}</Empty>;
+		return (
+			<div className="flex flex-col gap-3">
+				<ScheduleNotes notes={notes} />
+				<Empty>{t('no_recent')}</Empty>
+			</div>
+		);
 	}
 
 	return (
-		<div className="grid gap-3 sm:grid-cols-2">
-			<RecentTeam teamName={bundle.fixture.teams.home.name} data={recent?.home} />
-			<RecentTeam teamName={bundle.fixture.teams.away.name} data={recent?.away} />
+		<div className="flex flex-col gap-3">
+			<ScheduleNotes notes={notes} />
+			<div className="grid gap-3 sm:grid-cols-2">
+				<RecentTeam teamName={bundle.fixture.teams.home.name} data={recent?.home} />
+				<RecentTeam teamName={bundle.fixture.teams.away.name} data={recent?.away} />
+			</div>
 		</div>
 	);
 }

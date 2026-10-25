@@ -63,7 +63,7 @@ const limit = (over = {}) => async ({ kind }) => ({
  * Wszystkie źródła wykonawcy (`ZRODLA` w `lib/assistant/tools.js`). Niepodstawione rzucają —
  * zapomniana atrapa ma wywrócić test, a nie po cichu zapytać prawdziwe API albo model AI.
  */
-const ZRODLA = ['liveCoupon', 'peekLiveCoupon', 'liveMatchesNow', 'liveMatch', 'dailyOverview', 'checkQuota', 'fixture', 'readAnalysis', 'prepareAnalysis', 'generateAnalysis'];
+const ZRODLA = ['liveCoupon', 'peekLiveCoupon', 'liveMatchesNow', 'liveMatch', 'dailyOverview', 'checkQuota', 'fixture', 'readAnalysis', 'prepareAnalysis', 'generateAnalysis', 'matchSchedule'];
 const niepodstawione = Object.fromEntries(
 	ZRODLA.map((nazwa) => [
 		nazwa,
@@ -666,7 +666,7 @@ describe('moje_mecze_i_typy (prawdziwa baza)', () => {
 
 /* ------------------------------------------------------------------------------------------ */
 
-describe('definicje narzędzi i prompt assistant/4', () => {
+describe('definicje narzędzi i prompt assistant/5', () => {
 	const NOWE = ['na_zywo', 'mecz_na_zywo', 'analiza_meczu', 'typ_dnia', 'raporty', 'funkcje_aplikacji', 'moje_mecze_i_typy'];
 
 	test('nowe narzędzia mają definicję (wykonawców sprawdzają testy wyżej); gotowa_analiza zastąpiona', async () => {
@@ -689,7 +689,7 @@ describe('definicje narzędzi i prompt assistant/4', () => {
 	});
 
 	test('prompt w obu językach zna wszystkie narzędzia i nowe zasady', () => {
-		assert.equal(ASSISTANT_PROMPT_VERSION, 'assistant/4');
+		assert.equal(ASSISTANT_PROMPT_VERSION, 'assistant/5');
 		const pl = assistantSystemPrompt({ language: 'pl', locale: 'pl', today: '2099-01-01' });
 		const en = assistantSystemPrompt({ language: 'en', locale: 'en', today: '2099-01-01' });
 		for (const prompt of [pl, en]) {
@@ -705,5 +705,11 @@ describe('definicje narzędzi i prompt assistant/4', () => {
 		assert.match(en, /never say you don't/);
 		assert.match(en, /how many matches were checked/);
 		assert.match(en, /\[Pricing\]\(\/en\/cennik\)/);
+		// assistant/5: terminarz — tylko przy sygnale, rotacja jako ryzyko, liczby bez zmian.
+		assert.match(pl, /ryzyko rotacji", nigdy pewna rotacja/);
+		assert.match(pl, /Bez sygnału nie wspominasz o terminarzu/);
+		assert.match(pl, /Terminarz nie zmienia liczb/);
+		assert.match(en, /never a certain rotation/);
+		assert.match(en, /never changes the numbers/);
 	});
 });
