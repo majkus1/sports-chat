@@ -42,13 +42,14 @@ describe('lista przyjętych typów (`top`)', () => {
 
 	test('po jednym typie na mecz, od najwyższej szansy, bez odrzuconych przez AI i bez pól pomocniczych', () => {
 		const lista = liveShortlist([
-			k(1, 95, 1.06),
-			k(1, 90, 1.1, 'X2'), // drugi typ tego samego meczu — odpada na krótkiej liście
-			k(2, 90, 1.2),
-			k(3, 88, 1.3, 'over25', { source: 'market' }),
-			k(4, 86, 1.35),
-			k(5, 66, 1.6),
+			k(1, 85, 1.22),
+			k(1, 80, 1.25, 'X2'), // drugi typ tego samego meczu — odpada na krótkiej liście
+			k(2, 82, 1.24),
+			k(3, 78, 1.3, 'over25', { source: 'market' }),
+			k(4, 75, 1.35),
+			k(5, 62, 1.6),
 			k(6, 40, 3.5), // kurs poza oboma przedziałami — w ogóle nie jest kandydatem
+			k(7, 95, 1.07), // poniżej 1,20 — typ bez wartości, w ogóle nie jest kandydatem
 		]);
 		const oceny = new Map([
 			['2:home', { decyzja: 'odrzuc', powod: 'rywal dominuje', uzasadnienie: '' }],
@@ -69,7 +70,7 @@ describe('lista przyjętych typów (`top`)', () => {
 	});
 
 	test('kupon i pojedynczy typ jak dotąd — lista `top` niczego w nich nie zmienia', () => {
-		const lista = liveShortlist([k(1, 95, 1.06), k(2, 90, 1.2), k(3, 88, 1.3), k(4, 86, 1.35), k(5, 66, 1.6)]);
+		const lista = liveShortlist([k(1, 95, 1.06), k(2, 82, 1.22), k(3, 80, 1.3), k(4, 78, 1.35), k(5, 62, 1.6)]);
 		const w = liveResult({ now, lista, oceny: null, analyzed: 5, withOdds: 5, modelMatches: 5 });
 		assert.equal(w.mode, 'coupon');
 		assert.ok(w.coupon.totalOdds >= 2);
@@ -85,7 +86,7 @@ describe('lista przyjętych typów (`top`)', () => {
 	});
 
 	test(`najwyżej ${LIVE_TOP} typów, a przy braku kandydatów — pusta lista i tryb „nic"`, () => {
-		const duzo = liveShortlist(Array.from({ length: 12 }, (_, i) => k(i + 1, 95 - i, 1.06 + i * 0.02)));
+		const duzo = liveShortlist(Array.from({ length: 12 }, (_, i) => k(i + 1, 85 - i, 1.22 + i * 0.02)));
 		assert.equal(liveResult({ now, lista: duzo, oceny: null, analyzed: 12, withOdds: 12, modelMatches: 12 }).top.length, LIVE_TOP);
 
 		const pusto = liveResult({ now, lista: [], oceny: null, analyzed: 4, withOdds: 2, modelMatches: 1 });

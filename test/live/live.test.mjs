@@ -22,6 +22,8 @@ const {
 	lambdasFromOdds,
 	liveLeagueOk,
 	LIVE_COUPON,
+	LIVE_LEG_MIN_ODDS,
+	LIVE_LEG_MAX_ODDS,
 } = await import('@/lib/live/select');
 const { predictMarkets } = await import('@/lib/model/dixonColes');
 const { getLiveCoupon, lockedLiveDto } = await import('@/lib/live/service');
@@ -79,7 +81,9 @@ describe('wybór typów', () => {
 		const kupon = buildLiveCoupon([k(1, 95, 1.06), k(1, 94, 1.08, 'X2'), k(2, 90, 1.2), k(3, 88, 1.3), k(4, 86, 1.35), k(5, 60, 1.9)]);
 		assert.ok(kupon.totalOdds >= LIVE_COUPON.target && kupon.totalOdds <= LIVE_COUPON.max);
 		assert.equal(new Set(kupon.legs.map((l) => l.fixtureId)).size, kupon.legs.length);
-		assert.ok(kupon.legs.every((l) => l.odds < 1.4));
+		// Nogi tylko z widełek 1,20–1,60 — typy po 1,06–1,08 nic nie wnoszą i model przy nich przesadza.
+		assert.ok(kupon.legs.every((l) => l.odds >= LIVE_LEG_MIN_ODDS && l.odds < LIVE_LEG_MAX_ODDS));
+		assert.ok(kupon.legs.length <= LIVE_COUPON.maxLegs);
 	});
 
 	test('bez kuponu — najlepszy pojedynczy typ (kurs 1,30–2,10, najwyższa szansa); bez niego nic', () => {
