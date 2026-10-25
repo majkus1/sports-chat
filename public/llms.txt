@@ -25,6 +25,10 @@ Operator: ML Devworks Michał Lipka, Kraków, Polska. Kontakt: office@ml-devwork
   okres próbny), kurs łączny 2,4–2,8, najwyżej 4 typy na kuponie dnia i 5 na pozostałych.
   Każdy kupon rozliczany publicznie.
 - Kupon live — generator kuponu z trwających meczów (Pro, VIP, okres próbny).
+- Kreator kuponu — własny kupon z meczów, które jeszcze się nie zaczęły: kurs łączny ok. 2,0, 2,5
+  albo 3,0, najwyżej 2–5 meczów, wybrane godziny (najdalej 3 dni) i ligi. Te same zasady co kupony
+  serwisu, AI sprawdza wiadomości o każdym typie; gdy kuponu nie da się złożyć, serwis mówi dlaczego.
+  Pro: 3 kupony dziennie, VIP: 10, okres próbny: 2. Własne kupony nie wchodzą do publicznej skuteczności.
 - Wyższe kursy — typy z kursem od 2,0, przy każdym szansa według rynku i według modelu:
   raport AI w wariancie „Wyższe kursy" oraz asystent. Osobny bilans w Skuteczności.
 - Analiza przedmeczowa — model liczy szanse i typy, model językowy opisuje formę, tabelę,
@@ -44,10 +48,10 @@ Operator: ML Devworks Michał Lipka, Kraków, Polska. Kontakt: office@ml-devwork
 ## Ceny
 
 - Plan darmowy: 5 analiz i 20 pytań do asystenta miesięcznie, bez raportów. Bez karty płatniczej.
-- Okres próbny nowego konta: 7 dni z typami modelu z liczbami, wszystkimi kuponami i porannym
+- Okres próbny nowego konta: 7 dni z typami modelu z liczbami, wszystkimi kuponami, kreatorem kuponu i porannym
   mailem, a do tego 10 analiz, 30 pytań i 2 raporty.
-- Pro: 49 zł za 30 dni — 100 analiz, 150 pytań, 12 raportów, 30 wyszukiwań wiadomości.
-- VIP: 99 zł za 30 dni — 200 analiz, 250 pytań, 30 raportów, 60 wyszukiwań wiadomości.
+- Pro: 49 zł za 30 dni — 100 analiz, 150 pytań, 12 raportów, 30 wyszukiwań wiadomości, 3 kupony z kreatora dziennie.
+- VIP: 99 zł za 30 dni — 200 analiz, 250 pytań, 30 raportów, 60 wyszukiwań wiadomości, 10 kuponów z kreatora dziennie.
 - Plany kupuje się jak bilet: płatność jednorazowa, nic nie odnawia się automatycznie.
 - Pakiety kredytów: 5 kredytów za 19 zł, 15 za 39 zł, 40 za 79 zł.
   Analiza kosztuje 1 kredyt, raport 3 kredyty. Kredyty nie tracą ważności.

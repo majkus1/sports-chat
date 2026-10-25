@@ -21,6 +21,7 @@ setupEnv();
 const { FEATURE_ROWS, QUOTA_ROWS, planMessageParams, pricingMetaDescription } = await import('@/lib/billing/planTexts');
 const { PLANS, PLAN_PASS_DAYS, QUOTA_KINDS, QUOTA_PERIODS, TRIAL } = await import('@/lib/billing/plans');
 const { COUPON_TYPES } = await import('@/lib/coupons/build');
+const { CUSTOM_ODDS } = await import('@/lib/coupons/custom');
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const czytaj = (...czesci) => readFileSync(path.join(ROOT, ...czesci), 'utf8');
@@ -92,6 +93,16 @@ describe('cennik: liczby w zdaniach z planów', () => {
 				[COUPON_TYPES.days3.target, COUPON_TYPES.days3.max],
 				'kupony 3- i 5-dniowy mają różne przedziały — cennik podaje jeden'
 			);
+		});
+
+		test(`${locale}: kreator kuponu — limit dzienny, cele kursu z kodu`, () => {
+			assert.equal(QUOTA_PERIODS.couponGen, 'day', 'karta cennika pisze „/ dzień" z QUOTA_PERIODS');
+			assert.ok(QUOTA_ROWS.some(([kind]) => kind === 'couponGen'), 'brak wiersza w cenniku');
+			const tekst = wyrenderuj(locale, 'pricing_what_coupon_gen');
+			const przecinek = (v) => (locale === 'en' ? v.toFixed(1) : v.toFixed(1).replace('.', ','));
+			for (const o of CUSTOM_ODDS) assert.ok(tekst.includes(przecinek(o.nominal)), `${o.id}: ${tekst}`);
+			assert.ok(!/\d/.test(bezMiejsc(MESSAGES[locale].pricing_what_coupon_gen).replace(/18\+/g, '')), 'liczba wpisana ręcznie');
+			assert.match(tekst, /18\+/);
 		});
 
 		test(`${locale}: zdania z liczbami nie mają liczb wpisanych ręcznie`, () => {

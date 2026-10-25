@@ -17,6 +17,7 @@ setupEnv();
 
 const { CREDIT_COSTS, CREDIT_PACKS, PLANS, PLAN_PASS_DAYS, TRIAL } = await import('@/lib/billing/plans');
 const { COUPON_TYPES } = await import('@/lib/coupons/build');
+const { CUSTOM_LEGS, CUSTOM_ODDS } = await import('@/lib/coupons/custom');
 const { odmien, ANALIZY, PYTANIA, RAPORTY, KREDYTY } = await import('@/lib/landing/plural');
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -61,6 +62,15 @@ describe('llms.txt zgadza się z kodem', () => {
 		ma(`najwyżej ${COUPON_TYPES.daily.maxLegs} typy na kuponie dnia i ${COUPON_TYPES.days3.maxLegs} na pozostałych`);
 		assert.equal(COUPON_TYPES.days3.maxLegs, COUPON_TYPES.days5.maxLegs, '3- i 5-dniowy mają różne limity typów');
 		assert.ok(!/weekend/i.test(tekst), 'kupon weekendowy już nie powstaje');
+	});
+
+	test('kreator kuponu: cele kursu, liczba meczów i dzienne limity z kodu', () => {
+		ma(`kurs łączny ok. ${CUSTOM_ODDS.slice(0, -1).map((o) => pl(o.nominal)).join(', ')} albo ${pl(CUSTOM_ODDS.at(-1).nominal)}`);
+		ma(`najwyżej ${CUSTOM_LEGS.min}–${CUSTOM_LEGS.max} meczów`);
+		ma(`Pro: ${PLANS.pro.limits.couponGen} kupony dziennie, VIP: ${PLANS.vip.limits.couponGen}, okres próbny: ${TRIAL.limits.couponGen}`);
+		ma(`${PLANS.pro.limits.couponGen} kupony z kreatora dziennie`);
+		ma(`${PLANS.vip.limits.couponGen} kuponów z kreatora dziennie`);
+		ma('nie wchodzą do publicznej skuteczności');
 	});
 
 	test('adresy prowadzą do istniejących stron', () => {

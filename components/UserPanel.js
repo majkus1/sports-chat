@@ -3,7 +3,7 @@ import { UserContext } from '@/context/UserContext';
 import Modal from './Modal';
 import PrivateChatComponent from './PrivateChatComponent';
 import { useTranslations } from 'next-intl'
-import { Bell, BellOff, Gauge, Search, Star, Target, X } from 'lucide-react'
+import { ArrowRight, Bell, BellOff, Gauge, Search, Star, Target, Ticket, X } from 'lucide-react'
 import AccuracyPanel from '@/components/stats/AccuracyPanel'
 import PlanSummary from '@/components/billing/PlanSummary'
 import MorningEmailToggle from '@/components/billing/MorningEmailToggle'
@@ -226,8 +226,20 @@ export default function UserPanel() {
             <AccuracyPanel scope="me" compact />
           </section>
 
-          {/* Prawa kolumna: ulubione mecze, rozmowy i wyszukiwarka jako jeden blok. */}
+          {/* Prawa kolumna: moje kupony, ulubione mecze, rozmowy i wyszukiwarka jako jeden blok. */}
           <div className="flex flex-col gap-4">
+            {/* Własne kupony z kreatora — sama lista i bilans są na osobnej stronie, tu tylko wejście. */}
+            <section className="panel-block">
+              <h3 className="section-heading flex items-center gap-1.5">
+                <Ticket size={14} aria-hidden="true" className="text-accent" />
+                {t('my_coupons')}
+              </h3>
+              <Link href="/moje-kupony" className="person-row">
+                <span className="min-w-0 flex-1 text-left text-sm">{t('my_coupons_hint')}</span>
+                <ArrowRight size={14} aria-hidden="true" className="shrink-0 text-muted" />
+              </Link>
+            </section>
+
             {/* Ulubione mecze — pogrupowane po przybliżonym stanie liczonym z godziny startu. */}
             <section className="panel-block">
               <h3 className="section-heading flex items-center gap-1.5">

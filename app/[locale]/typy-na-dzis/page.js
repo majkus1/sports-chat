@@ -4,6 +4,7 @@ import DailyPickCard from '@/components/today/DailyPickCard';
 import TodayPicksList from '@/components/today/TodayPicksList';
 import CouponCard from '@/components/coupons/CouponCard';
 import CouponsLive from '@/components/coupons/CouponsLive';
+import CouponBuilder from '@/components/coupons/CouponBuilder';
 import { Link } from '@/i18n/routing';
 import connectToDb from '@/lib/db';
 import { dailyOverview, dailyOverviewCached, withTimeout } from '@/lib/daily/service';
@@ -26,7 +27,8 @@ import { accuracyHref } from '@/lib/urlState';
  * Renderowana na serwerze przy każdym żądaniu (dane zmieniają się w ciągu dnia), więc robot
  * dostaje gotowy HTML: typ dnia z liczbami i powodami, listę dzisiejszych typów modelu
  * (za kłódką poza typem dnia — tak widzi je robot i gość), kupony: dnia za darmo, 3- i 5-dniowy
- * za kłódką bez planu (z kursami — `lib/coupons`), typy z wyższym kursem, wczorajszy wynik i dorobek.
+ * za kłódką bez planu (z kursami — `lib/coupons`), pod nimi kreator własnego kuponu (`CouponBuilder`,
+ * u klienta — zależy od planu), typy z wyższym kursem, wczorajszy wynik i dorobek.
  * Liczenie jest tanie: model i plakietki siedzą w pamięci procesu, typ dnia w bazie.
  *
  * Adres bez segmentu dyscypliny i po polsku — krótki i dokładnie taki, jak fraza.
@@ -146,16 +148,25 @@ export default async function Page({ params }) {
 				{tomorrow && <DailyPickCard pick={tomorrow} c={c} label={c.tomorrowLabel} locale={locale} />}
 			</div>
 
-			{kupony && (kupony.today || kupony.days3 || kupony.days5 || kupony.todayLater || kupony.paidLater) && (
-				<section className="mt-8" aria-labelledby="kupony">
-					<h2 id="kupony" className="font-display text-xl font-bold uppercase tracking-wide text-text">
-						{k.sectionTitle}
-					</h2>
-					<p className="mt-1.5 text-sm leading-relaxed text-muted">{k.sectionLead}</p>
-					<CouponsLive initial={kupony} locale={locale} className="mt-4" />
-					<p className="mt-3 text-xs leading-relaxed text-muted">{k.how}</p>
-				</section>
-			)}
+			{/*
+			 * Kupony serwisu, a pod nimi kreator własnego kuponu (Pro, VIP, okres próbny). Sekcja stoi także
+			 * w dzień bez kuponów serwisu — kreator składa z innej puli (godziny i ligi użytkownika).
+			 */}
+			<section className="mt-8" aria-labelledby="kupony">
+				<h2 id="kupony" className="font-display text-xl font-bold uppercase tracking-wide text-text">
+					{k.sectionTitle}
+				</h2>
+				<p className="mt-1.5 text-sm leading-relaxed text-muted">{k.sectionLead}</p>
+				{kupony && (kupony.today || kupony.days3 || kupony.days5 || kupony.todayLater || kupony.paidLater) && (
+					<>
+						<CouponsLive initial={kupony} locale={locale} className="mt-4" />
+						<p className="mt-3 text-xs leading-relaxed text-muted">{k.how}</p>
+					</>
+				)}
+				<div id="kreator-kuponu" className="mt-6 scroll-mt-24">
+					<CouponBuilder locale={locale} />
+				</div>
+			</section>
 
 			{/* Wyższe kursy obok kuponów — dotąd tylko w przełączniku raportu i w asystencie. */}
 			<section className="mt-8" aria-labelledby="wyzsze-kursy">

@@ -25,6 +25,9 @@ export default function robots() {
 					'/en/reset-password',
 					'/pl/verify-email',
 					'/en/verify-email',
+					// Własne kupony z kreatora — strona konta, treść zależy od sesji.
+					'/pl/moje-kupony',
+					'/en/moje-kupony',
 				],
 			},
 		],

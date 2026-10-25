@@ -125,6 +125,18 @@ describe('narzędzia: dostęp zgodny z planami', () => {
 		}
 	}
 
+	test('kreator kuponu: limit dzienny z planów i okresu próbnego, adres do kreatora na „Typach na dziś"', () => {
+		const kreator = TOOLS.find((t) => t.id === 'kreator-kuponu');
+		assert.ok(kreator, 'brak kafelka kreatora');
+		assert.deepEqual(kreator.requires, { quota: 'couponGen' });
+		assert.equal(kreator.href, '/typy-na-dzis#kreator-kuponu');
+		for (const lang of ['pl', 'en']) {
+			for (const n of [PLANS.pro.limits.couponGen, PLANS.vip.limits.couponGen, TRIAL.limits.couponGen]) {
+				assert.ok(kreator[lang].note.includes(String(n)), `${lang}: brak liczby ${n}`);
+			}
+		}
+	});
+
 	test('liczby w dopiskach pochodzą z planów', () => {
 		const tekst = JSON.stringify(TOOLS);
 		for (const n of [PLANS.free.limits.analysis, PLANS.pro.limits.analysis, PLANS.free.limits.aiChat, PLANS.pro.limits.report]) {

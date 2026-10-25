@@ -25,6 +25,7 @@ const KINDS = [
 	['aiChat', 'quota_ai_chat'],
 	['aiNews', 'quota_ai_news'],
 	['report', 'quota_report'],
+	['couponGen', 'quota_coupon_gen'],
 ];
 
 /** Ile dni zostało do podanej daty; `null`, gdy termin nie obowiązuje. */

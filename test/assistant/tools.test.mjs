@@ -63,7 +63,7 @@ const limit = (over = {}) => async ({ kind }) => ({
  * Wszystkie źródła wykonawcy (`ZRODLA` w `lib/assistant/tools.js`). Niepodstawione rzucają —
  * zapomniana atrapa ma wywrócić test, a nie po cichu zapytać prawdziwe API albo model AI.
  */
-const ZRODLA = ['liveCoupon', 'peekLiveCoupon', 'liveMatchesNow', 'liveMatch', 'dailyOverview', 'checkQuota', 'fixture', 'readAnalysis', 'prepareAnalysis', 'generateAnalysis', 'matchSchedule'];
+const ZRODLA = ['liveCoupon', 'peekLiveCoupon', 'liveMatchesNow', 'liveMatch', 'dailyOverview', 'checkQuota', 'fixture', 'readAnalysis', 'prepareAnalysis', 'generateAnalysis', 'matchSchedule', 'customCoupon'];
 const niepodstawione = Object.fromEntries(
 	ZRODLA.map((nazwa) => [
 		nazwa,
@@ -666,7 +666,7 @@ describe('moje_mecze_i_typy (prawdziwa baza)', () => {
 
 /* ------------------------------------------------------------------------------------------ */
 
-describe('definicje narzędzi i prompt assistant/5', () => {
+describe('definicje narzędzi i prompt assistant/6', () => {
 	const NOWE = ['na_zywo', 'mecz_na_zywo', 'analiza_meczu', 'typ_dnia', 'raporty', 'funkcje_aplikacji', 'moje_mecze_i_typy'];
 
 	test('nowe narzędzia mają definicję (wykonawców sprawdzają testy wyżej); gotowa_analiza zastąpiona', async () => {
@@ -689,7 +689,7 @@ describe('definicje narzędzi i prompt assistant/5', () => {
 	});
 
 	test('prompt w obu językach zna wszystkie narzędzia i nowe zasady', () => {
-		assert.equal(ASSISTANT_PROMPT_VERSION, 'assistant/5');
+		assert.equal(ASSISTANT_PROMPT_VERSION, 'assistant/6');
 		const pl = assistantSystemPrompt({ language: 'pl', locale: 'pl', today: '2099-01-01' });
 		const en = assistantSystemPrompt({ language: 'en', locale: 'en', today: '2099-01-01' });
 		for (const prompt of [pl, en]) {
@@ -711,5 +711,106 @@ describe('definicje narzędzi i prompt assistant/5', () => {
 		assert.match(pl, /Terminarz nie zmienia liczb/);
 		assert.match(en, /never a certain rotation/);
 		assert.match(en, /never changes the numbers/);
+		// assistant/6: kreator kuponu — raz na prośbę, „nie da się" z powodem, limit tylko przy kuponie.
+		assert.match(pl, /zloz_kupon wołasz RAZ na prośbę/);
+		assert.match(pl, /limit nie został zużyty/);
+		assert.match(en, /Call zloz_kupon ONCE per request/);
+		assert.match(en, /the limit was not used/);
+	});
+});
+
+/* ------------------------------------------------------------------------------------------ */
+
+describe('zloz_kupon — kreator kuponu z rozmowy', () => {
+	/** Wynik `generateCustomCoupon` — kształt z `lib/coupons/customService.js`. */
+	const kupon = (over = {}) => ({
+		status: 'ok',
+		repeated: false,
+		quota: { limit: 3, used: 1, remaining: 2 },
+		coupon: {
+			key: 'custom:x:1',
+			type: 'custom',
+			status: 'pending',
+			totalOdds: 2.52,
+			chance: 39,
+			createdAt: '2099-01-01T09:00:00.000Z',
+			params: { odds: '2.5', legs: 4, window: 'evening', leagues: ['england'], skipPublished: false },
+			newsCheck: { checked: 4, dropped: [{ match: 'A – B', selection: 'A wygra', reason: 'kontuzja lidera' }] },
+			newsSkipped: null,
+			legs: [
+				{
+					fixtureId: '11',
+					home: 'Arsenal',
+					away: 'Chelsea',
+					league: 'Premier League, England',
+					kickoff: '2099-01-01T18:00:00.000Z',
+					selection: 'Arsenal wygra',
+					probability: 74,
+					odds: 1.35,
+					schedule: { pl: 'Arsenal: w czwartek mecz w Lidze Europy (3 dni przerwy)', en: 'Arsenal: Europa League match on Thursday' },
+				},
+			],
+		},
+		...over,
+	});
+
+	test('ustawienia z pytania idą do serwisu w jego postaci; kupon z kursem, szansą, wiadomościami i limitem', async () => {
+		const { uruchom, wolania } = wykonawca({ zrodla: { customCoupon: async () => kupon() } });
+		const w = await uruchom('zloz_kupon', { kurs: 2.5, mecze: 4, okno: 'evening', ligi: ['england'], bez_kuponow_serwisu: true });
+		const [args] = wolania.customCoupon[0];
+		assert.equal(String(args.userId), String(USER_ID));
+		assert.deepEqual(args.params, { odds: 2.5, legs: 4, window: 'evening', leagues: ['england'], skipPublished: true });
+		assert.equal(w.kupon.kurs_laczny, 2.52);
+		assert.equal(w.kupon.szansa_wg_modelu_pct, 39);
+		assert.match(w.kupon.ustawienia, /ok\. 2,5 · najwyżej 4 mecze · Dziś 18–23 · Anglia/);
+		assert.deepEqual(
+			w.kupon.typy.map((t) => [t.mecz, t.typ, t.kurs, t.link]),
+			[['Arsenal – Chelsea', 'Arsenal wygra', 1.35, '/pl/mecz/11']]
+		);
+		assert.match(w.kupon.typy[0].terminarz, /Lidze Europy/);
+		assert.deepEqual(w.wiadomosci.odrzucone, [{ mecz: 'A – B', typ: 'A wygra', powod: 'kontuzja lidera' }]);
+		assert.equal(w.limit, 'zostało 2 z 3 na dziś');
+		assert.equal(w.moje_kupony, '/pl/moje-kupony');
+		assert.match(w.zasada, /mniejsza szansa/);
+		assert.match(w.zasada, /18\+/);
+	});
+
+	test('bez podanych ustawień — serwis bierze domyślne (pola puste, nie zgadywane)', async () => {
+		const { uruchom, wolania } = wykonawca({ zrodla: { customCoupon: async () => kupon({ repeated: true }) } });
+		const w = await uruchom('zloz_kupon', {});
+		assert.deepEqual(wolania.customCoupon[0][0].params, { odds: undefined, legs: undefined, window: undefined, leagues: undefined, skipPublished: undefined });
+		assert.match(w.powtorka, /limit nie został zużyty/);
+	});
+
+	test('„nie da się": powód z liczbami i podpowiedzi, limit nietknięty', async () => {
+		const { uruchom } = wykonawca({
+			zrodla: {
+				customCoupon: async () => ({
+					status: 'impossible',
+					reason: 'few_picks',
+					params: { odds: '2.5', legs: 4, window: 'evening', leagues: [], skipPublished: false },
+					counts: { matches: 6, withOdds: 6, picks: 2, needed: 3 },
+					suggest: ['window'],
+					dropped: [],
+					partial: false,
+					quota: { limit: 3, used: 0, remaining: 3 },
+				}),
+			},
+		});
+		const w = await uruchom('zloz_kupon', { kurs: 2.5, okno: 'evening' });
+		assert.match(w.nie_da_sie, /Z 6 meczów z typem modelu zasady kuponu .* spełniają 2 — a potrzeba co najmniej 3/);
+		assert.equal(w.podpowiedzi.length, 1);
+		assert.equal(w.limit, 'nie został zużyty — zostało 3 z 3 na dziś');
+	});
+
+	test('plan bez kreatora — "dostep" z cennikiem; limit na dziś — "niedostepne"; gość — bez wołania serwisu', async () => {
+		const bezPlanu = await wykonawca({ user: DARMOWY, zrodla: { customCoupon: async () => ({ status: 'plan_required' }) } }).uruchom('zloz_kupon', {});
+		assert.match(bezPlanu.dostep, /Pro/);
+		assert.equal(bezPlanu.cennik, '/pl/cennik');
+		const limit = await wykonawca({ zrodla: { customCoupon: async () => ({ status: 'limit', quota: { limit: 3, used: 3, remaining: 0 } }) } }).uruchom('zloz_kupon', {});
+		assert.match(limit.niedostepne, /limit kreatora kuponu \(3\)/);
+		const gosc = wykonawca({ userId: null, zrodla: { customCoupon: async () => kupon() } });
+		assert.match((await gosc.uruchom('zloz_kupon', {})).niedostepne, /zalogowania/);
+		assert.equal(gosc.wolania.customCoupon, undefined);
 	});
 });

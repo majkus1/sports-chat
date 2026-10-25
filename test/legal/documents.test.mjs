@@ -16,7 +16,7 @@ import { setupEnv } from '../helpers/setup.mjs';
 setupEnv();
 
 const { TERMS, PRIVACY, documentFor } = await import('@/lib/legal/documents');
-const { CREDIT_COSTS, PLAN_PASS_DAYS, PLANS, TRIAL } = await import('@/lib/billing/plans');
+const { CREDIT_COSTS, PLAN_PASS_DAYS, PLANS, QUOTA_PERIODS, TRIAL } = await import('@/lib/billing/plans');
 const { MAX_PER_USER } = await import('@/models/AssistantConversation');
 const { TERMS_VERSION, UPDATED_AT } = await import('@/lib/legal/operator');
 const { CONSENT_VERSION } = await import('@/lib/legal/purchaseConsent');
@@ -28,8 +28,8 @@ const tekst = (wezel) =>
 		: '';
 
 const FUNKCJE = {
-	pl: ['kupon dnia', 'kupony 3- i 5-dniowy', 'kupon live', '„Wyższe kursy"', 'zakładce Asystent', 'historią rozmów', 'wyszukuje w internecie', 'poranny mail', 'typ dnia', 'w trakcie gry', 'okres próbny'],
-	en: ['coupon of the day', '3-day and 5-day coupons', 'live coupon', '“Higher odds”', 'Assistant tab', 'conversation history', 'searches the web', 'morning email', 'pick of the day', 'in play', 'trial'],
+	pl: ['kupon dnia', 'kupony 3- i 5-dniowy', 'kupon live', '„Wyższe kursy"', 'zakładce Asystent', 'historią rozmów', 'wyszukuje w internecie', 'poranny mail', 'typ dnia', 'w trakcie gry', 'okres próbny', 'kreator kuponu', 'nie wchodzą do publicznej skuteczności'],
+	en: ['coupon of the day', '3-day and 5-day coupons', 'live coupon', '“Higher odds”', 'Assistant tab', 'conversation history', 'searches the web', 'morning email', 'pick of the day', 'in play', 'trial', 'coupon builder', 'never count towards the site’s public accuracy'],
 };
 
 describe('regulamin', () => {
@@ -72,6 +72,12 @@ describe('regulamin', () => {
 					? 'The trial does not include in-play analyses or web news search'
 					: 'Okres próbny nie obejmuje analiz meczów w trakcie gry ani wyszukiwania wiadomości'
 			);
+		});
+
+		test(`${locale}: dzienne limity — czytanie analiz i kreator kuponu (QUOTA_PERIODS)`, () => {
+			assert.equal(QUOTA_PERIODS.couponGen, 'day');
+			assert.equal(QUOTA_PERIODS.analysisView, 'day');
+			ma(locale === 'en' ? 'existing analyses and the coupon builder limit are daily' : 'gotowych analiz w planie bezpłatnym i limit kreatora kuponu');
 		});
 
 		test(`${locale}: zastrzeżenia — bez zakładów, kursy to mediana bez odnośników, 18+`, () => {
