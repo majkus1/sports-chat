@@ -75,10 +75,14 @@ function Pigulka({ on, disabled = false, onClick, children, title }) {
 
 function Grupa({ label, children, note }) {
 	return (
-		<fieldset className="min-w-0">
-			<legend className="text-[11px] font-bold uppercase tracking-wide text-muted">{label}</legend>
-			<div className="mt-1.5 flex flex-wrap gap-2">{children}</div>
-			{note && <p className="mt-1.5 text-xs leading-relaxed text-muted">{note}</p>}
+		/*
+		 * Każda grupa to osobna karta z odstępem od krawędzi. `legend` pływa (`float-left w-full`):
+		 * inaczej przeglądarka wpisuje ją w ramkę fieldsetu, a pigułki dotykały krawędzi.
+		 */
+		<fieldset className="m-0 min-w-0 rounded-[var(--radius-ui)] border border-border bg-surface-2/40 px-4 pb-4 pt-3.5">
+			<legend className="float-left mb-2.5 w-full p-0 text-[11px] font-bold uppercase tracking-wide text-muted">{label}</legend>
+			<div className="clear-both flex flex-wrap gap-2">{children}</div>
+			{note && <p className="mt-2.5 text-xs leading-relaxed text-muted">{note}</p>}
 		</fieldset>
 	);
 }
