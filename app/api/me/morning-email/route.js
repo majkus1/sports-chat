@@ -2,7 +2,7 @@ import connectToDb from '@/lib/db';
 import User from '@/models/User';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { hasFeature, trialDaysLeft } from '@/lib/billing/entitlements';
-import { newUnsubscribeToken } from '@/lib/morning/service';
+import { morningConsentSet } from '@/lib/morning/consent';
 
 /**
  * Ustawienie porannego maila — odczyt i zmiana z panelu konta.
@@ -54,11 +54,9 @@ export async function PATCH(request) {
 		return Response.json({ error: 'plan_required', ...widok(user) }, { status: 403 });
 	}
 
-	const set = { 'morningEmail.enabled': enabled, 'morningEmail.locale': locale };
-	if (enabled) {
-		set['morningEmail.enabledAt'] = new Date();
-		if (!user.morningEmail?.unsubscribeToken) set['morningEmail.unsubscribeToken'] = newUnsubscribeToken();
-	}
+	const set = enabled
+		? morningConsentSet({ locale, existingToken: user.morningEmail?.unsubscribeToken })
+		: { 'morningEmail.enabled': false, 'morningEmail.locale': locale };
 	await User.updateOne({ _id: user._id }, { $set: set });
 
 	const po = await User.findById(session.userId).select(POLA).lean();

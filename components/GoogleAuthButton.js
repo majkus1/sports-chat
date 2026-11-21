@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useContext } from 'react';
 import { UserContext } from '@/context/UserContext';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useAlert } from '@/context/AlertContext';
 import { useTheme } from '@/context/ThemeContext';
 import { CONSENT_EVENT, hasConsent, writeConsent } from '@/lib/consent';
@@ -15,19 +15,22 @@ const GOOGLE_ERRORS = new Set(['google_terms_required', 'google_account_conflict
  * @param {object} props
  * @param {boolean} [props.acceptedTerms] zgoda na regulamin zaznaczona w oknie rejestracji —
  *   bez niej serwer nie założy nowego konta, tylko zaloguje do istniejącego
+ * @param {boolean} [props.morningEmail] osobne, niezaznaczone pole „poranny mail" z okna rejestracji —
+ *   serwer bierze je pod uwagę tylko przy zakładaniu nowego konta
  * @param {() => void} [props.onNeedRegister] nowa osoba kliknęła Google w oknie logowania —
  *   przełącz na okno rejestracji
  */
-export default function GoogleAuthButton({ onSuccessClose, acceptedTerms = false, onNeedRegister }) {
+export default function GoogleAuthButton({ onSuccessClose, acceptedTerms = false, morningEmail = false, onNeedRegister }) {
   const { refreshUser } = useContext(UserContext);
   const t = useTranslations('common');
+  const locale = useLocale();
   const { showAlert } = useAlert();
   const { theme } = useTheme();
   const googleDivRef = useRef(null);
 
   // Najświeższe wartości dla wywołania zwrotnego Google — bez ponownego rysowania przycisku.
-  const latest = useRef({ acceptedTerms, onNeedRegister });
-  latest.current = { acceptedTerms, onNeedRegister };
+  const latest = useRef({ acceptedTerms, morningEmail, onNeedRegister });
+  latest.current = { acceptedTerms, morningEmail, onNeedRegister };
 
   /*
    * Skrypt Google ładujemy dopiero po zgodzie na ciasteczka zewnętrzne.
@@ -64,7 +67,12 @@ export default function GoogleAuthButton({ onSuccessClose, acceptedTerms = false
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include',
-              body: JSON.stringify({ credential: resp.credential, acceptedTerms: latest.current.acceptedTerms === true }),
+              body: JSON.stringify({
+                credential: resp.credential,
+                acceptedTerms: latest.current.acceptedTerms === true,
+                morningEmail: latest.current.morningEmail === true,
+                locale,
+              }),
             });
 
             if (!r.ok) {

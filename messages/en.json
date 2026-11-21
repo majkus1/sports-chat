@@ -533,6 +533,7 @@
 		"register_accept_prefix": "By creating an account I accept the",
 		"register_accept_and": "and the",
 		"register_accept_age": "I confirm that I am 18 or over.",
+		"register_morning_optin": "Send me the morning email with today’s model picks — at 8:00, during the trial and on Pro and VIP. Optional, one click to turn off.",
 		"register_accept_hint": "Tick the box above to create an account.",
 		"register_terms_required": "You must accept the terms to create an account.",
 		"blog_title": "Blog",

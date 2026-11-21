@@ -22,6 +22,12 @@ export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 	 * a nie osobne zgody marketingowe, których zresztą nie zbieramy.
 	 */
 	const [acceptedTerms, setAcceptedTerms] = useState(false);
+	/*
+	 * Poranny mail — OSOBNE pole, też niezaznaczone. To zgoda marketingowa (RODO, art. 6 ust. 1
+	 * lit. a), więc nie może być ani warunkiem założenia konta, ani zaznaczona z góry. Do 21.11.2026
+	 * dało się go włączyć dopiero po rejestracji i zrobiły to dwa konta z dziesięciu.
+	 */
+	const [morningEmail, setMorningEmail] = useState(false);
 	const t = useTranslations('common');
 	const locale = useLocale();
 	useContext(UserContext);
@@ -37,7 +43,7 @@ export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 			const response = await fetch('/api/auth/register', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ email, password, username: usernameInput, locale, acceptedTerms }),
+				body: JSON.stringify({ email, password, username: usernameInput, locale, acceptedTerms, morningEmail }),
 				credentials: 'include',
 			});
 
@@ -55,6 +61,7 @@ export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 				setPassword('');
 				setUsernameInput('');
 				setAcceptedTerms(false);
+				setMorningEmail(false);
 				setTimeout(() => onRequestClose?.(), 2000);
 			} else {
 				showAlert(t('register_success'), 'success');
@@ -98,8 +105,18 @@ export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 						</span>
 					</label>
 
+					<label className="mt-2 flex cursor-pointer items-start gap-2.5 text-xs leading-relaxed text-muted">
+						<input
+							type="checkbox"
+							checked={morningEmail}
+							onChange={(e) => setMorningEmail(e.target.checked)}
+							className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-accent)]"
+						/>
+						<span>{t('register_morning_optin')}</span>
+					</label>
+
 					{acceptedTerms ? (
-						<GoogleAuthButton onSuccessClose={onRequestClose} acceptedTerms={acceptedTerms} />
+						<GoogleAuthButton onSuccessClose={onRequestClose} acceptedTerms={acceptedTerms} morningEmail={morningEmail} />
 					) : (
 						<p className="mt-3 rounded-[var(--radius-ui)] bg-surface-2 px-3 py-2 text-xs text-muted">
 							{t('register_accept_hint')}
