@@ -8,6 +8,7 @@ import AuthField from '@/components/auth/AuthField';
 import { Button } from '@/components/ui/Button';
 import { Link } from '@/i18n/routing';
 import { useAlert } from '@/context/AlertContext';
+import { getFirstTouch } from '@/lib/growth/firstTouch';
 
 export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 	const [email, setEmail] = useState('');
@@ -43,7 +44,8 @@ export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 			const response = await fetch('/api/auth/register', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ email, password, username: usernameInput, locale, acceptedTerms, morningEmail }),
+				// `signupSource` — pierwsze wejście (skąd ktoś przyszedł); serwer waliduje każde pole sam.
+				body: JSON.stringify({ email, password, username: usernameInput, locale, acceptedTerms, morningEmail, signupSource: getFirstTouch() }),
 				credentials: 'include',
 			});
 

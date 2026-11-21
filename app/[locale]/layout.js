@@ -19,6 +19,7 @@ import { LOCALES, SITE_URL, siteFor } from '@/lib/seo/config';
 import AgeGate from '@/components/consent/AgeGate';
 import CookieBanner from '@/components/consent/CookieBanner';
 import Analytics from '@/components/consent/Analytics';
+import FirstTouchTracker from '@/components/growth/FirstTouchTracker';
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -110,6 +111,8 @@ export default async function LocaleLayout({ children, params }) {
                       <CookieBanner />
                       {/* Analityka montuje skrypt dopiero po zgodzie z banera wyżej. */}
                       <Analytics />
+                      {/* Źródło rejestracji: pamięć karty, a za zgodą analityczną — sessionStorage. */}
+                      <FirstTouchTracker />
                     </AnalysisProvider>
                   </UnreadProvider>
                 </SocketProvider>

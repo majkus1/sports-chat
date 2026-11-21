@@ -22,13 +22,21 @@ import {
 	previewNumbers,
 	sportsEventLd,
 } from '@/lib/seo/matchPreview';
+import { matchStory } from '@/lib/seo/matchStory';
+import { matchContext } from '@/lib/seo/seoData';
+import { leagueName, leaguePageById, leaguePath } from '@/lib/seo/leagues';
+import { accuracyHref } from '@/lib/urlState';
 
 /**
- * Strona „typ na mecz" — indeksowana, z dziennika prognoz. Opis w `lib/seo/matchPreview.js`.
+ * Strona „typ na mecz" — indeksowana, z dziennika prognoz. Opis w `lib/seo/matchPreview.js`,
+ * zapowiedź (liczby modelu zdaniami, forma, strzały) w `lib/seo/matchStory.js`.
  *
  * Dziesięć minut w pamięci podręcznej: liczby przed meczem się nie zmieniają (pierwsza
  * prognoza zostaje), a po meczu dochodzi tylko wynik. Robot może chodzić po tych stronach
- * do woli — każda to jedno zapytanie do bazy, zero do dostawcy danych.
+ * do woli — każda to kilka zapytań do bazy po indeksach, zero do dostawcy danych.
+ *
+ * Bez liczb modelu (stary zapis, prognoza bez dopasowania) strona dostaje `noindex, follow`:
+ * sam tytuł i data to cienka treść, a linki do innych meczów tego dnia mają nadal działać.
  */
 export const revalidate = 600;
 
@@ -55,6 +63,8 @@ export async function generateMetadata({ params }) {
 		path: matchPath(f),
 		title: c.title(f.homeName, f.awayName, when.data),
 		description: Number.isFinite(n.home) ? c.description(f.homeName, f.awayName, n, previewLeague(f), when) : undefined,
+		noindex: !Number.isFinite(n.home),
+		follow: true,
 	});
 }
 
@@ -92,7 +102,7 @@ export default async function Page({ params }) {
 	const dzien = localDate(new Date(f.kickoff));
 	const odPolnocy = localMidnight(dzien);
 	const doPolnocy = localMidnight(localDate(new Date(odPolnocy.getTime() + 36 * 3600_000)));
-	const [dzienny, inne] = await Promise.all([
+	const [dzienny, inne, kontekst] = await Promise.all([
 		DailyPick.findOne({ fixtureId: f.fixtureId }).select('_id').lean().catch(() => null),
 		ModelForecast.find({ kickoff: { $gte: odPolnocy, $lt: doPolnocy }, fixtureId: { $ne: f.fixtureId } })
 			.select('fixtureId homeName awayName kickoff leagueId leagueName leagueCountry')
@@ -100,7 +110,12 @@ export default async function Page({ params }) {
 			.limit(12)
 			.lean()
 			.catch(() => []),
+		// Forma i strzały do zapowiedzi — z dziennika i statystyk w bazie, nigdy z API dostawcy.
+		matchContext(f),
 	]);
+	const story = matchStory({ forecast: f, ...kontekst, locale });
+	// Strona „typy na dziś [liga]" — tylko dla lig, które ją mają (`lib/seo/leagues.js`).
+	const stronaLigi = leaguePageById(f.leagueId);
 	// Typ odkryty: typ dnia zawsze, każdy inny — od pierwszego gwizdka (wtedy nic już nie odbiera płacącym).
 	const odkryty = hint && (dzienny || rozpoczety);
 	const szanse = Number.isFinite(n.home)
@@ -119,11 +134,34 @@ export default async function Page({ params }) {
 				data={breadcrumbLd(locale, [
 					{ name: c.home, path: '/' },
 					{ name: c.today, path: '/typy-na-dzis' },
+					...(stronaLigi ? [{ name: leagueName(stronaLigi, locale), path: leaguePath(stronaLigi) }] : []),
 					{ name: `${f.homeName} – ${f.awayName}`, path },
 				])}
 			/>
-			<script type="application/ld+json" dangerouslySetInnerHTML={sportsEventLd({ forecast: f, url: `${SITE_URL}/${locale}${path}`, name: `${f.homeName} – ${f.awayName}` })} />
+			<script
+				type="application/ld+json"
+				dangerouslySetInnerHTML={sportsEventLd({
+					forecast: f,
+					url: `${SITE_URL}/${locale}${path}`,
+					name: `${f.homeName} – ${f.awayName}`,
+					description: story.paragraphs[0] || null,
+				})}
+			/>
 
+			{/* Okruszki widoczne — ten sam ślad co w danych strukturalnych, a zarazem link w górę, do ligi. */}
+			<nav aria-label="breadcrumb" className="mb-2 text-xs text-muted">
+				<Link href="/typy-na-dzis" className="font-semibold text-muted no-underline hover:text-text hover:underline">
+					{c.today}
+				</Link>
+				{stronaLigi && (
+					<>
+						<span aria-hidden="true"> / </span>
+						<Link href={leaguePath(stronaLigi)} className="font-semibold text-muted no-underline hover:text-text hover:underline">
+							{leagueName(stronaLigi, locale)}
+						</Link>
+					</>
+				)}
+			</nav>
 			<p className="text-xs font-bold uppercase tracking-wide text-muted">
 				{[liga, `${when.dzien}, ${when.godzina}`].filter(Boolean).join(' · ')}
 			</p>
@@ -200,13 +238,90 @@ export default async function Page({ params }) {
 				</section>
 			)}
 
-			<Link
-				href={`/mecz/${f.fixtureId}`}
-				className="mt-6 inline-flex items-center gap-1.5 rounded-[var(--radius-ui)] border border-border px-4 py-2.5 text-sm font-bold text-text no-underline transition-colors hover:border-accent hover:bg-accent-soft"
-			>
-				{c.room}
-				<ArrowRight size={15} aria-hidden="true" />
-			</Link>
+			{/* Zapowiedź — te same liczby zdaniami, z formą i strzałami z bazy (`lib/seo/matchStory.js`). */}
+			{story.enough && (
+				<section className="mt-8" aria-labelledby="zapowiedz">
+					<h2 id="zapowiedz" className="font-display text-xl font-bold uppercase tracking-wide text-text">
+						{c.previewTitle}
+					</h2>
+					<div className="mt-3 flex flex-col gap-3 text-[15px] leading-relaxed text-text">
+						{story.paragraphs.map((p) => (
+							<p key={p}>{p}</p>
+						))}
+					</div>
+
+					{story.facts.length > 0 && (
+						<>
+							<h3 className="mt-6 text-[11px] font-bold uppercase tracking-wide text-muted">{c.keyNumbers}</h3>
+							<dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+								{story.facts.map((fact) => (
+									<div key={fact.label} className="rounded-[var(--radius-ui)] border border-border bg-surface px-3.5 py-3">
+										<dt className="text-xs leading-snug text-muted">{fact.label}</dt>
+										<dd className="mt-1 font-display text-xl font-bold tabular-nums text-text">{fact.value}</dd>
+									</div>
+								))}
+							</dl>
+						</>
+					)}
+
+					{story.form.length > 0 && (
+						<>
+							<h3 className="mt-6 text-[11px] font-bold uppercase tracking-wide text-muted">{c.formTitle}</h3>
+							<ul className="mt-3 flex flex-col gap-2.5">
+								{story.form.map(({ team, form, summary }) => (
+									<li key={team} className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+										<span className="w-full truncate text-sm font-bold text-text sm:w-44">{team}</span>
+										<span className="flex gap-1" aria-label={`${summary.w}-${summary.d}-${summary.l}`}>
+											{form.map((m, i) => (
+												<span
+													key={i}
+													title={`${m.home ? '' : '@ '}${m.opponent || ''} ${m.gf}:${m.ga}`}
+													className={cn(
+														'flex h-6 w-6 items-center justify-center rounded-md text-[11px] font-bold',
+														m.result === 'W' ? 'bg-win text-white' : m.result === 'L' ? 'bg-loss text-white' : 'bg-draw text-white'
+													)}
+												>
+													{c.formLetters[m.result]}
+												</span>
+											))}
+										</span>
+										<span className="text-xs tabular-nums text-muted">
+											{summary.gf}:{summary.ga}
+										</span>
+									</li>
+								))}
+							</ul>
+						</>
+					)}
+					<p className="mt-4 text-xs leading-relaxed text-muted">{c.sourceNote}</p>
+				</section>
+			)}
+
+			<div className="mt-6 flex flex-wrap gap-2">
+				<Link
+					href={`/mecz/${f.fixtureId}`}
+					className="inline-flex items-center gap-1.5 rounded-[var(--radius-ui)] border border-border px-4 py-2.5 text-sm font-bold text-text no-underline transition-colors hover:border-accent hover:bg-accent-soft"
+				>
+					{c.room}
+					<ArrowRight size={15} aria-hidden="true" />
+				</Link>
+				{stronaLigi && (
+					<Link
+						href={leaguePath(stronaLigi)}
+						className="inline-flex items-center gap-1.5 rounded-[var(--radius-ui)] border border-border px-4 py-2.5 text-sm font-bold text-text no-underline transition-colors hover:border-accent hover:bg-accent-soft"
+					>
+						{c.leagueToday(leagueName(stronaLigi, locale))}
+						<ArrowRight size={15} aria-hidden="true" />
+					</Link>
+				)}
+				<Link
+					href={accuracyHref({ kind: 'hint', days: '30' })}
+					className="inline-flex items-center gap-1.5 rounded-[var(--radius-ui)] border border-border px-4 py-2.5 text-sm font-bold text-text no-underline transition-colors hover:border-accent hover:bg-accent-soft"
+				>
+					{c.accuracy}
+					<ArrowRight size={15} aria-hidden="true" />
+				</Link>
+			</div>
 
 			{inne.length > 0 && (
 				<section className="mt-10">

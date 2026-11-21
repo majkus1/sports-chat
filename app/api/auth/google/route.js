@@ -8,6 +8,7 @@ import {
 } from '@/lib/auth';
 import { googleSignIn } from '@/lib/auth/googleSignIn';
 import { sendWelcomeEmail } from '@/lib/onboarding/welcome';
+import { signupSourceFromRequest } from '@/lib/growth/signupSource';
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -29,7 +30,7 @@ export async function POST(request) {
     await connectToDb();
 
     const body = await request.json().catch(() => null);
-    const { credential, acceptedTerms, morningEmail, locale } = body || {};
+    const { credential, acceptedTerms, morningEmail, locale, signupSource } = body || {};
 
     if (!credential || typeof credential !== 'string') {
       return Response.json({ error: 'google_invalid_token' }, { status: 400 });
@@ -50,6 +51,7 @@ export async function POST(request) {
       acceptedTerms: acceptedTerms === true,
       morningEmail: morningEmail === true,
       locale: locale === 'en' ? 'en' : 'pl',
+      signupSource: signupSourceFromRequest(signupSource, request),
     });
     if (result.error) {
       return Response.json({ error: result.error }, { status: STATUS[result.error] ?? 400 });

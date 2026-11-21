@@ -4,6 +4,8 @@ import { UPDATED_AT } from '@/lib/legal/operator';
 import connectToDb from '@/lib/db';
 import ModelForecast from '@/models/ModelForecast';
 import { matchPath } from '@/lib/seo/matchPreview';
+import { activeLeaguePages } from '@/lib/seo/seoData';
+import { leagueSitemapEntries } from '@/lib/seo/sitemapLeagues';
 
 /** Mapa zależy od bazy (strony meczów) — liczona przy pobraniu, nie przy budowaniu. */
 export const dynamic = 'force-dynamic';
@@ -18,6 +20,8 @@ async function matchEntries(now) {
 		await connectToDb();
 		const mecze = await ModelForecast.find({
 			kickoff: { $gte: new Date(now.getTime() - 7 * 86_400_000), $lte: new Date(now.getTime() + 3 * 86_400_000) },
+			// Bez liczb modelu strona meczu ma `noindex` — w mapie byłaby sprzecznym sygnałem.
+			'markets.home': { $ne: null },
 		})
 			.select('fixtureId homeName awayName kickoff forecastAt settledAt')
 			.sort({ kickoff: -1 })
@@ -106,5 +110,8 @@ export default async function sitemap() {
 		})
 	);
 
-	return [...staticEntries, ...postEntries, ...(await matchEntries(now))];
+	// Strony lig tylko z meczami dziś albo jutro — puste mają `noindex` i do mapy nie należą.
+	const leagueEntries = leagueSitemapEntries(await activeLeaguePages(now), now);
+
+	return [...staticEntries, ...leagueEntries, ...postEntries, ...(await matchEntries(now))];
 }

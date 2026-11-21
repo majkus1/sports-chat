@@ -28,6 +28,9 @@ export default function robots() {
 					// Własne kupony z kreatora — strona konta, treść zależy od sesji.
 					'/pl/moje-kupony',
 					'/en/moje-kupony',
+					// Panel administratora (posty, źródła rejestracji) — dla innych 404, robot nie ma tam czego szukać.
+					'/pl/admin/',
+					'/en/admin/',
 				],
 			},
 		],

@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useAlert } from '@/context/AlertContext';
 import { useTheme } from '@/context/ThemeContext';
 import { CONSENT_EVENT, hasConsent, writeConsent } from '@/lib/consent';
+import { getFirstTouch } from '@/lib/growth/firstTouch';
 
 /*
  * Znane kody błędów z `/api/auth/google` — każdy ma własny komunikat (pl/en).
@@ -72,6 +73,8 @@ export default function GoogleAuthButton({ onSuccessClose, acceptedTerms = false
                 acceptedTerms: latest.current.acceptedTerms === true,
                 morningEmail: latest.current.morningEmail === true,
                 locale,
+                // Źródło rejestracji — serwer bierze je pod uwagę tylko przy zakładaniu nowego konta.
+                signupSource: getFirstTouch(),
               }),
             });
 
