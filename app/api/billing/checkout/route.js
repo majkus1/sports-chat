@@ -3,33 +3,40 @@ import User from '@/models/User';
 import PurchaseConsent from '@/models/PurchaseConsent';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { getCreditPack, getPlanPass } from '@/lib/billing/plans';
+import { canBuyPass } from '@/lib/billing/planAccess';
+import { checkoutSessionParams } from '@/lib/billing/checkoutSession';
 import { CONSENT_VERSION, consentFor } from '@/lib/legal/purchaseConsent';
 import { getClientIp } from '@/lib/requestIp';
 import { getStripe, getStripeConfig } from '@/lib/stripe/config';
+import { isPlacement } from '@/lib/upsell/placements';
+import { recordUpsell } from '@/lib/upsell/stats';
 
 /**
- * Rozpoczęcie zakupu: pakiet kredytów albo dostęp do planu na 30 dni.
+ * Rozpoczęcie zakupu: pakiet kredytów albo bilet na plan (przepustka Pro 7 dni, Pro/VIP 30 dni).
  *
- * Obie rzeczy sprzedajemy jako płatność JEDNORAZOWĄ. Plan nie jest subskrypcją — po upływie
+ * Wszystko sprzedajemy jako płatność JEDNORAZOWĄ. Plan nie jest subskrypcją — po upływie
  * opłaconych dni konto samo wraca do darmowego i nic nie pobiera się automatycznie. Powód
  * jest praktyczny: płatności cykliczne w Stripe nie obsługują Przelewy24 ani BLIK-a, więc
  * abonament odnawialny działałby wyłącznie na kartę.
  *
  * Sesję tworzy WYŁĄCZNIE backend — klucz sekretny nie może trafić do przeglądarki, a kwota
- * nie może pochodzić z żądania. Klient przysyła sam identyfikator pakietu albo planu; cenę
+ * nie może pochodzić z żądania. Klient przysyła sam identyfikator pakietu albo biletu; cenę
  * bierzemy z definicji po stronie serwera. Inaczej wystarczyłoby podmienić kwotę w narzędziach
  * deweloperskich, żeby kupić plan VIP za złotówkę.
  *
- * Odpowiedź to adres hostowanej strony Stripe'a. Tam wyświetlą się metody płatności włączone
- * na koncie dla waluty PLN — karta, BLIK i Przelewy24. Nie wypisujemy ich w kodzie: Checkout
- * dobiera je sam do waluty i kraju kupującego, a sztywna lista rozjeżdża się z ustawieniami
- * panelu przy pierwszej zmianie.
+ * Odpowiedź to adres hostowanej strony Stripe'a. Parametry sesji (i to, dlaczego nic w nich
+ * nie blokuje BLIK-a ani Przelewy24) — `lib/billing/checkoutSession.js`.
  *
  * OŚWIADCZENIE KONSUMENTA. Bez niego sesja w ogóle nie powstaje. Kupowane treści cyfrowe
  * udostępniamy natychmiast, a prawo odstąpienia wygasa dopiero wtedy, gdy konsument wyraźnie
  * zażądał rozpoczęcia świadczenia i przyjął do wiadomości utratę tego prawa. Regulamin obiecuje,
  * że takie oświadczenie odbieramy przy zakupie — ta trasa jest jedynym miejscem, w którym da
  * się tego dotrzymać, bo tylko tędy powstaje płatność.
+ *
+ * KODY BŁĘDÓW są dla interfejsu, który każdy zamienia na zdanie po ludzku (`PricingClient`):
+ * 401 — sesja wygasła, 400 — brak oświadczenia albo nieznany przedmiot, 409 — nieaktualne
+ * oświadczenie (`consent_outdated`) albo przepustka przy aktywnym planie 30-dniowym
+ * (`pass_downgrade`), 503 — płatności nieskonfigurowane, 502 — Stripe odrzucił sesję.
  */
 
 export async function POST(request) {
@@ -53,11 +60,13 @@ export async function POST(request) {
 		return Response.json({ error: 'invalid_body' }, { status: 400 });
 	}
 
-	// Język wpływa wyłącznie na nazwę pozycji widoczną na stronie płatności Stripe'a.
+	// Język strony płatności Stripe'a, nazwy pozycji i adresu powrotu.
 	const locale = body?.locale === 'en' ? 'en' : 'pl';
+	// Okno zakupu, z którego przyszedł kupujący — tylko nazwy z listy, inne pomijamy.
+	const source = isPlacement(body?.source) ? body.source : null;
 
 	/*
-	 * Jedna trasa obsługuje dwa rodzaje zakupu: pakiet kredytów albo dostęp do planu na 30 dni.
+	 * Jedna trasa obsługuje dwa rodzaje zakupu: pakiet kredytów albo bilet na plan.
 	 *
 	 * Oba są płatnościami jednorazowymi, więc dzielą całą resztę ścieżki — sesję, webhook,
 	 * idempotencję i obsługę zwrotów. Rozdzielanie ich na osobne trasy oznaczałoby dwie
@@ -82,6 +91,8 @@ export async function POST(request) {
 		return Response.json({ error: 'consent_outdated', current: CONSENT_VERSION }, { status: 409 });
 	}
 
+	// „PRO", nie „PRO_WEEK" — przepustka to bilet na plan Pro, w nazwie pozycji mówią o tym dni.
+	const nazwaPlanu = pass ? pass.planId.toUpperCase() : null;
 	const item = pack
 		? {
 				kind: 'credits',
@@ -98,20 +109,29 @@ export async function POST(request) {
 				kind: 'plan',
 				id: pass.id,
 				priceGrosze: pass.priceGrosze,
-				name:
-					locale === 'en'
-						? `${pass.id.toUpperCase()} plan — ${pass.days} days`
-						: `Plan ${pass.id.toUpperCase()} — ${pass.days} dni`,
+				name: locale === 'en' ? `${nazwaPlanu} plan — ${pass.days} days` : `Plan ${nazwaPlanu} — ${pass.days} dni`,
 				description:
 					locale === 'en'
 						? `${pass.days} days of access. One-off payment — nothing renews automatically.`
 						: `Dostęp na ${pass.days} dni. Płatność jednorazowa — nic nie odnawia się automatycznie.`,
+				// `planId` to identyfikator BILETU (`pro_week`, `pro`, `vip`) — webhook szuka go w `PLAN_PASSES`.
 				metadata: { planId: pass.id, days: String(pass.days) },
 			};
 
 	await connectToDb();
-	const user = await User.findById(session.userId).select('email username').lean();
+	const user = await User.findById(session.userId)
+		.select('email username plan planStatus planValidUntil planPeriod role')
+		.lean();
 	if (!user) return Response.json({ error: 'unauthorized' }, { status: 401 });
+
+	/*
+	 * Przepustka 7-dniowa przy aktywnym Pro/VIP na 30 dni nic by nie dała — mówimy to PRZED
+	 * płatnością, zamiast przyjąć 19 zł za dni, które taniej dokłada się kolejnymi 30.
+	 */
+	if (pass) {
+		const mozna = canBuyPass(user, pass.id);
+		if (!mozna.ok) return Response.json({ error: mozna.reason }, { status: 409 });
+	}
 
 	/*
 	 * Oświadczenie zapisujemy PRZED utworzeniem sesji, a jego treść bierzemy z własnego modułu,
@@ -132,51 +152,18 @@ export async function POST(request) {
 	});
 
 	try {
-		const checkout = await stripe.checkout.sessions.create({
-			// Jednorazowa, nie subskrypcja — BLIK i P24 nie obsługują płatności cyklicznych.
-			mode: 'payment',
-			currency: 'pln',
-			/*
-			 * Metod płatności NIE wypisujemy i nie włączamy osobnym parametrem.
-			 *
-			 * `automatic_payment_methods` należy do PaymentIntents — Checkout Session odrzuca je
-			 * błędem „Received unknown parameter" i nie powstaje żadna sesja. W Checkoucie dobór
-			 * metod jest domyślny: Stripe pokazuje to, co włączone w panelu dla waluty i kraju
-			 * kupującego. Sztywna lista `payment_method_types` też jest zła — rozjeżdża się
-			 * z ustawieniami panelu przy pierwszej zmianie.
-			 */
-			customer_email: user.email || undefined,
-			client_reference_id: String(session.userId),
-			line_items: [
-				{
-					quantity: 1,
-					price_data: {
-						currency: 'pln',
-						// Bez katalogu produktów w Stripe: cennik żyje w kodzie i jest
-						// wersjonowany razem z resztą, a zmiana ceny to jeden commit.
-						product_data: { name: item.name, description: item.description },
-						unit_amount: item.priceGrosze,
-					},
-				},
-			],
-			/*
-			 * Metadane to jedyny most między płatnością a kontem.
-			 *
-			 * Webhook dostaje sesję Stripe'a, nie nasze żądanie — bez tych pól nie wiedziałby,
-			 * komu i ile doładować. Trzymamy tu identyfikatory, nie dane: limit to 50 kluczy
-			 * i 500 znaków na wartość.
-			 */
-			metadata: {
-				userId: String(session.userId),
-				...item.metadata,
-				// Most w drugą stronę: z płatności w panelu Stripe'a do odebranego oświadczenia.
-				consentId: String(consent._id),
+		const checkout = await stripe.checkout.sessions.create(
+			checkoutSessionParams({
+				item,
+				email: user.email,
+				userId: session.userId,
+				locale,
+				appUrl: config.appUrl,
+				consentId: consent._id,
 				termsVersion: CONSENT_VERSION,
-			},
-			// Powrót w języku, w którym użytkownik kupował — wcześniej zawsze /pl.
-			success_url: `${config.appUrl}/${locale === 'en' ? 'en' : 'pl'}/cennik?platnosc=sukces&sid={CHECKOUT_SESSION_ID}`,
-			cancel_url: `${config.appUrl}/${locale === 'en' ? 'en' : 'pl'}/cennik?platnosc=anulowana`,
-		});
+				source,
+			})
+		);
 
 		/*
 		 * Dowiązanie sesji do oświadczenia. Świadomie po cichu przy błędzie: płatność już
@@ -189,6 +176,8 @@ export async function POST(request) {
 				message: error.message,
 			})
 		);
+
+		if (source) await recordUpsell({ placement: source, event: 'checkout' });
 
 		return Response.json({ url: checkout.url }, { headers: { 'Cache-Control': 'no-store' } });
 	} catch (error) {

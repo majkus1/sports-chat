@@ -1,5 +1,5 @@
-import { ArrowRight, Lock, ShieldCheck, Ticket } from 'lucide-react';
-import { Link } from '@/i18n/routing';
+import { Lock, ShieldCheck, Ticket } from 'lucide-react';
+import LockedUpsellCta from '@/components/billing2/LockedUpsellCta';
 import { cn } from '@/lib/utils';
 
 /**
@@ -74,14 +74,12 @@ export default function LockedCouponCard({ coupon, c, label, locale, guest = fal
 
 			<div className="mt-auto px-5 pb-5 pt-4 sm:px-6">
 				<p className="text-sm leading-relaxed text-muted">{c.lockedNote}</p>
-				<Link
-					href="/cennik"
-					className="mt-3 inline-flex items-center gap-1.5 rounded-[var(--radius-ui)] bg-accent px-3.5 py-2 text-sm font-bold text-accent-fg no-underline transition-opacity hover:opacity-90"
-				>
-					<Lock size={14} aria-hidden="true" />
-					{c.unlock}
-					<ArrowRight size={15} aria-hidden="true" />
-				</Link>
+				{/* Przycisk z pomiarem i ceną wejścia (przepustka 7 dni) — `components/billing2`. */}
+				<LockedUpsellCta
+					placement={coupon.type === 'days5' ? 'coupon_days5' : 'coupon_days3'}
+					label={c.unlock}
+					className="mt-3"
+				/>
 				{guest && <p className="mt-2 text-xs leading-relaxed text-muted">{c.trialNote}</p>}
 			</div>
 		</article>

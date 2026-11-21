@@ -22,7 +22,7 @@ export async function GET(request) {
 		try {
 			await connectToDb();
 			user = await User.findById(session.userId)
-				.select('plan planStatus planValidUntil role credits grantedFeatures createdAt')
+				.select('plan planStatus planValidUntil planPeriod role credits grantedFeatures createdAt')
 				.lean();
 		} catch {
 			user = null;

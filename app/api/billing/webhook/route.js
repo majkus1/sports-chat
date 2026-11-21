@@ -4,6 +4,7 @@ import { getCreditPack, getPlanPass } from '@/lib/billing/plans';
 import { grantCredits, revokeCredits } from '@/lib/billing/credits';
 import { grantPlanAccess, revokePlanAccess } from '@/lib/billing/planAccess';
 import { getStripe, getStripeConfig } from '@/lib/stripe/config';
+import { recordUpsell } from '@/lib/upsell/stats';
 
 /**
  * Webhook Stripe'a — jedyne miejsce, w którym kredyty i dostęp do planu trafiają na konto.
@@ -28,6 +29,12 @@ const HANDLED = new Set([
 	'checkout.session.completed',
 	'checkout.session.async_payment_succeeded',
 	'checkout.session.async_payment_failed',
+	/*
+	 * Sesja porzucona (Stripe zamyka ją po 24 godzinach). Nic nie przyznajemy — sam wpis w logu,
+	 * bo do 21.11.2026 jedyne porzucenie (konto z zewnątrz, pakiet 5 kredytów) było widać tylko
+	 * jako oświadczenie bez płatności i nie dało się powiedzieć, czy ktoś w ogóle próbował zapłacić.
+	 */
+	'checkout.session.expired',
 	'charge.refunded',
 ]);
 
@@ -114,8 +121,9 @@ async function handleCheckoutPaid(event) {
 
 		if (!granted) return ok({ duplicate: true });
 
-		console.log('[stripe] przyznano dostęp do planu', { userId, plan, do: validUntil });
-		return ok({ plan, validUntil });
+		console.log('[stripe] przyznano dostęp do planu', { userId, plan, bilet: pass.id, do: validUntil });
+		await policzZrodlo(data);
+		return ok({ plan, pass: pass.id, validUntil });
 	}
 
 	const { granted, credits } = await grantCredits({
@@ -129,7 +137,20 @@ async function handleCheckoutPaid(event) {
 	if (!granted) return ok({ duplicate: true });
 
 	console.log('[stripe] doładowano konto', { userId, packId, kredytow: pack.credits, saldo: credits });
+	await policzZrodlo(data);
 	return ok({ credited: pack.credits });
+}
+
+/**
+ * Zakup z okna zakupu (`metadata.source`, np. `coupon_days3`) — +1 w liczniku tego miejsca.
+ *
+ * Liczymy WYŁĄCZNIE po przyznaniu (`granted`), więc powtórzone zdarzenie nie dolicza zakupu drugi
+ * raz. `recordUpsell` sam odrzuca nieznane nazwy i nigdy nie rzuca — pomiar nie może zatrzymać
+ * realizacji płatności.
+ */
+async function policzZrodlo(data) {
+	const source = data.metadata?.source;
+	if (source) await recordUpsell({ placement: source, event: 'purchase' });
 }
 
 /**
@@ -211,6 +232,16 @@ export async function POST(request) {
 				sessionId: event.data?.object?.id,
 			});
 			return ok({ failed: true });
+		}
+		if (event.type === 'checkout.session.expired') {
+			const s = event.data?.object || {};
+			console.warn('[stripe] sesja wygasła bez płatności', {
+				eventId: event.id,
+				sessionId: s.id,
+				item: s.metadata?.planId || s.metadata?.packId || null,
+				source: s.metadata?.source || null,
+			});
+			return ok({ expired: true });
 		}
 		return await handleCheckoutPaid(event);
 	} catch (error) {

@@ -70,7 +70,7 @@ export async function POST(request) {
 		// więc userId jest tu zawsze — brak konta traktujemy jak plan darmowy.
 		const user = userId
 			? await User.findById(userId)
-					.select('plan planStatus planValidUntil role credits createdAt')
+					.select('plan planStatus planValidUntil planPeriod role credits createdAt')
 					.lean()
 			: null;
 

@@ -53,3 +53,16 @@ describe('dane strukturalne: oferty', () => {
 		});
 	}
 });
+
+describe('dane strukturalne: przepustka Pro na 7 dni', () => {
+	for (const locale of ['pl', 'en']) {
+		test(`${locale}: osobna oferta z ceną i długością z PRO_WEEK, opisana jako jednorazowa`, async () => {
+			const { PRO_WEEK } = await import('@/lib/billing/plans');
+			const dane = czytaj(webApplicationLd(locale));
+			const oferta = dane.offers.find((o) => o.price === String(PRO_WEEK.priceGrosze / 100) && /Pro/.test(o.name));
+			assert.ok(oferta, 'brak oferty przepustki');
+			assert.ok(oferta.name.includes(String(PRO_WEEK.days)));
+			assert.match(oferta.description, locale === 'en' ? /one-off/i : /jednorazow/i);
+		});
+	}
+});

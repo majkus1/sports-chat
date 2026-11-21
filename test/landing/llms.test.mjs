@@ -82,3 +82,16 @@ describe('llms.txt zgadza się z kodem', () => {
 		}
 	});
 });
+
+const { PRO_WEEK } = await import('@/lib/billing/plans');
+
+describe('llms.txt: przepustka Pro na 7 dni', () => {
+	test('cena, długość i limity z PRO_WEEK', () => {
+		const l = PRO_WEEK.limits;
+		ma(
+			`Pro na ${PRO_WEEK.days} dni (przepustka na start): ${PRO_WEEK.priceGrosze / 100} zł — ` +
+				`${l.analysis} ${odmien(l.analysis, ANALIZY)}, ${l.aiChat} ${odmien(l.aiChat, PYTANIA)}, ` +
+				`${l.report} ${odmien(l.report, RAPORTY)}, ${l.aiNews} wyszukiwań wiadomości, ${l.couponGen} kupony z kreatora dziennie`
+		);
+	});
+});

@@ -121,3 +121,48 @@ describe('data i wersja dokumentów', () => {
 		assert.equal(CONSENT_VERSION, TERMS_VERSION);
 	});
 });
+
+/*
+ * Przepustka Pro na 7 dni (od 22.11.2026): regulamin, „Zwroty", polityka i oświadczenie mówią
+ * to samo co `PRO_WEEK` i `planAfterPurchase` — długość, dokupienie bez utraty dni, zwrot.
+ */
+const { REFUNDS } = await import('@/lib/legal/documents');
+const { PRO_WEEK } = await import('@/lib/billing/plans');
+const { consentFor } = await import('@/lib/legal/purchaseConsent');
+
+describe('przepustka 7 dni w dokumentach', () => {
+	for (const locale of ['pl', 'en']) {
+		const regulamin = tekst(documentFor(TERMS, locale));
+		const zwroty = tekst(documentFor(REFUNDS, locale));
+		const polityka = tekst(documentFor(PRIVACY, locale));
+		const ma = (t, fragment, gdzie) => assert.ok(t.includes(fragment), `${locale} ${gdzie}: brak „${fragment}"`);
+
+		test(`${locale}: regulamin — długość, limity co 7 dni, dokupienie bez utraty dni`, () => {
+			ma(regulamin, locale === 'en' ? `${PRO_WEEK.days}-day pass` : `przepustkę na ${PRO_WEEK.days} dni`, 'regulamin');
+			ma(regulamin, locale === 'en' ? `passes: every ${PRO_WEEK.days} days` : `przepustki — co ${PRO_WEEK.days} dni`, 'regulamin');
+			ma(regulamin, locale === 'en' ? 'remaining pass days are added at the end' : 'pozostałe dni przepustki doliczamy na końcu', 'regulamin');
+			ma(regulamin, locale === 'en' ? 'A pass cannot be bought during a 30-day plan' : 'Przepustki nie można kupić w trakcie planu na 30 dni', 'regulamin');
+		});
+
+		test(`${locale}: „Zwroty" — przepustka jest towarem i zwrot proporcjonalny dotyczy też jej`, () => {
+			ma(zwroty, locale === 'en' ? `${PRO_WEEK.days}-day Pro pass` : `przepustkę Pro na`, 'zwroty');
+			ma(zwroty, locale === 'en' ? `the ${PRO_WEEK.days}-day pass included` : `także przepustki na ${PRO_WEEK.days} dni`, 'zwroty');
+			ma(zwroty, `${PRO_WEEK.days} ${locale === 'en' ? 'or' : 'albo'} ${PLAN_PASS_DAYS}`, 'zwroty');
+		});
+
+		test(`${locale}: polityka — liczniki propozycji zakupu bez danych osobowych, wpisy pamięci lokalnej`, () => {
+			ma(polityka, locale === 'en' ? 'Purchase-offer counters' : 'Liczniki propozycji zakupu', 'polityka');
+			ma(polityka, locale === 'en' ? 'no account, IP address, device or time of day' : 'bez konta, adresu IP, urządzenia i godziny', 'polityka');
+			ma(polityka, 'upsell:closed:*', 'polityka');
+			ma(polityka, 'billing2:pending', 'polityka');
+		});
+
+		test(`${locale}: oświadczenie przy zakupie wspomina zwrot za niewykorzystane dni planu`, () => {
+			assert.match(consentFor(locale).footnote, locale === 'en' ? /unused days/ : /niewykorzystane dni/);
+		});
+	}
+
+	test('regulamin podbity razem ze zmianą planów — oświadczenie idzie za nim', () => {
+		assert.ok(TERMS_VERSION >= '2026-11-22', 'przepustka zmienia opis planów, do którego odsyła oświadczenie');
+	});
+});
