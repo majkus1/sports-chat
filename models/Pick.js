@@ -69,8 +69,23 @@ const PickSchema = new mongoose.Schema(
 		 * (`MARKET_CEILING`) oraz porównanie modelu z rynkiem po rozliczeniu
 		 * (`lib/model/marketCheck.mjs`). Kursy historyczne u dostawcy nie istnieją, więc
 		 * to jest jedyny sposób, żeby taki materiał w ogóle powstał.
+		 *
+		 * Od 21.11.2026 przy `chanceSource: 'market'` ta sama liczba (zaokrąglona) JEST pokazaną szansą
+		 * (`probability`) — samo pole nadal nie wychodzi z żadnej trasy.
 		 */
 		marketProbability: { type: Number, default: null },
+
+		/*
+		 * OD 21.11.2026: SKĄD POCHODZI POKAZANA SZANSA (`probability`) — `market` (kurs po zdjęciu marży),
+		 * `model` (model liczbowy po korekcie z dziennika), `live` (ostrożniejsza z: wyliczenie w trakcie
+		 * meczu i kurs live), `provider` (prognoza dostawcy, ligi bez modelu); `null` w typach sprzed
+		 * zmiany i od modelu językowego. Obok druga liczba — szansa modelu — żeby po rozliczeniu dało
+		 * się zmierzyć, która była bliżej faktów (`lib/picks/chance.js`). Historii nie przeliczamy.
+		 */
+		chanceSource: { type: String, default: null, index: true },
+		modelProbability: { type: Number, default: null },
+		/** Wersja korekty szansy modelu (`chanceCalibrationData.js`), gdy jakakolwiek była czynna. */
+		calibrationVersion: { type: String, default: null },
 
 		/** Uzasadnienie od użytkownika — pokazywane innym przy typie. */
 		comment: { type: String, default: null },

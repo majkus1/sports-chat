@@ -58,9 +58,10 @@ describe('llms.txt zgadza się z kodem', () => {
 	});
 
 	test('kupony według dzisiejszych zasad, bez weekendowego', () => {
-		ma(`kurs łączny ${pl(COUPON_TYPES.daily.target)}–${pl(COUPON_TYPES.daily.max)}`);
-		ma(`najwyżej ${COUPON_TYPES.daily.maxLegs} typy na kuponie dnia i ${COUPON_TYPES.days3.maxLegs} na pozostałych`);
-		assert.equal(COUPON_TYPES.days3.maxLegs, COUPON_TYPES.days5.maxLegs, '3- i 5-dniowy mają różne limity typów');
+		// Od 21.11.2026 kupon dnia i 3-dniowy mają te same zasady, 5-dniowy własne.
+		ma(`kurs łączny ${pl(COUPON_TYPES.daily.target)}–${pl(COUPON_TYPES.daily.max)}, najwyżej ${COUPON_TYPES.daily.maxLegs} typy`);
+		ma(`5-dniowy — ${pl(COUPON_TYPES.days5.target)}–${pl(COUPON_TYPES.days5.max)}, najwyżej ${COUPON_TYPES.days5.maxLegs} typów`);
+		assert.deepEqual([COUPON_TYPES.days3.target, COUPON_TYPES.days3.max, COUPON_TYPES.days3.maxLegs], [COUPON_TYPES.daily.target, COUPON_TYPES.daily.max, COUPON_TYPES.daily.maxLegs]);
 		assert.ok(!/weekend/i.test(tekst), 'kupon weekendowy już nie powstaje');
 	});
 

@@ -78,7 +78,10 @@ function Pick({ pick, locale, t }) {
 			) : (
 				<p className="text-sm text-text">
 					<span className="font-semibold text-accent">{pick.hint.selection}</span>
-					<span className="tabular-nums"> · {pick.hint.probability}%</span>
+					<span className="tabular-nums" title={t(pick.hint.chanceSource === 'market' ? 'model_hint_source_market' : 'model_hint_source_model')}>
+						{' '}
+						· {pick.hint.probability}%
+					</span>
 					{Number.isFinite(pick.hint.base) && (
 						<span className="text-muted"> ({t('model_sees_usual', { base: Math.round(pick.hint.base) })})</span>
 					)}

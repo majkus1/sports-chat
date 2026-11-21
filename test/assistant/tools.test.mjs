@@ -63,7 +63,7 @@ const limit = (over = {}) => async ({ kind }) => ({
  * Wszystkie źródła wykonawcy (`ZRODLA` w `lib/assistant/tools.js`). Niepodstawione rzucają —
  * zapomniana atrapa ma wywrócić test, a nie po cichu zapytać prawdziwe API albo model AI.
  */
-const ZRODLA = ['liveCoupon', 'peekLiveCoupon', 'liveMatchesNow', 'liveMatch', 'dailyOverview', 'checkQuota', 'fixture', 'readAnalysis', 'prepareAnalysis', 'generateAnalysis', 'matchSchedule', 'customCoupon'];
+const ZRODLA = ['liveCoupon', 'peekLiveCoupon', 'liveMatchesNow', 'liveMatch', 'dailyOverview', 'checkQuota', 'fixture', 'readAnalysis', 'prepareAnalysis', 'generateAnalysis', 'matchSchedule', 'customCoupon', 'marketFor'];
 const niepodstawione = Object.fromEntries(
 	ZRODLA.map((nazwa) => [
 		nazwa,
@@ -666,7 +666,7 @@ describe('moje_mecze_i_typy (prawdziwa baza)', () => {
 
 /* ------------------------------------------------------------------------------------------ */
 
-describe('definicje narzędzi i prompt assistant/6', () => {
+describe('definicje narzędzi i prompt assistant/7', () => {
 	const NOWE = ['na_zywo', 'mecz_na_zywo', 'analiza_meczu', 'typ_dnia', 'raporty', 'funkcje_aplikacji', 'moje_mecze_i_typy'];
 
 	test('nowe narzędzia mają definicję (wykonawców sprawdzają testy wyżej); gotowa_analiza zastąpiona', async () => {
@@ -689,7 +689,7 @@ describe('definicje narzędzi i prompt assistant/6', () => {
 	});
 
 	test('prompt w obu językach zna wszystkie narzędzia i nowe zasady', () => {
-		assert.equal(ASSISTANT_PROMPT_VERSION, 'assistant/6');
+		assert.equal(ASSISTANT_PROMPT_VERSION, 'assistant/7');
 		const pl = assistantSystemPrompt({ language: 'pl', locale: 'pl', today: '2099-01-01' });
 		const en = assistantSystemPrompt({ language: 'en', locale: 'en', today: '2099-01-01' });
 		for (const prompt of [pl, en]) {
@@ -761,7 +761,8 @@ describe('zloz_kupon — kreator kuponu z rozmowy', () => {
 		assert.equal(String(args.userId), String(USER_ID));
 		assert.deepEqual(args.params, { odds: 2.5, legs: 4, window: 'evening', leagues: ['england'], skipPublished: true });
 		assert.equal(w.kupon.kurs_laczny, 2.52);
-		assert.equal(w.kupon.szansa_wg_modelu_pct, 39);
+		assert.equal(w.kupon.szansa_pct, 39);
+		assert.match(w.kupon.zrodlo_szansy, /z kursów/);
 		assert.match(w.kupon.ustawienia, /ok\. 2,5 · najwyżej 4 mecze · Dziś 18–23 · Anglia/);
 		assert.deepEqual(
 			w.kupon.typy.map((t) => [t.mecz, t.typ, t.kurs, t.link]),

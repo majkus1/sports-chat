@@ -47,6 +47,8 @@ describe('hintPresenter', () => {
 			label: '1',
 			selection: 'Gospodarze wygrają',
 			probability: 74,
+			// Zapis sprzed 21.11.2026 bez źródła szansy — podpisany „według modelu".
+			chanceSource: 'model',
 			base: 44,
 			lift: 30,
 			daily: true,

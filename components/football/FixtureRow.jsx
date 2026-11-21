@@ -81,10 +81,13 @@ function ModelHint({ hint, t, locale }) {
 
 	// Przewaga bywa nieznana tylko przy zapisie bez normy — wtedy bez „+…" zamiast „+null".
 	const lift = Number.isFinite(hint.lift) ? hint.lift : null;
-	const opis =
+	// Skąd procent (od 21.11.2026, `lib/picks/chance.js`): z kursów albo wstępnie z modelu.
+	const zrodlo = t(hint.chanceSource === 'market' ? 'model_hint_source_market' : 'model_hint_source_model');
+	const opis = `${
 		lift === null
 			? `${hint.selection} — ${hint.probability}%`
-			: t('model_hint_title', { selection: hint.selection, probability: hint.probability, lift });
+			: t('model_hint_title', { selection: hint.selection, probability: hint.probability, lift })
+	} (${zrodlo})`;
 
 	const plakietka = (
 		<span title={opis} aria-label={opis} className={cn(baza, 'bg-accent text-accent-fg tabular-nums')}>

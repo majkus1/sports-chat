@@ -349,7 +349,7 @@ describe('prompty z terminarzem', () => {
 		});
 		assert.match(fakty, /TERMINARZ — POPRZEDNI I NASTĘPNY MECZ OBU DRUŻYN/);
 		assert.match(fakty, /SYGNAŁY: mecz w pucharach europejskich 3 dni przed tym meczem/);
-		assert.equal(PROMPT_VERSION, 'match-analysis/16');
+		assert.equal(PROMPT_VERSION, 'match-analysis/17');
 		assert.match(ANALYSIS_SYSTEM_PROMPT, /22\. Sekcja TERMINARZ/);
 		assert.match(ANALYSIS_SYSTEM_PROMPT, /WYŁĄCZNIE jako ryzyko rotacji składu/);
 		assert.match(ANALYSIS_SYSTEM_PROMPT, /nie wspominaj o terminarzu na siłę/);
@@ -369,7 +369,7 @@ describe('prompty z terminarzem', () => {
 		const p = buildReportPrompt([kandydat], { type: 'soon', language: 'pl' });
 		assert.match(p, /TERMINARZ: Legia: poprzedni czw\. 22\.10 Liga Konferencji/);
 		assert.doesNotMatch(buildReportPrompt([{ ...kandydat, schedule: null }], { type: 'soon', language: 'pl' }), /TERMINARZ:/);
-		assert.equal(REPORT_PROMPT_VERSION, 'report/6');
+		assert.equal(REPORT_PROMPT_VERSION, 'report/7');
 		assert.match(REPORT_SYSTEM_PROMPT, /6a\. TERMINARZ:/);
 
 		const v = buildValueReportPrompt([{ ...kandydat, homeName: 'Legia', awayName: 'Lech', selection: 'Lech', odds: 2.1, market: 47, model: 50 }], {

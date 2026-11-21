@@ -15,15 +15,16 @@ import { setupEnv } from '../helpers/setup.mjs';
  * rozliczenie zamyka kupon od pierwszego chybionego i pokazuje wynik w statystyce; nogi kuponów
  * dla listy meczów — płatne tylko z planem.
  *
- * Plakietki w danych niżej mają szansę nie wyższą niż wynika z kursu (szansa × kurs ≤ 100) —
- * inaczej kupon by ich nie wziął (`marketAgrees`).
+ * Plakietki w danych niżej są już potwierdzone porannym zdjęciem kursów (`chanceSource: 'market'`,
+ * `lib/picks/chance.js`) — inaczej kupon by ich nie wziął. Od 21.11.2026 kupon dnia i 3-dniowy:
+ * 2,0–2,5 z najwyżej 3 meczów, 5-dniowy 2,4–2,8.
  */
 
 setupEnv();
 await mongoose.connect(process.env.DATABASE_URL, { serverSelectionTimeoutMS: 20000 });
 
 const Coupon = (await import('@/models/Coupon')).default;
-const { ensureCoupons, settleCoupons, couponsOverview, couponStats, couponDates, couponLegsForDate } = await import(
+const { ensureCoupons, settleCoupons, couponsOverview, couponStats, couponDates, couponLegsForDate, szansaNogi } = await import(
 	'@/lib/coupons/service'
 );
 const { localDate, localMidnight } = await import('@/lib/time');
@@ -57,7 +58,7 @@ function wpis(date, h, probability, odds) {
 		league: 'Ekstraklasa, Poland',
 		leagueId: 106,
 		kickoff: o(date, h).toISOString(),
-		hint: { key: 'home', selection: `Gospodarz ${nr} wygra`, probability, base: 45, lift: probability - 45 },
+		hint: { key: 'home', selection: `Gospodarz ${nr} wygra`, probability, base: 45, lift: probability - 45, chanceSource: 'market' },
 	};
 }
 
@@ -129,12 +130,15 @@ describe('wybór kuponów', () => {
 		assert.deepEqual(r.created, klucze(D[0]));
 
 		const [dzienny, trzy, piec] = await Promise.all(klucze(D[0]).map((key) => Coupon.findOne({ key }).lean()));
-		for (const k of [dzienny, trzy, piec]) {
-			assert.ok(k.totalOdds >= 2.4 && k.totalOdds <= 2.8, `${k.key}: ${k.totalOdds}`);
-			assert.ok(k.legs.every((l) => l.odds < 1.4 && l.odds * l.probability <= 100));
+		for (const k of [dzienny, trzy]) {
+			assert.ok(k.totalOdds >= 2.0 && k.totalOdds <= 2.5, `${k.key}: ${k.totalOdds}`);
+			assert.ok(k.legs.length <= 3 && k.legs.every((l) => l.odds < 1.6 && l.chanceSource === 'market'));
 		}
-		assert.equal(dzienny.totalOdds, 2.5);
-		assert.equal(dzienny.legs.length, 4);
+		assert.ok(piec.totalOdds >= 2.4 && piec.totalOdds <= 2.8, `${piec.key}: ${piec.totalOdds}`);
+		assert.ok(piec.legs.every((l) => l.odds < 1.4 && l.chanceSource === 'market'));
+		// 1,25 × 1,26 × 1,27 = 2,00 — trzy typy zamiast dawnych czterech po ~1,25.
+		assert.equal(dzienny.totalOdds, 2);
+		assert.equal(dzienny.legs.length, 3);
 		assert.ok(dzienny.legs.every((l) => localDate(l.kickoff) === D[0]));
 		assert.equal(trzy.legs.length, 3, 'z kursami ~1,35 wystarczą trzy typy');
 		assert.ok(trzy.legs.every((l) => D.slice(0, 3).includes(localDate(l.kickoff))));
@@ -217,7 +221,7 @@ describe('wiadomości przed publikacją płatnego kuponu', () => {
 		);
 		assert.equal(trzy.newsCheck.checked, trzy.legs.length + 1);
 		assert.ok(trzy.legs.every((l) => l.news?.verdict === 'ok'));
-		assert.ok(trzy.totalOdds >= 2.4 && trzy.totalOdds <= 2.8);
+		assert.ok(trzy.totalOdds >= 2.0 && trzy.totalOdds <= 2.5);
 
 		const plan = await couponsOverview({ now: o(R[0], 11), unlocked: true });
 		assert.deepEqual(plan.days3.newsCheck.dropped.map((d) => d.reason), ['kontuzja lidera']);
@@ -327,7 +331,7 @@ describe('nieudane pobranie kursów', () => {
 	test('kursu nie ma — kupony czekają na kolejny przebieg; od 22:00 już nie czekają', async () => {
 		const r = await ensureCoupons({ now: o(SRODA, 13), ...opcje });
 		assert.deepEqual(r.postponed, klucze(SRODA));
-		assert.deepEqual(r.details[`daily:${SRODA}`], { entries: 4, fetched: 3, failed: 1, withOdds: 3 });
+		assert.deepEqual(r.details[`daily:${SRODA}`], { entries: 4, fetched: 3, failed: 1, withOdds: 3, unconfirmed: 0 });
 		assert.equal(await Coupon.countDocuments({ date: SRODA }), 0);
 
 		assert.deepEqual((await ensureCoupons({ now: o(SRODA, 21), ...opcje })).postponed, klucze(SRODA));
@@ -379,5 +383,28 @@ describe('rozliczenie i statystyka', () => {
 		);
 		assert.equal(zakryty.locked, true);
 		assert.deepEqual(zakryty.legs, []);
+	});
+});
+
+describe('szansa nogi z kursu (21.11.2026)', () => {
+	const wstepna = { key: 'X2', selection: 'X2', probability: 75, modelProbability: 75, base: 56, chanceSource: 'model' };
+
+	test('plakietka już potwierdzona porannym zdjęciem — bez zmian', () => {
+		assert.deepEqual(szansaNogi({ ...wstepna, probability: 71, chanceSource: 'market' }, null), {
+			probability: 71,
+			modelProbability: 75,
+			source: 'market',
+		});
+	});
+
+	test('plakietka wstępna potwierdzana dociągniętym kursem: szansa z kursu albo brak nogi', () => {
+		// 2,0 / 3,4 / 3,6: X2 po zdjęciu marży ok. 51% — poniżej progu 68, kurs nie potwierdza.
+		assert.equal(szansaNogi(wstepna, { bookmakers: 6, home: 2.0, draw: 3.4, away: 3.6 }), null);
+		// 4,0 / 3,6 / 1,8: X2 ok. 75% — potwierdza, szansa z kursu, model obok.
+		const ok = szansaNogi(wstepna, { bookmakers: 6, home: 4.0, draw: 3.6, away: 1.8 });
+		assert.equal(ok.source, 'market');
+		assert.equal(ok.modelProbability, 75);
+		assert.ok(ok.probability >= 68 && ok.probability < 80, String(ok.probability));
+		assert.equal(szansaNogi(wstepna, { bookmakers: 0 }), null, 'puste zdjęcie — bez potwierdzenia');
 	});
 });

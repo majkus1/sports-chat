@@ -71,12 +71,11 @@ describe('strona główna', () => {
 			const male = odp.toLowerCase();
 			const kurs = (v) => (locale === 'en' ? v.toFixed(1) : v.toFixed(1).replace('.', ','));
 
-			// Jeden przedział w odpowiedzi — więc wszystkie aktywne kupony muszą go mieć.
-			for (const typ of [COUPON_TYPES.days3, COUPON_TYPES.days5]) {
-				assert.equal(typ.target, COUPON_TYPES.daily.target);
-				assert.equal(typ.max, COUPON_TYPES.daily.max);
-			}
+			// Od 21.11.2026 dwa przedziały: kupon dnia i 3-dniowy wspólny, 5-dniowy własny — oba z kodu.
+			assert.equal(COUPON_TYPES.days3.target, COUPON_TYPES.daily.target);
+			assert.equal(COUPON_TYPES.days3.max, COUPON_TYPES.daily.max);
 			assert.ok(odp.includes(`${kurs(COUPON_TYPES.daily.target)}–${kurs(COUPON_TYPES.daily.max)}`), 'brak kursu łącznego z kodu');
+			assert.ok(odp.includes(`${kurs(COUPON_TYPES.days5.target)}–${kurs(COUPON_TYPES.days5.max)}`), 'brak przedziału 5-dniowego');
 			assert.ok(odp.includes(`${TRIAL.days}`), 'brak długości okresu próbnego');
 
 			// Zastrzeżenia obowiązkowe: mediana bez odnośników, szacunki, bez zakładów, 18+.

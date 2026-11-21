@@ -33,7 +33,13 @@ const mecz = (n, kickoffH = 20) => ({
 	league: { id: 106, name: 'Ekstraklasa' },
 });
 const plakietka = (key, probability = 70, base = 44) => ({ key, selection: SELECTION_SHAPES[key].label(nazwy), probability, base });
-const wpis = (n, key, kickoffH) => ({ fixture: mecz(n, kickoffH), prediction: { modelVersion: 'dixon-coles/5' }, hint: plakietka(key) });
+/** Wpis z listy dnia; domyślnie z porannym zdjęciem kursów (puste — dostawca kursów nie ma), więc zapis nie czeka. */
+const wpis = (n, key, kickoffH, odds = { at: TERAZ, bookmakers: 0 }) => ({
+	fixture: mecz(n, kickoffH),
+	prediction: { modelVersion: 'dixon-coles/5' },
+	hint: plakietka(key),
+	odds,
+});
 
 /** Typ z analizy (albo typ dnia) na ten sam mecz. */
 const typ = (n, key, kind = 'prematch') =>
@@ -105,5 +111,27 @@ describe('zapis plakietek', () => {
 		);
 		assert.equal(zapisane, 0);
 		assert.equal((await Pick.countDocuments({ fixtureId: { $in: [5, 6, 7].map((n) => `${PREFIX}-${n}`) } })), 0);
+	});
+});
+
+describe('zapis plakietki dopiero z kursem (21.11.2026)', () => {
+	test('przed porannym zdjęciem kursów plakietka czeka; na godzinę przed meczem zapisuje się i bez niego', async () => {
+		assert.equal(await recordHintPicks([wpis(8, 'home', 20, null)], { now: TERAZ }), 0, 'kursy jeszcze przyjdą');
+		assert.equal(await recordHintPicks([wpis(9, 'home', 0.5, null)], { now: TERAZ }), 1, 'kursów już nie będzie');
+		assert.equal((await pobierz(8)).length, 0);
+	});
+
+	test('plakietka potwierdzona kursem zapisuje szansę z kursu, szansę modelu i źródło', async () => {
+		const zKursem = {
+			...wpis(10, 'X2', 20, { at: TERAZ, bookmakers: 7, home: 4, draw: 3.6, away: 1.8 }),
+			hint: { ...plakietka('X2', 74, 56), modelProbability: 79, marketProbability: 74.2, chanceSource: 'market' },
+		};
+		assert.equal(await recordHintPicks([zKursem], { now: TERAZ }), 1);
+		const [r] = await pobierz(10);
+		assert.equal(r.probability, 74);
+		assert.equal(r.modelProbability, 79);
+		assert.equal(r.marketProbability, 74.2);
+		assert.equal(r.chanceSource, 'market');
+		assert.equal(r.countsToStats, true);
 	});
 });

@@ -50,6 +50,7 @@ export default function DailyPickCard({ pick, c, label, locale, compact = false,
 						{pick.selection}
 					</span>
 					<span className="text-2xl font-bold tabular-nums text-text">{pick.probability}%</span>
+					{c.source?.[pick.chanceSource] && <span className="text-xs text-muted">{c.source[pick.chanceSource]}</span>}
 					<span className="text-sm text-muted">
 						({c.usually} {pick.base}%)
 					</span>

@@ -19,6 +19,9 @@ z korektą Dixona-Colesa, wszystkie rynki wyprowadzone z jednej macierzy.
 | `poolBacktest.mjs` | backtest pul na meczach pucharowych i reprezentacyjnych (cache odpowiedzi na dysku) |
 | `forecastLog.js` | dziennik prognoz: każdy mecz policzony przez model (`ModelForecast`), z wynikiem dopisanym w nocy |
 | `forecastCheck.mjs` | pomiar na dzienniku: kalibracja, Brier wobec stałej, warianty 2,5, ligi, plakietki |
+| `chanceCalibration.js` | korekta zawyżonej szansy modelu per selekcja, z bezpiecznikami (sekcja z 21.11.2026) |
+| `chanceCalibration.mjs` | generator korekty z dziennika prognoz (`--emit`), tylko odczyt bazy |
+| `chanceCalibrationData.js` | GENEROWANY: przesunięcia per selekcja, wersja, data, wynik sprawdzianu |
 
 ## Stan: PODPIĘTY DO PRODUKCJI — raporty i analizy pojedynczych meczów
 
@@ -57,7 +60,8 @@ Gdzie liczy:
   w tej samej sytuacji.
 
 Typ liczy się do skuteczności tylko wtedy, gdy przewyższa normę swojej selekcji o margines
-z `lib/picks/policy.js` — sam wysoki procent nie wystarcza.
+z `lib/picks/policy.js` — sam wysoki procent nie wystarcza. Od 21.11.2026 model WYBIERA mecze,
+a gdy jest kurs, z niego pochodzi pokazywana szansa i ona też musi przejść próg (sekcja z tą datą).
 
 ## Rynki goli: wynik eksperymentu (wrzesień 2026)
 
@@ -194,9 +198,11 @@ Kolejność działań, z progami:
    (z `FixtureStats`, w tym xG tam, gdzie dostawca je daje) i porównanie z archiwum.
 3. **Cechy per drużyna** — dopiero gdy będzie ≥ 100 prognoz na drużynę; wcześniej to szum.
 
-## Rynek bukmacherski: sufit i pomiar, nigdy baza
+## Rynek bukmacherski: sufit i pomiar, nigdy baza (stan do 21.11.2026)
 
-Kursy wróciły do serwisu w dwóch wąskich rolach, obie bez śladu w treści i interfejsie:
+**Od 21.11.2026 rynek jest też źródłem pokazywanej szansy typu — sekcja „Szansa z kursów” niżej.**
+Bazą przewagi nadal nie jest. Do tej daty kursy były w dwóch wąskich rolach, obie bez śladu w treści
+i interfejsie:
 
 - **Sufit „to już wszyscy wiedzą"** — `MARKET_CEILING` w `lib/picks/policy.js`. Gdy rynek
   (po zdjęciu marży) daje selekcji co najmniej tyle procent, typu nie wystawiamy, choćby
@@ -303,6 +309,120 @@ Te same liczby dla lig, które już działały: Eredivisie (t 2,8; 83/83%) i Bra
 (2,3; 80/78%) przechodzą; Championship (0,7), Allsvenskan (0,7) i MLS (0,6) są w szumie,
 a **I liga (Polska) wypada poniżej częstości** (t −1,6; 81/72%). Ich nie ruszaliśmy — to
 kandydaci do decyzji na podstawie dziennika prognoz, nie jednego przebiegu.
+
+## Szansa z kursów, korekta i nowe zasady kuponów (21.11.2026)
+
+Punkt wyjścia: 1354 rozliczone typy AI, 72% trafionych; dziennik prognoz — 2358 meczów z wynikiem
+(18.09–16.11.2026), z tego 2081 z porannym kursem (`odds.open`, od 27.09). Wszystkie decyzje niżej
+zapadły na podziale PO DACIE (do 19.10 / od 20.10) albo tydzień po tygodniu (dopasowanie wyłącznie
+na wcześniejszych tygodniach). Skrypty pomiarowe były poza repozytorium, baza tylko do odczytu.
+
+### 1. „Goście strzelą gola" — wyłączone (`BANNED_TEAM_GOALS_SIDES`, `lib/picks/policy.js`)
+
+| szansa modelu | meczów | model | fakt | rynek (po marży) |
+|---|---|---|---|---|
+| 75–80% | 315 | 77,5% | 78,1% | 76,8% |
+| 80–85% | 244 | 82,4% | 75,4% | 80,1% |
+| 85–90% | 151 | 87,2% | 84,1% | 84,4% |
+| 90%+ | 100 | 92,9% | 89,0% | 87,5% |
+
+Nachylenie „logit szansy → wynik": goście 0,61, gospodarze 0,85, 1X2 ok. 0,9. Nad progiem typu (82%):
+do 19.10 — 87% obiecane, 86% trafione (162), od 20.10 — 87% i 80% (256). Plakietki z tą selekcją: 93
+z kursem, obiecane 85%, trafione 69% (norma: 71%); potwierdzone kursem — 32, 84% → 78%, od 20.10
+23 → 74%. Korekta szansy dopasowana na wcześniejszej części nadal obiecywała za dużo na późniejszej.
+Wniosek: wyłączyć, jedną regułą w `isBannedMarket` — działa w plakietkach, raporcie, analizie (przed
+i w trakcie meczu), typie dnia, kuponach, kreatorze i asystencie. **„Gospodarze strzelą" zostają**:
+model skalibrowany (85–90%: 87% → 89%, 90%+: 93% → 95%), typy 26 — 92%/92%.
+
+### 2. Szansa z kursu tam, gdzie kurs jest (`lib/picks/chance.js`)
+
+Brier na wszystkich meczach z kursem (mniej = lepiej) — rynek lepszy przy KAŻDEJ selekcji, w obu połowach:
+
+| selekcja | model | szansa z kursu |
+|---|---|---|
+| „1" / „X2" | 0,2145 | **0,2058** |
+| „2" / „1X" | 0,1877 | **0,1797** |
+| gospodarze strzelą | 0,1599 | **0,1537** |
+| powyżej 2,5 | 0,2399 | **0,2357** |
+
+Plakietki z kursem według tego, czy szansa z kursu SAMA przechodzi próg typu:
+
+| okres | rynek | typów | model | rynek | trafione |
+|---|---|---|---|---|---|
+| do 19.10 | potwierdza | 232 | 75,1% | 74,6% | **82,8%** |
+| do 19.10 | nie potwierdza | 161 | 74,3% | 64,0% | 61,5% |
+| od 20.10 | potwierdza | 543 | 76,1% | 74,7% | **78,8%** |
+| od 20.10 | nie potwierdza | 359 | 73,8% | 63,6% | 60,2% |
+
+Reguła nie ma parametru dopasowanego do danych (próg to polityka), a działa w obu połowach tak samo.
+Wariant produkcyjny (plakietka = selekcja z największą przewagą spośród przechodzących próg u modelu
+i w kursie, bez „gości strzelą"), od 20.10: 592 plakietki (22 dziennie zamiast 32), obiecane 74,3%,
+trafione 78,4%, Brier 0,1659 wobec 0,2018 dzisiejszych.
+
+Na samych potwierdzonych typach (tydzień po tygodniu od 11.10, 737) szansa z kursu i z modelu są
+skalibrowane tak samo (Brier 0,1636 / 0,1637; „1" 0,1835/0,1838, „X2" 0,1631/0,1643, „1X" 0,0982/0,0979,
+„2" 0,1622/0,1550 — 80 typów, w szumie) i obie są ostrożne (obiecują 74–76%, wchodzi 79%). Pokazujemy
+kurs, bo na całej próbie jest lepszy przy każdej selekcji, a przy potwierdzonych nie gorszy.
+Podniesienie szansy z kursu o tę ostrożność (Brier 0,1615) świadomie NIE wdrożone — podnosiłoby
+obietnice o 5 pkt na podstawie sześciu tygodni.
+
+Gdzie działa: plakietki (`hints.js`, poranne zdjęcie z dziennika — zero nowych zapytań), raport
+(`confirmMarkets` zamiast samego sufitu), analiza przed meczem, typ dnia, kupony i kreator, asystent
+(`model_dla_meczu` z kursem). Bez kursu — szansa modelu po korekcie (pkt 3), podpisana „według modelu".
+Przy typie zapisujemy `probability` (pokazana), `modelProbability`, `marketProbability`, `chanceSource`
+(`market` / `model` / `live` / `provider`) i `calibrationVersion`. Historii nie przeliczamy.
+
+Plakietka przed porannym zdjęciem kursów (mecze jutra) jest WSTĘPNA: szansa modelu, podpis „wstępna,
+przed kursami", i nie wchodzi jeszcze do skuteczności — `recordHintPicks` zapisuje plakietkę dopiero
+z kursem (albo gdy wiadomo, że kursu nie będzie, albo na godzinę przed meczem). Dziennik prognoz dalej
+zapisuje plakietkę SAMEGO modelu (`hint`, z `hint.raw` przed korektą) — to ją mierzymy.
+
+Zasady, które zmieniły się świadomie: „rynek nigdy bazą" → rynek nie jest bazą PRZEWAGI (ta dalej od
+normy, `MIN_LIFT` bez zmian), ale jest źródłem SZANSY; `MARKET_CEILING` zostaje; treści AI dalej nie
+piszą o kursach ani „przewadze nad rynkiem" (prompty `report/7`, `match-analysis/17`, `assistant/7`
+dostają tylko źródło procentu). Podpisy w interfejsie: „szansa z kursów" / „według modelu".
+
+### 3. Korekta zawyżonych procentów (`lib/model/chanceCalibration.js` + generowany `chanceCalibrationData.js`)
+
+Rozliczone typy: 80–89% → 77%, 90%+ → 84%. Bez „gości strzelą": 80–89% — 365 typów, 83,5% → 80,3%;
+90%+ — 55, 92,4% → 85,5%. Mechanizm: przesunięcie logitu per selekcja, tylko w dół, najwyżej 8 pkt,
+minimum 150 plakietek, sprawdzian tydzień po tygodniu (≥ 100 plakietek), wersja i data w pliku.
+Odświeżanie: `node --experimental-loader ./test/helpers/alias.mjs lib/model/chanceCalibration.mjs --emit=lib/model/chanceCalibrationData.js`
+co 2–4 tygodnie (plik w repozytorium, jak `goalsCalibrationData.js`; bez crona, bo zmiana liczb
+widocznych dla użytkownika ma przejść przez przegląd).
+
+Wynik tydzień po tygodniu (1183 plakietki od 4.10, bez „gości strzelą"):
+
+| wariant | Brier | 80–89%: obiecane → po korekcie → trafione |
+|---|---|---|
+| bez korekty | **0,1928** | 83,3% → — → 80,8% |
+| przesunięcie per selekcja | 0,1934 | 83,3% → 81,8% → 80,8% |
+| regresja na wszystkich meczach | 0,1936 | 83,3% → 79,9% → 80,8% |
+| wspólne ściąganie do normy | 0,1942 | 83,3% → 79,9% → 80,8% |
+
+Żaden kształt korekty nie poprawił Briera; przebieg generatora z 21.11 nie włączył jej w żadnej
+selekcji („X2" 0,1897 → 0,1916, „1" 0,2081 → 0,2086; „1X" i „2" — za krótki sprawdzian). Mechanizm
+jest podłączony wszędzie, gdzie pokazujemy szansę modelu (raport, plakietki, analiza, typ dnia, a przez
+nie kupony), i włączy się sam, gdy dziennik to potwierdzi. Zawyżone 80%+ naprawiają dziś: wyłączenie
+„gości strzelą" (główne źródło) i szansa z kursu (potwierdzone plakietki z kursem 80–90% trafiły 87–88%).
+
+### 4. Kupony (`lib/coupons/build.js` — tabela symulacji w nagłówku)
+
+Nogi = plakietki potwierdzone kursem, z szansą z kursu. Kupon dnia i 3-dniowy: 2,0–2,5, najwyżej
+3 mecze, nogi 1,05–1,60. 5-dniowy: 2,4–2,8, do 5 meczów, nogi do 1,40 (bez zmian poza potwierdzeniem).
+Kreator: nogi jak kupon dnia. Dawny warunek „kurs × szansa modelu ≤ 100" usunięty — po potwierdzeniu
+nic nie wnosił. Symulacja (47 dni): kupon dnia 41/47 dni (dziś 25/47), 2,4 meczu, 24/41 weszło przy
+uczciwej szansie ~42%; 3-dniowy 23/45 (dziś 18/45); 5-dniowy 14/43 (dziś 15/43). Pojedynczy typ
+1,40–1,80 odrzucony (obiecywał 66%, trafiał 53–61%).
+
+### 5. Analiza na żywo (`lib/analysis/model.js`)
+
+44 typy: 57% przy 72%; bez modelu 12 → 50%, zapasowe 24 → 50%, poniżej 60% 7 → 14%. Nogi kuponu live
+(zasady `lib/live/select.js`): 83 → 87% przy obietnicy 82%. Od 21.11: typ w trakcie meczu tylko
+z selekcji, która przechodzi `liveSelections` (zgoda `LIVE_AGREEMENT`, weto za czerwoną kartkę), kurs
+1,20–2,20 i minuta 10–80; szansa = ostrożniejsza z: wyliczenie i 100/kurs live. Bez kursów live (albo
+bez modelu ligi) — bez typu, tylko kierunek poza statystyką. Kursów live z wynikiem nie archiwizujemy,
+więc szansy live nie da się jeszcze skalibrować — do zrobienia, gdy kupon live zbierze kilkaset nóg.
 
 ## Uruchomienie backtestu
 

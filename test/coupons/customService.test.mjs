@@ -53,7 +53,8 @@ function wpis(date, h, probability, odds, { leagueId = 39, m = 0 } = {}) {
 		league: leagueId === 140 ? 'La Liga, Spain' : 'Premier League, England',
 		leagueId,
 		kickoff: o(date, h, m).toISOString(),
-		hint: { key: 'home', selection: `Gospodarz ${nr} wygra`, probability, base: 45, lift: probability - 45 },
+		// Plakietka z listy już potwierdzona porannym zdjęciem kursów — szansa z kursu (`lib/picks/chance.js`).
+		hint: { key: 'home', selection: `Gospodarz ${nr} wygra`, probability, base: 45, lift: probability - 45, chanceSource: 'market' },
 	};
 }
 
@@ -74,7 +75,8 @@ const LISTY = {
 		wpis(A, 20, 85, 1.15, { leagueId: 999999, m: 30 }),
 	],
 	// Jeden typ spełnia zasady: 1,60 za wysoki, przy 90% i 1,30 rynek mniej pewny niż model.
-	[B]: [wpis(B, 18, 76, 1.3), wpis(B, 19, 62, 1.6), wpis(B, 20, 90, 1.3)],
+	// Na kupon przechodzi tylko pierwszy: 1,60 i 1,62 są poza widełkami nogi (do 1,60).
+	[B]: [wpis(B, 18, 76, 1.3), wpis(B, 19, 62, 1.6), wpis(B, 20, 60, 1.62)],
 	[C]: [...wieczor(C), wpis(C, 22, 70, 1.39)],
 	[D]: [...wieczor(D), wpis(D, 22, 70, 1.39), wpis(D, 22, 69, 1.39, { m: 30 })],
 	[E]: wieczor(E),
@@ -218,16 +220,17 @@ describe('złożenie kuponu', () => {
 		assert.equal(r.status, 200);
 		assert.equal(r.body.ok, false);
 		assert.equal(r.body.reason, 'few_picks');
-		assert.deepEqual(r.body.counts, { matches: 3, withOdds: 3, picks: 1, needed: 3 });
+		assert.deepEqual(r.body.counts, { matches: 3, withOdds: 3, picks: 1, needed: 2 });
 		assert.ok(r.body.suggest.includes('window'));
 		assert.deepEqual(r.body.quota, { limit: 3, used: 0, remaining: 3 });
 		assert.equal(s.zuzyte.length, 0);
 		assert.equal(await Coupon.countDocuments({ userId: USER, date: B }), 0);
 	});
 
-	test('dwa mecze przy ok. 2,5 albo okno już puste: „nie da się" bez pobierania czegokolwiek', async () => {
+	test('dwa mecze przy ok. 3,0 albo okno już puste: „nie da się" bez pobierania czegokolwiek', async () => {
 		const s = zaleznosci();
-		const dwa = await zloz(s, { ...WIECZOR_25, legs: 2 }, o(A, 10));
+		// Nogi do 1,60: dwie dają najwyżej 2,56 — dość na ~2,5, za mało na ~3,0.
+		const dwa = await zloz(s, { ...WIECZOR_25, odds: 3, legs: 2 }, o(A, 10));
 		assert.equal(dwa.body.reason, 'too_few_legs');
 		assert.equal(dwa.body.needed, 3);
 		const pozno = await zloz(s, WIECZOR_25, o(A, 22, 30));
