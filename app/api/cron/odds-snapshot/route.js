@@ -3,6 +3,7 @@ import connectToDb from '@/lib/db';
 import { snapshotOdds } from '@/lib/model/oddsShadowJob';
 import { ensureCoupons, settleCoupons } from '@/lib/coupons/service';
 import { settleValuePicks } from '@/lib/value/service';
+import { snapshotRegisterOdds } from '@/lib/trust/oddsJob';
 
 export const maxDuration = 600;
 
@@ -15,6 +16,10 @@ export const maxDuration = 600;
  * Po kursach ten sam przebieg składa kupony dnia, 3- i 5-dniowy (od 9:30), i rozlicza
  * typy kuponów po meczach (`lib/coupons/service.js`). Każda część ma własny `try` — błąd
  * kuponu nie może zabrać zdjęcia kursów i odwrotnie.
+ *
+ * Zaraz po dzienniku — kursy rejestru typów (`lib/trust/oddsJob.js`): mecze z typami, których
+ * dziennik nie ma, i zdjęcia z chwili publikacji typów zapisanych po porannym zdjęciu. Po
+ * dzienniku, bo widzi wtedy jego świeże zdjęcia i nie pyta dostawcy o to samo drugi raz.
  */
 export async function POST(request) {
 	const expected = process.env.INTERNAL_API_SECRET || '';
@@ -32,6 +37,13 @@ export async function POST(request) {
 	try {
 		await connectToDb();
 		const summary = await snapshotOdds(Number.isInteger(budget) && budget > 0 ? { budget } : {});
+		let register;
+		try {
+			register = await snapshotRegisterOdds();
+		} catch (error) {
+			console.error('[register-odds] zdjęcia kursów rejestru nie powiodły się:', error.message);
+			register = { error: 'register_odds_failed' };
+		}
 		const coupons = {};
 		try {
 			Object.assign(coupons, await ensureCoupons());
@@ -52,7 +64,7 @@ export async function POST(request) {
 			console.error('[value] rozliczenie typów z wyższym kursem nie powiodło się:', error.message);
 			coupons.error = 'value_settle_failed';
 		}
-		return Response.json({ ok: true, ...summary, coupons });
+		return Response.json({ ok: true, ...summary, register, coupons });
 	} catch (error) {
 		console.error('[odds-shadow] przebieg nie powiódł się:', error.message);
 		return Response.json({ error: 'odds_snapshot_failed' }, { status: 500 });

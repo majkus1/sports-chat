@@ -1,7 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 import AppShell from '@/components/layout/AppShell';
 import {
-	Accuracy,
 	Faq,
 	Features,
 	FinalCta,
@@ -9,6 +8,7 @@ import {
 	HowItWorks,
 	Pricing,
 	Problem,
+	Register,
 	Sports,
 } from '@/components/landing/LandingSections';
 import { buildMetadata } from '@/lib/seo/metadata';
@@ -51,12 +51,13 @@ export async function generateMetadata({ params }) {
 		 */
 		title:
 			locale === 'en'
-				? 'Sports Chat — today’s football picks backed by numbers and AI match analysis'
-				: 'Czat Sportowy — typy na dziś z pokryciem w liczbach i analizy meczów AI',
+				? 'Sports Chat — AI match analysis in 30 seconds and a public pick register'
+				: 'Czat Sportowy — analiza meczu od AI w 30 sekund i publiczny rejestr typów',
+		// Bez obietnic zysku: rejestr i rozliczenie, nie „przewaga" (model jeszcze nie bije rynku).
 		description:
 			locale === 'en'
-				? 'A numbers model marks the matches where it sees an edge — result, double chance, a team to score, over 2.5 goals. The AI explains why; every pick is settled in public. Free, no card.'
-				: 'Model liczbowy oznacza mecze, w których widzi przewagę: wynik, podwójna szansa, gol drużyny, powyżej 2,5 gola. AI tłumaczy dlaczego, każdy typ rozliczamy publicznie. Za darmo, bez karty.',
+				? 'A numbers model and AI break a match down into chances and reasons — result, double chance, a team to score, over 2.5 goals. Every pick is recorded before kick-off in a public register and settled after the match, misses included. Free, no card.'
+				: 'Model liczbowy i AI rozkładają mecz na szanse i powody: wynik, podwójna szansa, gol drużyny, powyżej 2,5 gola. Każdy typ zapisujemy przed meczem w publicznym rejestrze i rozliczamy po meczu — chybione też. Za darmo, bez karty.',
 	});
 }
 
@@ -78,6 +79,7 @@ function planSummary(plan, locale) {
 export default async function HomePage({ params }) {
 	const { locale } = await params;
 	const t = await getTranslations('common');
+	const tt = await getTranslations('trust');
 	const content = landingContent(locale);
 	const method = methodContent(locale);
 	const faq = faqItems(locale);
@@ -98,7 +100,12 @@ export default async function HomePage({ params }) {
 			<JsonLd data={faqLd(faq)} />
 
 			<Hero content={content.hero} />
-			{/* Typ dnia pod nagłówkiem — konkretny dowód, zanim ktoś przewinie do opisu funkcji. */}
+			{/*
+			 * Kolejność: analiza w 30 sekund (nagłówek) → sprawdzalny wynik (rejestr typów z CLV) →
+			 * narzędzia. Rejestr przed typem dnia i kuponami: najpierw dowód, potem oferta.
+			 */}
+			<Register content={content.register} note={tt('landing_note')} />
+			{/* Typ dnia pod rejestrem — konkretny przykład tego, co rejestr rozlicza. */}
 			<DailyPickTeaser />
 			<CouponTeaser />
 			{/* Wyższe kursy pod kuponami — bez liczb (strona główna nie pyta bazy o bilans). */}
@@ -111,7 +118,6 @@ export default async function HomePage({ params }) {
 			<Features content={content.features} />
 			<HowItWorks content={content.how} />
 			<MethodTeaser content={method.teaser} />
-			<Accuracy content={content.accuracy} methodText={content.accuracy.method} />
 			<Sports content={content.sports} categories={SPORT_CATEGORIES} labelFor={(key) => t(key)} />
 			<Pricing
 				content={content.pricing}
