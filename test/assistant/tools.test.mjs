@@ -733,6 +733,8 @@ describe('zloz_kupon — kreator kuponu z rozmowy', () => {
 			status: 'pending',
 			totalOdds: 2.52,
 			chance: 39,
+			// `couponDto().chanceSource` — wszystkie typy z szansą z kursu.
+			chanceSource: 'market',
 			createdAt: '2099-01-01T09:00:00.000Z',
 			params: { odds: '2.5', legs: 4, window: 'evening', leagues: ['england'], skipPublished: false },
 			newsCheck: { checked: 4, dropped: [{ match: 'A – B', selection: 'A wygra', reason: 'kontuzja lidera' }] },

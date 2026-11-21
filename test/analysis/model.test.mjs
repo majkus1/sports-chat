@@ -271,7 +271,7 @@ describe('sufit rynkowy w analizie', () => {
 		assert.equal(home.marketProbability, 95.3);
 	});
 
-	test('szansa z kursu przed meczem: pokazana liczba z rynku, model obok; rynek może nie potwierdzić', () => {
+	test('kurs przed meczem: „1" pokazuje szansę z rynku, model obok; gol gospodarza i „1X" — szansę modelu', () => {
 		const model = buildAnalysisModel({
 			leagueModel: liga,
 			fixture: mecz(),
@@ -283,10 +283,16 @@ describe('sufit rynkowy w analizie', () => {
 		assert.ok(home.modelProbability > 66, 'model był pewniejszy — zostaje zapisany obok');
 		assert.equal(home.eligible, true);
 		assert.equal(home.lift, Math.round(66 - 43.8));
-		// Gol gospodarza: model ~95%, rynek 85% — poniżej progu 91, rynek nie potwierdza.
+		// Gol gospodarza zna tylko sufit (próg 91% leży nad sufitem 90%): model ~95%, rynek 85% — zostaje
+		// z szansą modelu; „1X" (model ~89%, rynek 86%) — potwierdzone, pokazana szansa modelu.
 		const gol = model.selections.find((s) => s.key === 'homeScores');
-		assert.equal(gol.eligible, false);
-		assert.equal(gol.reason, 'below_min_lift');
+		assert.equal(gol.eligible, true);
+		assert.equal(gol.chanceSource, 'model');
+		assert.equal(gol.marketProbability, 85);
+		const dc = model.selections.find((s) => s.key === '1X');
+		assert.equal(dc.chanceSource, 'model');
+		assert.equal(dc.chanceConfirmed, true);
+		assert.equal(dc.probability, dc.modelProbability);
 	});
 
 	test('„goście strzelą" nie trafia na listę selekcji', () => {
@@ -509,7 +515,8 @@ describe('kafelki goli z tego samego rachunku co typy', () => {
 describe('analiza w trakcie meczu — zasady kuponu live', () => {
 	/*
 	 * Od 21.11.2026 typ w trakcie meczu powstaje tylko z selekcji, która przechodzi zasady kuponu live
-	 * (`liveSelections`: zgoda z kursem live, weto za czerwoną kartkę), kurs 1,20–2,20 i minuta 10–80.
+	 * (`liveSelections`: zgoda z kursem live, weto za czerwoną kartkę), kurs nogi kuponu live 1,20–1,60
+	 * i minuta 10–80.
 	 * Szansa to ostrożniejsza z dwóch liczb: wyliczenie i 100 / kurs live.
 	 */
 	// Para wyrównana przy 0:0 — szanse w środku skali, więc kursy mieszczą się w widełkach live.
@@ -534,7 +541,7 @@ describe('analiza w trakcie meczu — zasady kuponu live', () => {
 		const model = buildAnalysisModel({ leagueModel: liga, fixture: wTrakcie(), live: { odds: kursy, redCards: { home: 0, away: 0 } } });
 		const dc = model.selections.find((s) => s.key === '1X');
 		const home = model.selections.find((s) => s.key === 'home');
-		assert.ok(kursy['1X'] >= 1.2 && kursy['1X'] <= 2.2, `kurs ${kursy['1X']} poza widełkami — test niczego by nie sprawdzał`);
+		assert.ok(kursy['1X'] >= 1.2 && kursy['1X'] <= 1.6, `kurs ${kursy['1X']} poza widełkami — test niczego by nie sprawdzał`);
 		assert.equal(dc.liveConfirmed, true);
 		assert.equal(dc.chanceSource, 'live');
 		assert.ok(dc.probability <= Math.round(100 / kursy['1X']));
@@ -542,6 +549,14 @@ describe('analiza w trakcie meczu — zasady kuponu live', () => {
 		assert.equal(model.liveConfirmed, true);
 		assert.equal(home.liveConfirmed, false, 'model pewniejszy od rynku o 20 pkt — nie');
 		assert.equal(home.eligible, false);
+	});
+
+	test('kurs live ponad 1,60 (szansa poniżej ~62%) — zgodny, ale nie typ', () => {
+		// „1" zgodne z wyliczeniem, ale przy szansie ~40% kurs wychodzi ponad widełki nogi.
+		const zgodny = { home: Number((100 / (p('home').probability + 2)).toFixed(2)) };
+		assert.ok(zgodny.home > 1.6, `kurs ${zgodny.home} — test zakłada kurs ponad 1,60`);
+		const model = buildAnalysisModel({ leagueModel: liga, fixture: wTrakcie(), live: { odds: zgodny, redCards: { home: 0, away: 0 } } });
+		assert.equal(model.selections.find((s) => s.key === 'home').liveConfirmed, false);
 	});
 
 	test('czerwona kartka drużyny, na którą idzie typ, i minuta poza 10–80 wyłączają typ', () => {

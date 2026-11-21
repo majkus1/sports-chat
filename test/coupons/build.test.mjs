@@ -6,7 +6,7 @@ import { setupEnv } from '../helpers/setup.mjs';
  * Kupony — część czysta: wybór typów, rozliczenie, post na X. Bez bazy i sieci.
  *
  * Pilnujemy zasad, na których stoi uczciwość kuponu (od 21.11.2026, `lib/coupons/build.js`):
- * tylko typy potwierdzone kursem (szansa z kursu, `chanceSource` inny niż `model`) z kursem
+ * tylko typy potwierdzone kursem (`chanceConfirmed` z `lib/picks/chance.js`) z kursem
  * 1,05–1,60 (5-dniowy: do 1,40); jeden typ na mecz; kurs łączny 2,0–2,5 z najwyżej 3 meczów
  * (dnia i 3-dniowy), 2,4–2,8 z najwyżej 5 (5-dniowy); jak najmniej typów, a przy tej samej liczbie —
  * najwyższa szansa, co sprawdzamy przejrzeniem wszystkich zestawów na losowych pulach. Rozliczenie
@@ -31,13 +31,15 @@ const typ = (probability, odds, extra = {}) => ({
 	selection: `Gospodarz ${n} wygra`,
 	probability,
 	odds,
+	// Kandydaci z `couponCandidates` są już potwierdzeni kursem; niepotwierdzonych test podaje wprost.
+	chanceConfirmed: true,
 	...extra,
 });
 const iloczyn = (xs) => xs.reduce((a, b) => a * b, 1);
 
 /** Wzorzec: wszystkie zestawy po kolei — najmniej typów, potem najwyższa szansa. */
 function najlepszyWzorzec(kandydaci, { target, max, maxLegs, legMaxOdds = 1.6 }) {
-	const pula = kandydaci.filter((c) => c.odds >= 1.05 && c.odds < legMaxOdds && c.chanceSource !== 'model');
+	const pula = kandydaci.filter((c) => c.odds >= 1.05 && c.odds < legMaxOdds && c.chanceConfirmed === true);
 	let najlepszy = null;
 	const przejdz = (od, wybrane) => {
 		if (wybrane.length) {
@@ -71,13 +73,16 @@ function losowe(ziarno) {
 describe('zasady typu na kupon', () => {
 	test('kurs 1,05–1,60 (5-dniowy do 1,40) i szansa potwierdzona kursem', () => {
 		assert.equal(LEG_MAX_ODDS, 1.6);
-		assert.equal(legOddsFit({ probability: 62, odds: 1.59 }), true, 'od 21.11.2026 nogi do 1,60');
-		assert.equal(legOddsFit({ probability: 62, odds: 1.6 }), false);
-		assert.equal(legOddsFit({ probability: 70, odds: 1.45 }, { maxOdds: COUPON_TYPES.days5.legMaxOdds }), false, '5-dniowy do 1,40');
-		assert.equal(legOddsFit({ probability: 96, odds: 1.04 }), false, 'kurs musi coś wnosić');
-		assert.equal(legOddsFit({ probability: 85, odds: 1.3, chanceSource: 'model' }), false, 'bez potwierdzenia kursem — nie');
-		assert.equal(legOddsFit({ probability: 85, odds: 1.3, chanceSource: 'market' }), true);
-		assert.equal(legOddsFit({ probability: null, odds: 1.3 }), false);
+		const ok = { chanceConfirmed: true };
+		assert.equal(legOddsFit({ probability: 62, odds: 1.59, ...ok }), true, 'od 21.11.2026 nogi do 1,60');
+		assert.equal(legOddsFit({ probability: 62, odds: 1.6, ...ok }), false);
+		assert.equal(legOddsFit({ probability: 70, odds: 1.45, ...ok }, { maxOdds: COUPON_TYPES.days5.legMaxOdds }), false, '5-dniowy do 1,40');
+		assert.equal(legOddsFit({ probability: 96, odds: 1.04, ...ok }), false, 'kurs musi coś wnosić');
+		assert.equal(legOddsFit({ probability: 85, odds: 1.3, chanceSource: 'market' }), false, 'bez potwierdzenia kursem — nie');
+		assert.equal(legOddsFit({ probability: 85, odds: 1.3, chanceConfirmed: false }), false);
+		// Potwierdzony typ z szansą modelu („2", „1X", „gospodarze strzelą" — `MARKET_CHANCE_KEYS`) wchodzi.
+		assert.equal(legOddsFit({ probability: 85, odds: 1.3, chanceSource: 'model', ...ok }), true);
+		assert.equal(legOddsFit({ probability: null, odds: 1.3, ...ok }), false);
 	});
 
 	test('dnia i 3-dniowy: 2,0–2,5 z najwyżej 3 meczów; 5-dniowy bez zmian: 2,4–2,8, 5 meczów, nogi do 1,40', () => {
@@ -132,7 +137,7 @@ describe('buildCoupon', () => {
 				const odds = Number((1.03 + los() * 0.62).toFixed(2));
 				const probability = Math.min(95, Math.floor(100 / odds - los() * 12));
 				// Większość potwierdzona kursem, część z samą szansą modelu — ma odpaść.
-				return typ(probability, odds, los() < 0.2 ? { chanceSource: 'model' } : { chanceSource: 'market' });
+				return typ(probability, odds, los() < 0.2 ? { chanceConfirmed: false } : {});
 			});
 			const k = buildCoupon(pula, { type, now: TERAZ });
 			const wzor = najlepszyWzorzec(pula, COUPON_TYPES[type]);
@@ -150,7 +155,7 @@ describe('buildCoupon', () => {
 	});
 
 	test('pomija typ bez potwierdzenia kursem, kursy spoza 1,05–1,60, mecze za mniej niż godzinę i wykluczone', () => {
-		const pewniejszyOdRynku = typ(90, 1.3, { chanceSource: 'model' });
+		const pewniejszyOdRynku = typ(90, 1.3, { chanceConfirmed: false });
 		const zaNisko = typ(97, 1.03);
 		const zaWysoko = typ(60, 1.65);
 		const zaWczesnie = typ(76, 1.31, { kickoff: za(0.5) });

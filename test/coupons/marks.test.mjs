@@ -47,8 +47,9 @@ describe('hintPresenter', () => {
 			label: '1',
 			selection: 'Gospodarze wygrają',
 			probability: 74,
-			// Zapis sprzed 21.11.2026 bez źródła szansy — podpisany „według modelu".
+			// Zapis sprzed 21.11.2026 bez źródła szansy — podpisany „według modelu", bez potwierdzenia kursem.
 			chanceSource: 'model',
+			chanceConfirmed: false,
 			base: 44,
 			lift: 30,
 			daily: true,
@@ -101,5 +102,15 @@ describe('hintPresenter', () => {
 		assert.deepEqual(hintPresenter({ full: true }).present('9', h), h);
 		assert.deepEqual(hintPresenter({ full: false }).present('9', h), { locked: true });
 		assert.deepEqual(hintPresenter({ full: false, couponLegs: [{ type: 'live', fixtureId: '9', key: 'home' }] }).fixtureIds, []);
+	});
+});
+
+describe('plakietka w odpowiedzi API', () => {
+	test('bez liczb do pomiaru: szansa modelu, rynku i surowa zostają w bazie', async () => {
+		const { publicHint } = await import('@/lib/coupons/marks');
+		const h = { key: 'X2', probability: 76, chanceSource: 'market', chanceConfirmed: true, modelProbability: 79, marketProbability: 75.6, raw: 79, base: 56, lift: 20 };
+		assert.deepEqual(publicHint(h), { key: 'X2', probability: 76, chanceSource: 'market', chanceConfirmed: true, base: 56, lift: 20 });
+		const { present } = hintPresenter({ full: true });
+		assert.equal(present('9', h).marketProbability, undefined);
 	});
 });

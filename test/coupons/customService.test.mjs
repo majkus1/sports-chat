@@ -54,7 +54,7 @@ function wpis(date, h, probability, odds, { leagueId = 39, m = 0 } = {}) {
 		leagueId,
 		kickoff: o(date, h, m).toISOString(),
 		// Plakietka z listy już potwierdzona porannym zdjęciem kursów — szansa z kursu (`lib/picks/chance.js`).
-		hint: { key: 'home', selection: `Gospodarz ${nr} wygra`, probability, base: 45, lift: probability - 45, chanceSource: 'market' },
+		hint: { key: 'home', selection: `Gospodarz ${nr} wygra`, probability, base: 45, lift: probability - 45, chanceSource: 'market', chanceConfirmed: true },
 	};
 }
 

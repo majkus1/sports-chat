@@ -375,7 +375,7 @@ describe('sufit rynkowy w selekcji raportu', () => {
 		for (const wpis of po) assert.equal(wpis.marketProbability, null);
 	});
 
-	test('selekcja, którą rynek uznaje za pewną, wypada; reszta dostaje szansę z kursu', () => {
+	test('selekcja, którą rynek uznaje za pewną, wypada; reszta dostaje szansę według tabeli źródeł', () => {
 		const implied = { home: 60, draw: 22, away: 18, '1X': 82, X2: 40, homeScores: 92, awayScores: 93 };
 		const po = applyMarketCeiling(rynki, implied);
 
@@ -383,7 +383,11 @@ describe('sufit rynkowy w selekcji raportu', () => {
 		assert.equal(znajdz(po, 'home')?.marketProbability, 60);
 		assert.equal(znajdz(po, 'home')?.probability, 60, 'pokazana szansa z kursu');
 		assert.equal(znajdz(po, 'home')?.modelProbability, 70, 'obok szansa modelu');
-		assert.equal(znajdz(po, '1X')?.probability, 82);
+		// „1X" pokazuje szansę modelu (tabela źródeł w `lib/picks/chance.js`), kurs zostaje obok.
+		assert.equal(znajdz(po, '1X')?.probability, 90);
+		assert.equal(znajdz(po, '1X')?.chanceSource, 'model');
+		assert.equal(znajdz(po, '1X')?.marketProbability, 82);
+		assert.equal(znajdz(po, '1X')?.chanceConfirmed, true);
 	});
 
 	test('selekcja, której rynek nie potwierdza, wypada — choć model przechodził próg', () => {

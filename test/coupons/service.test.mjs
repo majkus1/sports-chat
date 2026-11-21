@@ -15,7 +15,7 @@ import { setupEnv } from '../helpers/setup.mjs';
  * rozliczenie zamyka kupon od pierwszego chybionego i pokazuje wynik w statystyce; nogi kuponów
  * dla listy meczów — płatne tylko z planem.
  *
- * Plakietki w danych niżej są już potwierdzone porannym zdjęciem kursów (`chanceSource: 'market'`,
+ * Plakietki w danych niżej są już potwierdzone porannym zdjęciem kursów (`chanceConfirmed`, `chanceSource: 'market'`,
  * `lib/picks/chance.js`) — inaczej kupon by ich nie wziął. Od 21.11.2026 kupon dnia i 3-dniowy:
  * 2,0–2,5 z najwyżej 3 meczów, 5-dniowy 2,4–2,8.
  */
@@ -58,7 +58,7 @@ function wpis(date, h, probability, odds) {
 		league: 'Ekstraklasa, Poland',
 		leagueId: 106,
 		kickoff: o(date, h).toISOString(),
-		hint: { key: 'home', selection: `Gospodarz ${nr} wygra`, probability, base: 45, lift: probability - 45, chanceSource: 'market' },
+		hint: { key: 'home', selection: `Gospodarz ${nr} wygra`, probability, base: 45, lift: probability - 45, chanceSource: 'market', chanceConfirmed: true },
 	};
 }
 
@@ -389,22 +389,25 @@ describe('rozliczenie i statystyka', () => {
 describe('szansa nogi z kursu (21.11.2026)', () => {
 	const wstepna = { key: 'X2', selection: 'X2', probability: 75, modelProbability: 75, base: 56, chanceSource: 'model' };
 
-	test('plakietka już potwierdzona porannym zdjęciem — bez zmian', () => {
-		assert.deepEqual(szansaNogi({ ...wstepna, probability: 71, chanceSource: 'market' }, null), {
+	test('plakietka już potwierdzona porannym zdjęciem — bez zmian, także z szansą modelu', () => {
+		assert.deepEqual(szansaNogi({ ...wstepna, probability: 71, chanceSource: 'market', chanceConfirmed: true }, null), {
 			probability: 71,
 			modelProbability: 75,
 			source: 'market',
 		});
+		const dwojka = { key: 'away', selection: 'Gość', probability: 72, modelProbability: 72, base: 31, chanceSource: 'model', chanceConfirmed: true };
+		assert.deepEqual(szansaNogi(dwojka, null), { probability: 72, modelProbability: 72, source: 'model' });
 	});
 
-	test('plakietka wstępna potwierdzana dociągniętym kursem: szansa z kursu albo brak nogi', () => {
+	test('plakietka wstępna potwierdzana dociągniętym kursem: szansa według tabeli źródeł albo brak nogi', () => {
 		// 2,0 / 3,4 / 3,6: X2 po zdjęciu marży ok. 51% — poniżej progu 68, kurs nie potwierdza.
 		assert.equal(szansaNogi(wstepna, { bookmakers: 6, home: 2.0, draw: 3.4, away: 3.6 }), null);
-		// 4,0 / 3,6 / 1,8: X2 ok. 75% — potwierdza, szansa z kursu, model obok.
+		// 4,0 / 3,6 / 1,8: X2 ok. 75% — potwierdza; przy X2 pokazujemy szansę z kursu, model obok.
 		const ok = szansaNogi(wstepna, { bookmakers: 6, home: 4.0, draw: 3.6, away: 1.8 });
 		assert.equal(ok.source, 'market');
 		assert.equal(ok.modelProbability, 75);
 		assert.ok(ok.probability >= 68 && ok.probability < 80, String(ok.probability));
 		assert.equal(szansaNogi(wstepna, { bookmakers: 0 }), null, 'puste zdjęcie — bez potwierdzenia');
+		assert.equal(szansaNogi({ ...wstepna, chanceSource: 'market' }, null), null, 'źródło bez potwierdzenia to nie potwierdzenie');
 	});
 });

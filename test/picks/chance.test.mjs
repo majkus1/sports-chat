@@ -5,17 +5,19 @@ import { setupEnv } from '../helpers/setup.mjs';
 /**
  * Szansa do pokazania (`lib/picks/chance.js`) — część czysta.
  *
- * Pilnujemy reguły z 21.11.2026: model wybiera selekcję, a gdy jest kurs, pokazana szansa pochodzi
- * z kursu po zdjęciu marży i ona sama musi przejść próg polityki; bez kursu zostaje szansa modelu.
- * Przewaga zawsze od normy, nie od rynku. „Goście strzelą" nie przechodzi nigdy.
+ * Pilnujemy reguły z 21.11.2026: model wybiera selekcję, a gdy jest kurs, typ powstaje tylko wtedy,
+ * gdy próg przechodzi też szansa z kursu po zdjęciu marży. Pokazana liczba — z kursu przy „1", „X2"
+ * i „powyżej 2,5", z modelu przy „2", „1X" i „gospodarze strzelą" (tabela sprawdzianu po czasie);
+ * przy niezgodzie ostrożniejsza z dwóch. Przewaga zawsze od normy, nie od rynku. „Goście strzelą"
+ * nie przechodzi nigdy; „gospodarze strzelą" zna tylko sufit (próg 91% leży nad sufitem 90%).
  */
 
 setupEnv();
 
-const { impliedFromSnapshot, shownChance, confirmWithMarket, confirmMarkets, liveChance, modelChance, ONE_SIDED_MARGIN, CHANCE_SOURCE } =
+const { impliedFromSnapshot, confirmWithMarket, confirmMarkets, liveChance, modelChance, selectionKeyFor, ONE_SIDED_MARGIN, CHANCE_SOURCE, MARKET_CHANCE_KEYS, CONFIRMATION_EXEMPT_KEYS } =
 	await import('@/lib/picks/chance');
 const { SELECTION_SHAPES } = await import('@/lib/picks/markets');
-const { MARKET_CEILING } = await import('@/lib/picks/policy');
+const { MARKET_CEILING, entryThresholdFor } = await import('@/lib/picks/policy');
 
 const N = (key) => SELECTION_SHAPES[key].normalized;
 
@@ -38,48 +40,59 @@ describe('szanse ze zdjęcia kursów', () => {
 });
 
 describe('szansa do pokazania', () => {
-	test('rynek, gdy jest — z obiema liczbami i źródłem', () => {
-		assert.deepEqual(shownChance({ model: 74.4, market: 70.6 }), {
-			probability: 71,
-			source: CHANCE_SOURCE.market,
-			modelProbability: 74,
-			marketProbability: 70.6,
-		});
+	test('tabela źródeł: kurs przy „1", „X2", +2,5; model przy „2", „1X", golu gospodarzy', () => {
+		assert.deepEqual([...MARKET_CHANCE_KEYS].sort(), ['X2', 'home', 'over25']);
+		assert.deepEqual([...CONFIRMATION_EXEMPT_KEYS], ['homeScores']);
+		// Gol gospodarzy: próg 91% nad sufitem 90% — potwierdzenia kursem nie da się spełnić z definicji.
+		assert.ok(entryThresholdFor(N('homeScores')) > MARKET_CEILING);
+		for (const key of Object.keys(SELECTION_SHAPES)) assert.equal(selectionKeyFor(N(key)), key);
 	});
 
-	test('bez rynku — model', () => {
-		assert.deepEqual(shownChance({ model: 74.4, market: null }), {
-			probability: 74,
-			source: CHANCE_SOURCE.model,
-			modelProbability: 74,
-			marketProbability: null,
-		});
-	});
-
-	test('potwierdzenie: szansa z kursu sama przechodzi próg, przewaga liczona od normy', () => {
-		// X2: norma 56,2 → próg 68. Rynek 70% przechodzi, przewaga 70 − 56 = 14.
+	test('potwierdzenie: próg przechodzą obie liczby, przy X2 pokazujemy kurs, przewaga od normy', () => {
+		// X2: norma 56,2 → próg 68. Model 75, rynek 70 — potwierdzone, pokazana 70, przewaga 70 − 56 = 14.
 		const ok = confirmWithMarket({ normalized: N('X2'), model: 75, implied: { X2: 70 } });
 		assert.equal(ok.ok, true);
+		assert.equal(ok.confirmed, true);
 		assert.equal(ok.probability, 70);
 		assert.equal(ok.lift, Math.round(70 - 56.2));
 		assert.equal(ok.source, CHANCE_SOURCE.market);
-		// Rynek 64% — model by przeszedł, ale rynek nie potwierdza.
+		assert.equal(ok.modelProbability, 75);
+		assert.equal(ok.marketProbability, 70);
+	});
+
+	test('potwierdzony „2" i „1X" pokazują szansę modelu — kurs obok do zapisu', () => {
+		const dwojka = confirmWithMarket({ normalized: N('away'), model: 72, implied: { away: 66.4 } });
+		assert.deepEqual([dwojka.ok, dwojka.confirmed, dwojka.probability, dwojka.source, dwojka.marketProbability], [true, true, 72, 'model', 66.4]);
+		const jedenX = confirmWithMarket({ normalized: N('1X'), model: 86, implied: { '1X': 84 } });
+		assert.deepEqual([jedenX.ok, jedenX.probability, jedenX.source], [true, 86, 'model']);
+	});
+
+	test('niezgoda: typ odpada, a wiersz dostaje ostrożniejszą liczbę z jej werdyktem', () => {
+		// Model 75, rynek 64 — rynek nie przechodzi progu 68 X2.
 		const nie = confirmWithMarket({ normalized: N('X2'), model: 75, implied: { X2: 64 } });
-		assert.equal(nie.ok, false);
-		assert.equal(nie.reason, 'below_min_lift');
+		assert.deepEqual([nie.ok, nie.confirmed, nie.probability, nie.source, nie.reason], [false, false, 64, 'market', 'below_min_lift']);
+		// „2": model 70, rynek 50 — zapasowy z tego wiersza nie obieca 70% (takie trafiały 40–44%).
+		const dwojka = confirmWithMarket({ normalized: N('away'), model: 70, implied: { away: 50 } });
+		assert.deepEqual([dwojka.ok, dwojka.probability, dwojka.source], [false, 50, 'market']);
+		// Model pod progiem, rynek nad nim — model wybiera, więc typu nie ma; liczba ostrożniejsza (model).
+		const slabyModel = confirmWithMarket({ normalized: N('home'), model: 58, implied: { home: 66 } });
+		assert.deepEqual([slabyModel.ok, slabyModel.probability, slabyModel.source], [false, 58, 'model']);
 	});
 
-	test('sufit rynkowy zostaje', () => {
-		const c = confirmWithMarket({ normalized: N('homeScores'), model: 93, implied: { homeScores: MARKET_CEILING } });
-		assert.equal(c.ok, false);
-		assert.equal(c.reason, 'market_certain');
+	test('sufit rynkowy zostaje — także przy golu gospodarzy, który zna tylko sufit', () => {
+		const c = confirmWithMarket({ normalized: N('homeScores'), model: 92, implied: { homeScores: MARKET_CEILING } });
+		assert.deepEqual([c.ok, c.reason], [false, 'market_certain']);
+		const g1 = confirmWithMarket({ normalized: N('homeScores'), model: 91, implied: { homeScores: 87.5 } });
+		assert.deepEqual([g1.ok, g1.confirmed, g1.probability, g1.source], [true, true, 91, 'model']);
+		const x2 = confirmWithMarket({ normalized: N('X2'), model: 80, implied: { X2: 91 } });
+		assert.deepEqual([x2.ok, x2.reason], [false, 'market_certain']);
 	});
 
-	test('bez kursu decyduje szansa modelu', () => {
+	test('bez kursu decyduje szansa modelu, bez potwierdzenia', () => {
 		const c = confirmWithMarket({ normalized: N('home'), model: 66, implied: null });
-		assert.equal(c.ok, true);
-		assert.equal(c.source, CHANCE_SOURCE.model);
-		assert.equal(c.probability, 66);
+		assert.deepEqual([c.ok, c.confirmed, c.source, c.probability], [true, false, CHANCE_SOURCE.model, 66]);
+		const dostawca = confirmWithMarket({ normalized: N('home'), model: 66, implied: null, modelSource: CHANCE_SOURCE.provider });
+		assert.equal(dostawca.source, 'provider');
 	});
 
 	test('„goście strzelą" odpada niezależnie od kursu', () => {
@@ -88,9 +101,10 @@ describe('szansa do pokazania', () => {
 		assert.equal(c.reason, 'market_not_predictable');
 	});
 
-	test('norma ligowa (powyżej 2,5) wędruje do progu', () => {
-		// Norma 50 → próg 62. Rynek 63 przechodzi; z normą 55 (próg 67) już nie.
-		assert.equal(confirmWithMarket({ normalized: N('over25'), model: 66, base: 50, implied: { over25: 63 } }).ok, true);
+	test('norma ligowa (powyżej 2,5) wędruje do progu obu liczb', () => {
+		// Norma 50 → próg 62. Model 66, rynek 63 — przechodzi, pokazany kurs; z normą 55 (próg 67) już nie.
+		const ok = confirmWithMarket({ normalized: N('over25'), model: 66, base: 50, implied: { over25: 63 } });
+		assert.deepEqual([ok.ok, ok.probability, ok.source], [true, 63, 'market']);
 		assert.equal(confirmWithMarket({ normalized: N('over25'), model: 70, base: 55, implied: { over25: 63 } }).ok, false);
 	});
 });
@@ -98,13 +112,17 @@ describe('szansa do pokazania', () => {
 describe('selekcje meczu zestawione z kursem', () => {
 	const wpis = (key, p, base) => ({ normalized: N(key), probability: p, modelProbability: p, base, lift: p - base, selection: key });
 
-	test('niepotwierdzone wypadają, potwierdzone niosą szansę z kursu, niewycenione zostają z modelem', () => {
-		const wynik = confirmMarkets([wpis('home', 66, 43.8), wpis('X2', 75, 56.2), wpis('over25', 66, 50)], { home: 52, X2: 72 });
+	test('niepotwierdzone wypadają, potwierdzone niosą liczbę z tabeli i potwierdzenie, niewycenione zostają z modelem', () => {
+		const wynik = confirmMarkets(
+			[wpis('home', 66, 43.8), wpis('X2', 75, 56.2), wpis('away', 72, 30.7), wpis('over25', 66, 50)],
+			{ home: 52, X2: 72, away: 66 }
+		);
 		assert.deepEqual(
-			wynik.map((w) => [w.selection, w.probability, w.chanceSource, w.modelProbability]),
+			wynik.map((w) => [w.selection, w.probability, w.chanceSource, w.modelProbability, w.chanceConfirmed]),
 			[
-				['X2', 72, 'market', 75],
-				['over25', 66, 'model', 66],
+				['X2', 72, 'market', 75, true],
+				['away', 72, 'model', 72, true],
+				['over25', 66, 'model', 66, false],
 			]
 		);
 	});

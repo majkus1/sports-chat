@@ -52,6 +52,7 @@ const typ = (kickoff, probability, odds, extra = {}) => ({
 	selection: `Gospodarz ${n} wygra`,
 	probability,
 	odds,
+	chanceConfirmed: true,
 	...extra,
 });
 const iloczyn = (xs) => xs.reduce((a, b) => a * b, 1);
@@ -236,7 +237,7 @@ describe('„nie da się" — powód z liczb, które już są', () => {
 	});
 
 	test('za mało typów spełniających zasady (kurs 1,60+ albo szansa bez potwierdzenia kursem)', () => {
-		const kandydaci = [typ(o(DZIEN, 19), 80, 1.25), typ(o(DZIEN, 20), 60, 1.6), typ(o(DZIEN, 21), 85, 1.3, { chanceSource: 'model' })];
+		const kandydaci = [typ(o(DZIEN, 19), 80, 1.25), typ(o(DZIEN, 20), 60, 1.6), typ(o(DZIEN, 21), 85, 1.3, { chanceConfirmed: false })];
 		const d = customDiagnosis({ params, stats: { entries: 4, withOdds: 3, failed: 0 }, candidates: kandydaci, now: teraz });
 		assert.equal(d.reason, 'few_picks');
 		assert.deepEqual(d.counts, { matches: 4, withOdds: 3, picks: 1, needed: 2 });
