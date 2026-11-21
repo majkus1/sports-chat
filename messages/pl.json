@@ -111,6 +111,10 @@
 		"landing_recent": "Ostatnie rozliczone — po kolei, bez wybierania",
 		"landing_market_move": "rynek {from} → {to}",
 		"landing_note": "18+ · To statystyka, nie porada ani obietnica zysku. Graj odpowiedzialnie.",
+		"landing_late_label": "Zapisane po starcie meczu",
+		"landing_late_hint": "sprawdzone na wszystkich {checked} typach — każdy ma godzinę zapisu",
+		"landing_full": "Ruch rynku (CLV), przedziały i pełne liczby przy każdym typie są w rejestrze.",
+		"landing_full_link": "Otwórz pełny rejestr",
 		"landing_loading": "Wczytuję rejestr…"
 	},
 	"common": {

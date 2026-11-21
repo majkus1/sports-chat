@@ -111,6 +111,10 @@
 		"landing_recent": "Latest settled — in order, no cherry-picking",
 		"landing_market_move": "market {from} → {to}",
 		"landing_note": "18+ · This is a statistic, not advice or a promise of profit. Play responsibly.",
+		"landing_late_label": "Recorded after kick-off",
+		"landing_late_hint": "checked on all {checked} picks — each has its record time",
+		"landing_full": "The market move (CLV), intervals and full numbers for every pick are in the register.",
+		"landing_full_link": "Open the full register",
 		"landing_loading": "Loading the register…"
 	},
 	"common": {
