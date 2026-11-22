@@ -4,6 +4,7 @@ import { snapshotOdds } from '@/lib/model/oddsShadowJob';
 import { ensureCoupons, settleCoupons } from '@/lib/coupons/service';
 import { settleValuePicks } from '@/lib/value/service';
 import { snapshotRegisterOdds } from '@/lib/trust/oddsJob';
+import { snapshotLineups } from '@/lib/football/lineupsJob';
 
 export const maxDuration = 600;
 
@@ -20,6 +21,12 @@ export const maxDuration = 600;
  * Zaraz po dzienniku — kursy rejestru typów (`lib/trust/oddsJob.js`): mecze z typami, których
  * dziennik nie ma, i zdjęcia z chwili publikacji typów zapisanych po porannym zdjęciu. Po
  * dzienniku, bo widzi wtedy jego świeże zdjęcia i nie pyta dostawcy o to samo drugi raz.
+ *
+ * SKŁADY I NIEOBECNI (od 22.11.2026, `lib/football/lineupsJob.js`) — NA KOŃCU przebiegu, po kuponach: kupony
+ * i rozliczenia nie czekają na składy (harmonogram przerywa wywołanie po 5 minutach), a weto o 9:30 i tak ma listę
+ * nieobecnych z wcześniejszych przebiegów (mecze najbliższych 30 godzin, odświeżane co 6 godzin). Świeżo
+ * opublikowane nogi są w tym samym przebiegu już „pilne". Własny budżet (40 zapytań na przebieg, 600 na dzień)
+ * i własny `try`.
  */
 export async function POST(request) {
 	const expected = process.env.INTERNAL_API_SECRET || '';
@@ -64,7 +71,20 @@ export async function POST(request) {
 			console.error('[value] rozliczenie typów z wyższym kursem nie powiodło się:', error.message);
 			coupons.error = 'value_settle_failed';
 		}
-		return Response.json({ ok: true, ...summary, register, coupons });
+		let lineups;
+		try {
+			lineups = await snapshotLineups();
+			if (lineups?.budget?.used) {
+				console.log(
+					`[lineups] cele ${lineups.targets} (pilne ${lineups.priority}), składy ${lineups.lineups}, nieobecni ${lineups.injuries}, ` +
+						`historia ${lineups.history}, miara ${lineups.measured}, ostrzeżenia ${lineups.warnings} — zapytań ${lineups.budget.used}, dziś ${lineups.budget.usedToday}/${lineups.budget.perDay}`
+				);
+			}
+		} catch (error) {
+			console.error('[lineups] przebieg nie powiódł się:', error.message);
+			lineups = { error: 'lineups_failed' };
+		}
+		return Response.json({ ok: true, ...summary, register, coupons, lineups });
 	} catch (error) {
 		console.error('[odds-shadow] przebieg nie powiódł się:', error.message);
 		return Response.json({ error: 'odds_snapshot_failed' }, { status: 500 });

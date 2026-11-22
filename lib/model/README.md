@@ -22,6 +22,7 @@ z korektą Dixona-Colesa, wszystkie rynki wyprowadzone z jednej macierzy.
 | `chanceCalibration.js` | korekta zawyżonej szansy modelu per selekcja, z bezpiecznikami (sekcja z 21.11.2026) |
 | `chanceCalibration.mjs` | generator korekty z dziennika prognoz (`--emit`), tylko odczyt bazy |
 | `chanceCalibrationData.js` | GENEROWANY: przesunięcia per selekcja, wersja, data, wynik sprawdzianu |
+| `lineupCheck.mjs` | pomiar trybu cienia „siła składu": czy typy przy osłabionym składzie trafiają gorzej (sekcja z 22.11.2026) |
 
 ## Stan: PODPIĘTY DO PRODUKCJI — raporty i analizy pojedynczych meczów
 
@@ -469,6 +470,71 @@ Kursów live przy typach z analizy wcześniej nie zapisywano, więc reguły nie 
 na tych 44 typach; od teraz `marketProbability` przy typie live to 100/kurs live — po kilku tygodniach
 policzyć trafienia nowych typów i kalibrację szansy live.
 
+## Składy i nieobecni — tryb cienia i weto (22.11.2026)
+
+Model nie wie, kto gra. Brak bramkarza nr 1, najlepszego strzelca albo rotacja przed Ligą Mistrzów to dla
+kibica oczywisty powód, a dotąd widziało to tylko AI z wyszukiwarką przy płatnych kuponach (`lib/coupons/news.js`).
+Historii składów nie mamy, więc **korekty szans nie wolno zgadywać**: liczby modelu zostają bez zmian, miara
+idzie do dziennika prognoz (tryb cienia), a od razu działa tylko weto z jasnym progiem.
+
+Pliki: `lib/football/lineups.js` (czyste: parsowanie, podstawowa jedenastka, siła składu, weto),
+`lib/football/lineupsJob.js` (zbieranie w budżecie), `lib/football/lineupsStore.js` (odczyt z bazy, zero zapytań),
+`models/FixtureLineup.js` (zapis per mecz, TTL 150 dni), `ModelForecast.lineup` (pomiar), `lib/model/lineupCheck.mjs`.
+
+**Zbieranie** — na końcu przebiegu co 20 minut (`/api/cron/odds-snapshot`, po kuponach). Najpierw mecze pilne:
+typy AI (raport, analiza, typ dnia), nogi kuponów serwisu i typ dnia — do 5 dni naprzód; potem ligi sprawdzone
+z dziennika prognoz na najbliższe 30 godzin.
+
+| krok | endpoint | kiedy | koszt dziennie (~150 meczów) |
+|---|---|---|---|
+| potwierdzone jedenastki | `fixtures?ids=` (20 meczów / zapytanie) | mecz w ciągu 75 min, do skutku (najwyżej 4 razy) | ~40–70 |
+| nieobecni | `injuries?ids=` (20 / zapytanie; po odmowie `ids` — per mecz) | co 6 h, w ostatnich 3 h co 90 min, po jedenastce już nie | ~25 |
+| historia (podstawowi, strzelcy) | `fixtures?ids=` — składy i zdarzenia 20 rozegranych meczów | mecze drużyn z dziennika prognoz bez zapisu | ~10 (pierwsza doba ~175) |
+| lista meczów drużyny | `fixtures?team=&last=10` (pamięć 6 h, wspólna z terminarzem) | tylko gdy dziennik ma < 5 meczów drużyny | kilka |
+| rotacja | terminarz (`schedule.js`) z pamięci; dla pilnych także od dostawcy | — | ≤ 2 na pilny mecz, zwykle w pamięci |
+
+Razem ok. **80–120 zapytań dziennie** (1–2% limitu 7500). Twardy limit: **40 na przebieg, 600 na dzień**
+(licznik w Redisie `lineups:api-calls:YYYY-MM-DD`, przy awarii Redisa w pamięci procesu); wynik przebiegu
+z liczbą zapytań w logu `[lineups]` i w odpowiedzi trasy.
+
+**Miara** (bez płatnych ocen graczy, tylko API-Football): podstawowy = co najmniej 6 z 10 ostatnich meczów
+w wyjściowej jedenastce (min. 5 znanych składów); bramkarz nr 1 = ten sam „G" w ≥ 60% meczów; najlepszy strzelec =
+≥ 3 gole i ≥ 30% goli drużyny w tych meczach (bez samobójów, bez remisu w prowadzeniu). Przed jedenastką liczą się
+tylko „Missing Fixture" z listy dostawcy („Questionable" — pokazywane, nie liczone); po jedenastce brakuje każdy
+podstawowy spoza niej (także na ławce). Siła składu = udział występów podstawowych, którzy grają. Rotacja =
+sygnał terminarza (ważny mecz ≤ 4 dni później) i ≥ 2 podstawowych na ławce.
+
+**Weto: brak ≥ 3 podstawowych ALBO bramkarza nr 1 ALBO najlepszego strzelca drużyny, na którą stawia typ**
+(„powyżej 2,5" — brak najlepszego strzelca którejkolwiek). Ten próg to zasada, którą AI dostaje przy wiadomościach
+od 18.10.2026 („bez najlepszego strzelca, kapitana albo kilku podstawowych"; przy faworycie „kilku podstawowych,
+najlepszego strzelca albo bramkarza"), tylko liczona z danych. Jeden–dwóch brakujących to zwykła rotacja i AI ich
+też nie odrzuca. Próg NIE jest dopasowany do wyników — tych nie ma; sprawdza go `lineupCheck.mjs`. Osłabiony rywal
+nie jest powodem weta. Jedna funkcja (`lineupVeto`) dla: kuponu dnia, 3- i 5-dniowego, kreatora (przez wspólne
+`composeCoupon` — `lib/coupons/custom.js` bez zmian), typu dnia (przed kursem i wiadomościami), ostrzeżenia przy
+plakietce (tylko odkrytej — przy kłódce zdradzałoby stronę typu) i przy opublikowanej nodze.
+
+**Opublikowane kupony się nie zmieniają.** Kupon powstaje o 9:30, jedenastki przychodzą 20–60 minut przed meczem.
+Wymiany nogi po publikacji nie ma (`news.js` wymienia typy tylko PRZED zapisem; statusy nóg `pending/won/lost/void`
+opisują wynik, nie decyzję), a cicha zmiana złamałaby obietnicę publiczną i pomiar. Dlatego: o 9:30 weto działa na
+liście nieobecnych (typ wypada, zostaje w `Coupon.lineupCheck.dropped`), a po publikacji noga i typ dnia dostają
+wyłącznie JAWNE ostrzeżenie „osłabiony skład" (`legs.lineup`, `DailyPick.lineupWarning`, oba języki) — kurs,
+szansa i rozliczenie bez zmian; ostrzeżenie znika, gdy potwierdzona jedenastka weta już nie daje.
+
+**Pomiar.** W dzienniku: `lineup.expected` (ostatnie zdjęcie z listy nieobecnych) i `lineup.confirmed` (pierwsze
+z jedenastką, potem bez zmian) — liczby bez nazwisk. Kryteria ustalone przed zbieraniem: weto potwierdzone przy
+≥ 100 plakietkach z wetem, trafności ≥ 5 pkt pod obietnicą, plakietkach bez weta ≤ 2 pkt pod obietnicą i |z| ≥ 2;
+w szumie — podnieść próg (np. 4 podstawowych); korekta szans dopiero przy ≥ 300 występach osłabionych drużyn
+i błędzie modelu na ich wygranej ≤ −4 pkt (osobny eksperyment z podziałem po dacie). Pierwszy odczyt po ~4–6
+tygodniach (połowa stycznia 2027):
+
+```bash
+node --experimental-loader ./test/helpers/alias.mjs lib/model/lineupCheck.mjs --since=2026-11-23
+```
+
+Widoczność: sekcja „Składy" w pokoju meczowym (zakładka + ostrzeżenie nad analizą, z pakietu meczu — zero nowych
+zapytań) i na stronie meczu `/typ` (z zapisu), fakty „SIŁA SKŁADU" w prompcie analizy, pole `sklady` w narzędziach
+asystenta `analiza_meczu` i `model_dla_meczu`, ostrzeżenie przy plakietce, nodze kuponu i typie dnia.
+
 ## Uruchomienie backtestu
 
 Wymaga ważnego klucza `API_SPORTS_KEY`, więc w praktyce uruchamia się go na serwerze:
@@ -518,4 +584,5 @@ ataku i obrony każdej drużyny w skali ligi.
 
 Nie wie: o kontuzjach, składach, stawce meczu, pogodzie ani zmęczeniu. To zostaje rolą
 modelu językowego, który dostaje prognozę liczbową i ma ją uzasadnić **albo
-zakwestionować** wskazując czynnik spoza danych.
+zakwestionować** wskazując czynnik spoza danych. Od 22.11.2026 składy i nieobecni są liczeni
+z danych dostawcy (sekcja wyżej), ale do liczb modelu nie wchodzą — tylko weto i pomiar.

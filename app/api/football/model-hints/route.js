@@ -7,6 +7,8 @@ import { getDailyPick, topWithDaily } from '@/lib/daily/service';
 import { couponLegsForDate } from '@/lib/coupons/service';
 import { hintPresenter } from '@/lib/coupons/marks';
 import { localDate } from '@/lib/time';
+import { lineupVeto } from '@/lib/football/lineups';
+import { squadsFor } from '@/lib/football/lineupsStore';
 
 /**
  * Podpowiedzi modelu dla listy meczów z jednego dnia.
@@ -74,8 +76,23 @@ export async function GET(request) {
 			nogi = [];
 		}
 		const { present, fixtureIds } = hintPresenter({ full, daily: dzienny, couponLegs: nogi });
-		// Bez planu: sam fakt, bez liczb — patrz komentarz na górze; typ dnia i kupon dnia odkryte.
-		const pokaz = (fixtureId, hint) => present(fixtureId, hint) ?? { locked: true };
+		/*
+		 * OSŁABIONY SKŁAD (od 22.11.2026, `lib/football/lineups.js`): plakietka, której drużyna gra bez kilku
+		 * podstawowych, bramkarza nr 1 albo najlepszego strzelca, dostaje ostrzeżenie — ta sama reguła, która
+		 * wyrzuca typ z kuponów i typu dnia. Tylko przy odkrytej plakietce: przy kłódce samo „osłabiony skład"
+		 * zdradzałoby, na którą drużynę stawia typ. Jedno zapytanie do bazy, zero do dostawcy.
+		 */
+		let squads = new Map();
+		try {
+			squads = await squadsFor([...byId.keys(), ...fixtureIds]);
+		} catch {
+			squads = new Map();
+		}
+		const pokaz = (fixtureId, hint) => {
+			const widok = present(fixtureId, hint) ?? { locked: true };
+			if (widok.locked || !widok.key) return widok;
+			return lineupVeto(widok.key, squads.get(String(fixtureId)) ?? null).veto ? { ...widok, lineupWarning: true } : widok;
+		};
 
 		const out = {};
 		for (const [fixtureId, hint] of byId) out[fixtureId] = pokaz(fixtureId, hint);

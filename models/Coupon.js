@@ -34,6 +34,13 @@ const LegNewsSchema = new mongoose.Schema(
  */
 const LegScheduleSchema = new mongoose.Schema({ pl: String, en: String }, { _id: false });
 
+/**
+ * Ostrzeżenie „osłabiony skład" przy nodze OPUBLIKOWANEGO kuponu (`lib/football/lineupsJob.js`, od 22.11.2026).
+ * Noga, kurs, szansa i rozliczenie się nie zmieniają — dochodzi jawna notka w obu językach, przeliczana, dopóki
+ * mecz się nie zaczął (znika, gdy potwierdzona jedenastka weta już nie daje).
+ */
+const LegLineupSchema = new mongoose.Schema({ pl: String, en: String, at: Date }, { _id: false });
+
 /** Typ odrzucony po sprawdzeniu wiadomości — pokazywany przy kuponie, żeby było widać, co AI odsiało. */
 const DroppedLegSchema = new mongoose.Schema(
 	{
@@ -72,6 +79,8 @@ const LegSchema = new mongoose.Schema(
 		news: { type: LegNewsSchema, default: null },
 		/** Terminarz drużyn tego meczu — krótka notka tylko przy sygnale, inaczej `null`. */
 		schedule: { type: LegScheduleSchema, default: null },
+		/** Osłabiony skład drużyny, na którą stawia typ — notka po publikacji, `null` — brak sygnału. */
+		lineup: { type: LegLineupSchema, default: null },
 		/** Kupon live: minuta i wynik w chwili wyboru oraz uzasadnienie AI. */
 		minute: { type: Number, default: null },
 		liveScore: { type: String, default: null },
@@ -140,6 +149,14 @@ const CouponSchema = new mongoose.Schema(
 				},
 				{ _id: false }
 			),
+			default: null,
+		},
+		/**
+		 * Weto składu przed publikacją (`lib/football/lineups.js`, `lineupVeto`): typy, które wypadły z puli, bo
+		 * drużyna, na którą stawiały, gra bez kilku podstawowych, bramkarza nr 1 albo najlepszego strzelca.
+		 */
+		lineupCheck: {
+			type: new mongoose.Schema({ dropped: { type: [DroppedLegSchema], default: [] }, at: { type: Date, default: null } }, { _id: false }),
 			default: null,
 		},
 	},

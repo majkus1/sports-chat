@@ -2,6 +2,7 @@ import { CalendarClock, Check, Clock, Minus, Radio, ShieldCheck, Ticket, X } fro
 import { Link } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 import { legScheduleNote } from '@/lib/coupons/content';
+import { LineupWarningNote } from '@/components/lineups/SquadPanel';
 
 /**
  * Karta kuponu (dnia, 3- albo 5-dniowego) — bez stanu, renderowana na serwerze („Typy na dziś")
@@ -141,6 +142,8 @@ export default function CouponCard({ coupon, c, label, locale, compact = false, 
 										<span className="[overflow-wrap:anywhere]">{terminarz}</span>
 									</span>
 								)}
+								{/* Osłabiony skład po publikacji (`lib/football/lineupsJob.js`): noga bez zmian, ale z jawnym ostrzeżeniem. */}
+								{s === 'pending' && <LineupWarningNote note={l.lineupWarning} locale={locale} after={!compact} />}
 							</span>
 							<span className="shrink-0 rounded-md bg-surface-2 px-2 py-1 text-sm font-bold tabular-nums text-text">
 								{c.odds(l.odds)}

@@ -2,6 +2,7 @@ import { ArrowRight, Check, Clock, Radio, Sparkles, X } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 import { matchPath } from '@/lib/seo/matchPreview';
+import { LineupWarningNote } from '@/components/lineups/SquadPanel';
 
 /**
  * Karta typu dnia — bez stanu, renderowana na serwerze (strona „Typy na dziś") i u klienta
@@ -56,6 +57,8 @@ export default function DailyPickCard({ pick, c, label, locale, compact = false,
 					</span>
 					<span className="rounded-md bg-accent-soft px-2 py-1 text-xs font-bold tabular-nums text-accent">+{pick.lift}</span>
 				</div>
+				{/* Osłabiony skład po wyborze (`lib/football/lineupsJob.js`) — typ dnia zostaje, ale czytelnik o tym wie. */}
+				{stan === 'pending' && <LineupWarningNote note={pick.lineupWarning} locale={locale} after className="mt-2 text-xs" />}
 
 				<p
 					className={cn(

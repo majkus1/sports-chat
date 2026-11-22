@@ -38,6 +38,33 @@ const OddsSnapshotSchema = new mongoose.Schema(
 	{ _id: false }
 );
 
+/** Siła składu jednej drużyny (`measureForLog` z `lib/football/lineups.js`). */
+const LineupMeasureSchema = new mongoose.Schema(
+	{
+		known: { type: Number, default: null },
+		reliable: { type: Boolean, default: false },
+		coreSize: { type: Number, default: null },
+		missingCore: { type: Number, default: null },
+		missingGoalkeeper: { type: Boolean, default: false },
+		missingTopScorer: { type: Boolean, default: false },
+		rested: { type: Number, default: null },
+		strength: { type: Number, default: null },
+		rotationRisk: { type: Boolean, default: false },
+		weakened: { type: Boolean, default: false },
+	},
+	{ _id: false }
+);
+
+/** Zdjęcie siły składu obu drużyn w jednej chwili przed meczem. */
+const LineupSnapshotSchema = new mongoose.Schema(
+	{
+		at: { type: Date, required: true },
+		home: { type: LineupMeasureSchema, default: null },
+		away: { type: LineupMeasureSchema, default: null },
+	},
+	{ _id: false }
+);
+
 const ModelForecastSchema = new mongoose.Schema(
 	{
 		fixtureId: { type: String, required: true, unique: true },
@@ -113,6 +140,17 @@ const ModelForecastSchema = new mongoose.Schema(
 		odds: {
 			open: { type: OddsSnapshotSchema, default: null },
 			close: { type: OddsSnapshotSchema, default: null },
+		},
+
+		/*
+		 * TRYB CIENIA „siła składu" (od 22.11.2026, `lib/football/lineupsJob.js`). Dwa zdjęcia jak przy kursach:
+		 * `expected` — z listy nieobecnych dostawcy, nadpisywane do chwili składów (ostatnie przed potwierdzeniem);
+		 * `confirmed` — pierwsze z potwierdzoną wyjściową jedenastką (20–60 minut przed meczem), potem bez zmian.
+		 * Liczby bez nazwisk. Prognozy NIE zmienia — czyta to wyłącznie `lib/model/lineupCheck.mjs`.
+		 */
+		lineup: {
+			expected: { type: LineupSnapshotSchema, default: null },
+			confirmed: { type: LineupSnapshotSchema, default: null },
 		},
 	},
 	{ timestamps: true }

@@ -33,6 +33,11 @@ const DailyPickSchema = new mongoose.Schema(
 		chanceConfirmed: { type: Boolean, default: null },
 		base: { type: Number, required: true },
 		lift: { type: Number, required: true },
+		/**
+		 * Ostrzeżenie „osłabiony skład" po wyborze (`lib/football/lineupsJob.js`, od 22.11.2026). Typ dnia się nie
+		 * zmienia — to obietnica publiczna — ale karta mówi wprost, że drużyna, na którą stawia, gra osłabiona.
+		 */
+		lineupWarning: { type: new mongoose.Schema({ pl: String, en: String, at: Date }, { _id: false }), default: null },
 		/** Rekord typu w `Pick` — z niego status i wynik po meczu. */
 		pickId: { type: mongoose.Schema.Types.ObjectId, ref: 'Pick', default: null },
 		explanation: {
