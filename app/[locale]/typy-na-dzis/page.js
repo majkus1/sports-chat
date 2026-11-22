@@ -1,7 +1,8 @@
-import { ArrowRight } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import DailyPickCard from '@/components/today/DailyPickCard';
 import TodayPicksList from '@/components/today/TodayPicksList';
+import TodayCta from '@/components/today/TodayCta';
+import Rozwin from '@/components/today/Rozwin';
 import CouponCard from '@/components/coupons/CouponCard';
 import CouponsLive from '@/components/coupons/CouponsLive';
 import CouponBuilder from '@/components/coupons/CouponBuilder';
@@ -27,10 +28,11 @@ import { activeLeaguePages } from '@/lib/seo/seoData';
  * „Typy na dziś" — publiczna strona pod frazę, którą ludzie wpisują codziennie.
  *
  * Renderowana na serwerze przy każdym żądaniu (dane zmieniają się w ciągu dnia), więc robot
- * dostaje gotowy HTML: typ dnia z liczbami i powodami, listę dzisiejszych typów modelu
- * (za kłódką poza typem dnia — tak widzi je robot i gość), kupony: dnia za darmo, 3- i 5-dniowy
- * za kłódką bez planu (z kursami — `lib/coupons`), pod nimi kreator własnego kuponu (`CouponBuilder`,
- * u klienta — zależy od planu), typy z wyższym kursem, wczorajszy wynik i dorobek.
+ * dostaje gotowy HTML. Kolejność (od 22.11.2026, „gracz nie przychodzi czytać"): typ dnia z liczbami
+ * i powodami, kupony (dnia za darmo, 3- i 5-dniowy za kłódką bez planu, z kursami — `lib/coupons`),
+ * kreator własnego kuponu (`CouponBuilder`, u klienta — zależy od planu), lista dzisiejszych typów
+ * modelu (za kłódką poza typem dnia — tak widzi je robot i gość), typy z wyższym kursem, wczoraj,
+ * jedno wezwanie, a na końcu „Jak czytać typ" pod rozwinięciem i linki lig dla robota.
  * Liczenie jest tanie: model i plakietki siedzą w pamięci procesu, typ dnia w bazie.
  *
  * Adres bez segmentu dyscypliny i po polsku — krótki i dokładnie taki, jak fraza.
@@ -127,7 +129,7 @@ export default async function Page({ params }) {
 	}
 
 	const { today, tomorrow, yesterday, record } = overview;
-	const labels = { usually: c.usually, listEmpty: c.listEmpty, listLocked: c.listLocked };
+	const labels = { usually: c.usually, listEmpty: c.listEmpty, listLocked: c.listLocked, listUnlockGuest: c.listUnlockGuest, unlock: c.unlock };
 	// Strony lig z meczami dziś i jutro — jedna agregacja na 10 minut w pamięci procesu, pusta przy błędzie bazy.
 	const ligi = await activeLeaguePages();
 
@@ -141,11 +143,10 @@ export default async function Page({ params }) {
 			/>
 
 			<h1 className="font-display text-3xl font-bold leading-tight text-text sm:text-4xl">{c.title(ladnaData(locale))}</h1>
-			<p className="mt-3 text-base leading-relaxed text-muted">{c.lead}</p>
-			{/* Linki do „typy na dziś [liga]" — wejście z frazy ogólnej do frazy z nazwą ligi i z powrotem. */}
-			<LeagueLinks items={ligi} locale={locale} title={locale === 'en' ? 'Today’s picks by competition' : 'Typy na dziś według rozgrywek'} className="mt-5" />
+			<p className="mt-2 text-base leading-relaxed text-muted">{c.lead}</p>
 
-			<div className="mt-6 flex flex-col gap-4">
+			{/* Na pierwszym ekranie wartość: typ dnia, zaraz pod nim kupony z kursem i szansą. */}
+			<div className="mt-5 flex flex-col gap-4">
 				{today ? (
 					<DailyPickCard pick={today} c={c} label={c.dailyLabel} locale={locale} />
 				) : (
@@ -157,29 +158,25 @@ export default async function Page({ params }) {
 			{/*
 			 * Kupony serwisu, a pod nimi kreator własnego kuponu (Pro, VIP, okres próbny). Sekcja stoi także
 			 * w dzień bez kuponów serwisu — kreator składa z innej puli (godziny i ligi użytkownika).
+			 * Zastrzeżenie o kursach raz pod kuponami (nie w każdej karcie), zasady pod rozwinięciem.
 			 */}
 			<section className="mt-8" aria-labelledby="kupony">
 				<h2 id="kupony" className="font-display text-xl font-bold uppercase tracking-wide text-text">
 					{k.sectionTitle}
 				</h2>
-				<p className="mt-1.5 text-sm leading-relaxed text-muted">{k.sectionLead}</p>
+				<p className="mt-1 text-sm leading-relaxed text-muted">{k.sectionLead}</p>
 				{kupony && (kupony.today || kupony.days3 || kupony.days5 || kupony.todayLater || kupony.paidLater) && (
 					<>
 						<CouponsLive initial={kupony} locale={locale} className="mt-4" />
-						<p className="mt-3 text-xs leading-relaxed text-muted">{k.how}</p>
+						<p className="mt-3 text-xs leading-relaxed text-muted">{k.disclaimer}</p>
+						<Rozwin title={k.howTitle} className="mt-2">
+							{k.how}
+						</Rozwin>
 					</>
 				)}
 				<div id="kreator-kuponu" className="mt-6 scroll-mt-24">
 					<CouponBuilder locale={locale} />
 				</div>
-			</section>
-
-			{/* Wyższe kursy obok kuponów — dotąd tylko w przełączniku raportu i w asystencie. */}
-			<section className="mt-8" aria-labelledby="wyzsze-kursy">
-				<h2 id="wyzsze-kursy" className="sr-only">
-					{valueContent(locale).teaserTitle}
-				</h2>
-				<ValueTeaser c={valueContent(locale)} stats={wyzsze} />
 			</section>
 
 			{/* Pusta lista (brak typów albo dane nie zdążyły) — bez nagłówka „0 typów". */}
@@ -191,6 +188,14 @@ export default async function Page({ params }) {
 					<TodayPicksList items={lista} date={dzis} locale={locale} labels={labels} />
 				</section>
 			)}
+
+			{/* Wyższe kursy obok kuponów — dotąd tylko w przełączniku raportu i w asystencie. */}
+			<section className="mt-8" aria-labelledby="wyzsze-kursy">
+				<h2 id="wyzsze-kursy" className="sr-only">
+					{valueContent(locale).teaserTitle}
+				</h2>
+				<ValueTeaser c={valueContent(locale)} stats={wyzsze} />
+			</section>
 
 			{listaJutro.length > 0 && (
 				<section className="mt-8" aria-labelledby="lista-jutro">
@@ -236,26 +241,21 @@ export default async function Page({ params }) {
 				</section>
 			)}
 
-			<section className="mt-8 rounded-[var(--radius-ui)] border border-border bg-surface px-5 py-4" aria-labelledby="jak-czytac">
-				<h2 id="jak-czytac" className="text-sm font-bold text-text">
-					{c.howTitle}
-				</h2>
-				<p className="mt-1.5 text-sm leading-relaxed text-muted">{c.how}</p>
-				<Link href="/jak-to-dziala" className="mt-2 inline-flex text-sm font-semibold text-accent no-underline hover:underline">
+			{/* Jedno główne wezwanie: gość — rejestracja, zalogowany — lista meczów. */}
+			<div className="mt-8">
+				<TodayCta c={c} />
+			</div>
+
+			{/* Jak czytać typ — pod rozwinięciem (treść zostaje w HTML dla robota). */}
+			<Rozwin title={c.howTitle} className="mt-8 rounded-[var(--radius-ui)] border border-border bg-surface px-5 py-4">
+				{c.how}{' '}
+				<Link href="/jak-to-dziala" className="font-semibold text-accent no-underline hover:underline">
 					{c.howLink}
 				</Link>
-			</section>
+			</Rozwin>
 
-			<div className="mt-8 flex flex-col gap-3">
-				<Link
-					href="/pilka-nozna/przedmeczowe"
-					className="inline-flex items-center justify-center gap-2 rounded-[var(--radius-ui)] bg-accent px-5 py-3 text-base font-bold text-accent-fg no-underline transition-colors hover:bg-accent-hover"
-				>
-					{c.ctaMatches}
-					<ArrowRight size={18} aria-hidden="true" />
-				</Link>
-				<p className="text-center text-sm text-muted">{c.ctaTrial}</p>
-			</div>
+			{/* Linki do „typy na dziś [liga]" na dole — dla robota (wejście z frazy ogólnej do frazy z ligą), bez spychania typów w dół. */}
+			<LeagueLinks items={ligi} locale={locale} title={locale === 'en' ? 'Today’s picks by competition' : 'Typy na dziś według rozgrywek'} />
 
 			<p className="mt-8 text-xs leading-relaxed text-muted">{c.disclaimer}</p>
 		</AppShell>

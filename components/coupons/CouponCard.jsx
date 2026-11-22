@@ -1,4 +1,4 @@
-import { CalendarClock, Check, Clock, Minus, Radio, ShieldCheck, Ticket, X } from 'lucide-react';
+import { CalendarClock, Check, ChevronDown, Clock, Minus, Radio, ShieldCheck, Ticket, X } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 import { legScheduleNote } from '@/lib/coupons/content';
@@ -6,7 +6,7 @@ import { LineupWarningNote } from '@/components/lineups/SquadPanel';
 
 /**
  * Karta kuponu (dnia, 3- albo 5-dniowego) — bez stanu, renderowana na serwerze („Typy na dziś")
- * i u klienta (strona główna, skuteczność). Kurs łączny i szansa modelu stoją obok siebie
+ * i u klienta (strona główna, skuteczność, kreator). Kurs łączny i szansa modelu stoją obok siebie
  * tej samej wielkości co do wagi: kurs bez szansy sugerowałby pewniaka.
  *
  * @param {{ coupon: object, c: object, label: string, locale: string, compact?: boolean, className?: string }} props
@@ -87,13 +87,15 @@ export default function CouponCard({ coupon, c, label, locale, compact = false, 
 				</div>
 
 				{/* Płatne kupony: AI sprawdziło wiadomości przed publikacją — i co odsiało (`lib/coupons/news.js`). */}
-				{coupon.newsCheck && (
-					<div className="mt-3 rounded-[var(--radius-ui)] bg-surface-2 px-3 py-2 text-xs leading-relaxed text-muted">
-						<p className="flex items-start gap-1.5 font-semibold text-text">
-							<ShieldCheck size={14} aria-hidden="true" className="mt-px shrink-0 text-accent" />
-							{c.newsChecked}
-						</p>
-						{!compact && coupon.newsCheck.dropped?.length > 0 && (
+				{/* Na wierzchu jedna linia; co AI odsiało i dlaczego — pod rozwinięciem. */}
+				{coupon.newsCheck &&
+					(!compact && coupon.newsCheck.dropped?.length > 0 ? (
+						<details className="group mt-3 rounded-[var(--radius-ui)] bg-surface-2 px-3 py-2 text-xs leading-relaxed text-muted">
+							<summary className="flex cursor-pointer list-none items-start gap-1.5 font-semibold text-text [&::-webkit-details-marker]:hidden">
+								<ShieldCheck size={14} aria-hidden="true" className="mt-px shrink-0 text-accent" />
+								<span className="flex-1">{c.newsChecked}</span>
+								<ChevronDown size={14} aria-hidden="true" className="mt-px shrink-0 transition-transform group-open:rotate-180" />
+							</summary>
 							<ul className="mt-1 flex flex-col gap-0.5 pl-5">
 								{coupon.newsCheck.dropped.map((d) => (
 									<li key={d.match}>
@@ -102,9 +104,13 @@ export default function CouponCard({ coupon, c, label, locale, compact = false, 
 									</li>
 								))}
 							</ul>
-						)}
-					</div>
-				)}
+						</details>
+					) : (
+						<p className="mt-3 flex items-start gap-1.5 rounded-[var(--radius-ui)] bg-surface-2 px-3 py-2 text-xs font-semibold leading-relaxed text-text">
+							<ShieldCheck size={14} aria-hidden="true" className="mt-px shrink-0 text-accent" />
+							{c.newsChecked}
+						</p>
+					))}
 			</div>
 
 			<ul className="divide-y divide-border border-t border-border">
@@ -160,10 +166,9 @@ export default function CouponCard({ coupon, c, label, locale, compact = false, 
 				})}
 			</ul>
 
+			{/* W karcie tylko „ok. N na 10"; zastrzeżenie o kursach (mediana, podatek, 18+) stoi raz pod blokiem kuponów. */}
 			{!compact && (
-				<p className="border-t border-border px-5 py-3 text-xs leading-relaxed text-muted sm:px-6">
-					{c.honest(coupon.chance)} {c.disclaimer}
-				</p>
+				<p className="border-t border-border px-5 py-2.5 text-xs leading-relaxed text-muted sm:px-6">{c.honest(coupon.chance)}</p>
 			)}
 		</article>
 	);

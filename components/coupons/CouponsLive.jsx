@@ -1,7 +1,7 @@
 'use client';
 
-import { useContext, useEffect, useState } from 'react';
-import { UserContext, useAuthKey } from '@/context/UserContext';
+import { useEffect, useState } from 'react';
+import { useAuthKey } from '@/context/UserContext';
 import CouponsBlock from '@/components/coupons/CouponsBlock';
 import { couponContent } from '@/lib/coupons/content';
 
@@ -12,7 +12,6 @@ import { couponContent } from '@/lib/coupons/content';
  */
 export default function CouponsLive({ initial, locale, className }) {
 	const c = couponContent(locale);
-	const { isAuthed } = useContext(UserContext);
 	const authKey = useAuthKey();
 	const [data, setData] = useState(initial);
 
@@ -30,5 +29,5 @@ export default function CouponsLive({ initial, locale, className }) {
 		};
 	}, [authKey]);
 
-	return <CouponsBlock data={data} c={c} locale={locale} guest={!isAuthed} className={className} />;
+	return <CouponsBlock data={data} c={c} locale={locale} className={className} />;
 }

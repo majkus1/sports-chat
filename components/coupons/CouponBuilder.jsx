@@ -1,11 +1,12 @@
 'use client';
 
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { ArrowRight, History, Loader2, Lock, ShieldAlert, SlidersHorizontal, TicketPlus, TriangleAlert } from 'lucide-react';
+import { ArrowRight, ChevronDown, History, Loader2, Lock, ShieldAlert, SlidersHorizontal, TicketPlus, TriangleAlert } from 'lucide-react';
 import { Link } from '@/i18n/routing';
-import { UserContext, useAuthKey } from '@/context/UserContext';
+import { useAuthKey } from '@/context/UserContext';
 import CouponCard from '@/components/coupons/CouponCard';
+import GuestUnlock from '@/components/today/GuestUnlock';
 import CouponAlternatives from '@/components/coupons/CouponAlternatives';
 import { Switch } from '@/components/ui/Switch';
 import { couponBuilderContent, couponContent, customImpossibleText } from '@/lib/coupons/content';
@@ -24,8 +25,13 @@ import { cn } from '@/lib/utils';
 /**
  * Kreator kuponu na „Typach na dziś" (`lib/coupons/custom.js`, trasa `POST /api/coupons/generate`).
  *
- * Kilka pigułek zamiast formularza: kurs łączny, najwyżej ile meczów, kiedy mecze się zaczynają,
- * ligi i „bez meczów z kuponów serwisu". Wynik to ta sama karta co kupony serwisu (`CouponCard`) —
+ * Kilka pigułek zamiast formularza. Na wierzchu (od 22.11.2026) tylko kurs łączny i „Złóż kupon" —
+ * większość chce po prostu kupon ok. 2,0 / 2,5 / 3,0. Najwyżej ile meczów, godziny, ligi i „bez meczów
+ * z kuponów serwisu" leżą pod rozwinięciem „Więcej ustawień" z podglądem bieżących ustawień; rozwija
+ * się samo, gdy wybrane godziny są już zamknięte (inaczej przycisk byłby wyłączony bez widocznego
+ * wyjścia). Gość widzi zapowiedź z rejestracją, zalogowany bez planu — z cennikiem.
+ *
+ * Wynik to ta sama karta co kupony serwisu (`CouponCard`) —
  * kurs łączny i szansa modelu obok siebie, notki terminarza, informacja o sprawdzeniu wiadomości —
  * albo uczciwe „nie da się" z powodem i (od 22.11.2026) kartą „Tak się nie da, ale możemy…" z 1–3
  * działającymi wariantami ustawień (`CouponAlternatives`): zapowiedź kuponu, krótki powód i przycisk,
@@ -95,7 +101,6 @@ export default function CouponBuilder({ locale, className }) {
 	const b = couponBuilderContent(locale);
 	const t2 = useTranslations('builder2');
 	const karta = { ...couponContent(locale), newsChecked: b.newsChecked };
-	const { isAuthed } = useContext(UserContext) || {};
 	const authKey = useAuthKey();
 
 	const [ustawienia, setUstawienia] = useState(CUSTOM_DEFAULTS);
@@ -106,6 +111,8 @@ export default function CouponBuilder({ locale, className }) {
 	const [blad, setBlad] = useState(null);
 	// Która propozycja się składa (numer karty) — spinner na jej przycisku, nie na głównym.
 	const [przyjmowana, setPrzyjmowana] = useState(null);
+	// „Więcej ustawień" — zwinięte na start; stan po naszej stronie, żeby dało się je otworzyć z kodu.
+	const [zaawansowane, setZaawansowane] = useState(false);
 	const wynikRef = useRef(null);
 	const zamontowany = useRef(true);
 	const wczytane = useRef(false);
@@ -160,6 +167,12 @@ export default function CouponBuilder({ locale, className }) {
 
 	const minimum = minLegsFor(customOdds(ustawienia.odds).target);
 	const oknoOtwarte = !teraz || windowOpen(ustawienia.window, teraz);
+
+	// Zamknięte godziny wyłączają przycisk — wtedy od razu pokazujemy, gdzie je zmienić.
+	useEffect(() => {
+		if (!oknoOtwarte) setZaawansowane(true);
+	}, [oknoOtwarte]);
+
 	const quota = dostep?.quota;
 	const brakLimitu = quota && quota.limit !== null && quota.remaining <= 0;
 
@@ -252,7 +265,7 @@ export default function CouponBuilder({ locale, className }) {
 						<span className="h-10 w-40 rounded-[var(--radius-ui)] bg-surface-2" />
 					</div>
 				) : !dostep.access ? (
-					<Zablokowany b={b} guest={dostep.guest || !isAuthed} />
+					<Zablokowany b={b} />
 				) : (
 					<div className="flex flex-col gap-4 pt-1">
 						<Grupa label={b.oddsLabel}>
@@ -265,53 +278,6 @@ export default function CouponBuilder({ locale, className }) {
 								</Pigulka>
 							))}
 						</Grupa>
-
-						<Grupa label={b.legsLabel} note={minimum > CUSTOM_LEGS.min ? b.legsMinNote(minimum, ustawienia.odds) : null}>
-							{Array.from({ length: CUSTOM_LEGS.max - CUSTOM_LEGS.min + 1 }, (_, i) => CUSTOM_LEGS.min + i).map((n) => (
-								<Pigulka key={n} on={ustawienia.legs === n} disabled={n < minimum} onClick={() => zmien({ legs: n })}>
-									{n}
-								</Pigulka>
-							))}
-						</Grupa>
-
-						<Grupa label={b.windowLabel} note={oknoOtwarte ? b.hoursNote : null}>
-							{CUSTOM_WINDOWS.map((w) => (
-								<Pigulka key={w} on={ustawienia.window === w} onClick={() => zmien({ window: w })}>
-									{b.window[w]}
-								</Pigulka>
-							))}
-						</Grupa>
-						{!oknoOtwarte && (
-							<p className="-mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-loss">
-								<TriangleAlert size={13} aria-hidden="true" className="mt-px shrink-0" />
-								{b.windowClosed}
-							</p>
-						)}
-
-						<Grupa label={b.leaguesLabel}>
-							<Pigulka on={!ustawienia.leagues.length} onClick={() => zmien({ leagues: [] })}>
-								{b.leaguesAll}
-							</Pigulka>
-							{LEAGUE_GROUPS.map((g) => (
-								<Pigulka key={g.id} on={ustawienia.leagues.includes(g.id)} onClick={() => przelaczLige(g.id)}>
-									{b.leagueGroups[g.id]}
-								</Pigulka>
-							))}
-						</Grupa>
-
-						<label className="flex items-start gap-3">
-							<Switch
-								checked={ustawienia.skipPublished}
-								onCheckedChange={(v) => zmien({ skipPublished: Boolean(v) })}
-								aria-describedby="kreator-bez-kuponow"
-							/>
-							<span className="min-w-0">
-								<span className="block text-sm font-semibold text-text">{b.skipPublished}</span>
-								<span id="kreator-bez-kuponow" className="block text-xs leading-relaxed text-muted">
-									{b.skipPublishedHint}
-								</span>
-							</span>
-						</label>
 
 						<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
 							<button
@@ -336,6 +302,70 @@ export default function CouponBuilder({ locale, className }) {
 								</p>
 							)}
 						</div>
+						{!oknoOtwarte && (
+							<p className="flex items-start gap-1.5 text-xs leading-relaxed text-loss">
+								<TriangleAlert size={13} aria-hidden="true" className="mt-px shrink-0" />
+								{b.windowClosed}
+							</p>
+						)}
+
+						{/* Reszta ustawień pod rozwinięciem; w podpisie bieżące ustawienia, żeby było widać, z czego powstanie kupon. */}
+						<details
+							open={zaawansowane}
+							onToggle={(e) => setZaawansowane(e.currentTarget.open)}
+							className="group rounded-[var(--radius-ui)] border border-border"
+						>
+							<summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+								<span className="min-w-0">
+									<span className="block text-sm font-semibold text-text">{b.moreSettings}</span>
+									<span className="block truncate text-xs text-muted">{b.paramsLine(ustawienia)}</span>
+								</span>
+								<ChevronDown size={16} aria-hidden="true" className="shrink-0 text-muted transition-transform group-open:rotate-180" />
+							</summary>
+							<div className="flex flex-col gap-4 px-4 pb-4">
+								<Grupa label={b.legsLabel} note={minimum > CUSTOM_LEGS.min ? b.legsMinNote(minimum, ustawienia.odds) : null}>
+									{Array.from({ length: CUSTOM_LEGS.max - CUSTOM_LEGS.min + 1 }, (_, i) => CUSTOM_LEGS.min + i).map((n) => (
+										<Pigulka key={n} on={ustawienia.legs === n} disabled={n < minimum} onClick={() => zmien({ legs: n })}>
+											{n}
+										</Pigulka>
+									))}
+								</Grupa>
+
+								<Grupa label={b.windowLabel} note={oknoOtwarte ? b.hoursNote : null}>
+									{CUSTOM_WINDOWS.map((w) => (
+										<Pigulka key={w} on={ustawienia.window === w} onClick={() => zmien({ window: w })}>
+											{b.window[w]}
+										</Pigulka>
+									))}
+								</Grupa>
+
+								<Grupa label={b.leaguesLabel}>
+									<Pigulka on={!ustawienia.leagues.length} onClick={() => zmien({ leagues: [] })}>
+										{b.leaguesAll}
+									</Pigulka>
+									{LEAGUE_GROUPS.map((g) => (
+										<Pigulka key={g.id} on={ustawienia.leagues.includes(g.id)} onClick={() => przelaczLige(g.id)}>
+											{b.leagueGroups[g.id]}
+										</Pigulka>
+									))}
+								</Grupa>
+
+								<label className="flex items-start gap-3">
+									<Switch
+										checked={ustawienia.skipPublished}
+										onCheckedChange={(v) => zmien({ skipPublished: Boolean(v) })}
+										aria-describedby="kreator-bez-kuponow"
+									/>
+									<span className="min-w-0">
+										<span className="block text-sm font-semibold text-text">{b.skipPublished}</span>
+										<span id="kreator-bez-kuponow" className="block text-xs leading-relaxed text-muted">
+											{b.skipPublishedHint}
+										</span>
+									</span>
+								</label>
+							</div>
+						</details>
+
 						{brakLimitu && <p className="text-sm text-muted">{b.limitReached(quota.limit)}</p>}
 						{laduje && (
 							<p className="flex items-center gap-2 text-sm text-muted" role="status">
@@ -448,7 +478,7 @@ function Wynik({ b, t2, karta, wynik, locale, laduje, przyjmowana, brakLimitu, o
 	);
 }
 
-function Zablokowany({ b, guest }) {
+function Zablokowany({ b }) {
 	return (
 		<div className="flex flex-col gap-3 pt-1">
 			<p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted">
@@ -456,16 +486,17 @@ function Zablokowany({ b, guest }) {
 				{b.locked.title}
 			</p>
 			<p className="text-sm leading-relaxed text-muted">{b.locked.body}</p>
-			<Link
-				href="/cennik"
-				className="inline-flex w-fit items-center gap-1.5 rounded-[var(--radius-ui)] bg-accent px-3.5 py-2 text-sm font-bold text-accent-fg no-underline transition-opacity hover:opacity-90"
-			>
-				<Lock size={14} aria-hidden="true" />
-				{b.locked.unlock}
-				<ArrowRight size={15} aria-hidden="true" />
-			</Link>
-			{guest && <p className="text-xs leading-relaxed text-muted">{b.locked.guest}</p>}
-			<p className="text-xs leading-relaxed text-muted">{b.honest}</p>
+			{/* Gość: rejestracja (okres próbny ma kreator), zalogowany bez planu: cennik. */}
+			<GuestUnlock label={b.locked.unlockGuest}>
+				<Link
+					href="/cennik"
+					className="inline-flex w-fit items-center gap-1.5 rounded-[var(--radius-ui)] bg-accent px-3.5 py-2 text-sm font-bold text-accent-fg no-underline transition-opacity hover:opacity-90"
+				>
+					<Lock size={14} aria-hidden="true" />
+					{b.locked.unlock}
+					<ArrowRight size={15} aria-hidden="true" />
+				</Link>
+			</GuestUnlock>
 		</div>
 	);
 }

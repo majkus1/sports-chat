@@ -49,11 +49,7 @@ export default function ValueTeaser({ c, stats, compact = false, className }) {
 					{c.teaserRecordLink}
 				</Link>
 			</div>
-			{!compact && (
-				<p className="mt-3 text-xs leading-relaxed text-muted">
-					{c.teaserAccess} {c.warning}
-				</p>
-			)}
+			{!compact && <p className="mt-3 text-xs leading-relaxed text-muted">{c.warning}</p>}
 			{/* Bez planu: „pełna lista dla Pro" z przepustką 7 dni (pomiar: `value_list`). */}
 			{!compact && <ValueUpsell className="mt-4" />}
 		</div>

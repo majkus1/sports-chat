@@ -3,6 +3,7 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import { ArrowRight, Check, Lock, Sparkles, X } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import PickUnlock from '@/components/match-preview/PickUnlock';
+import GuestUnlock from '@/components/today/GuestUnlock';
 import SquadPanel from '@/components/lineups/SquadPanel';
 import { getTranslations } from 'next-intl/server';
 import { squadViewFor } from '@/lib/football/lineupsStore';
@@ -209,13 +210,14 @@ export default async function Page({ params }) {
 						<PickUnlock fixtureId={f.fixtureId} date={dzien} usually={c.usually}>
 							<p className="flex items-start gap-2 text-sm leading-relaxed text-text">
 								<Lock size={15} aria-hidden="true" className="mt-0.5 shrink-0 text-muted" />
-								<span>
-									{c.locked}{' '}
-									<Link href="/cennik" className="font-semibold text-accent underline">
-										{c.plans}
-									</Link>
-								</span>
+								<span>{c.locked}</span>
 							</p>
+							{/* Gość: rejestracja (okres próbny odkrywa typ), zalogowany bez planu: cennik. */}
+							<GuestUnlock label={c.register} className="mt-3">
+								<Link href="/cennik" className="mt-2 inline-flex text-sm font-semibold text-accent underline">
+									{c.plans}
+								</Link>
+							</GuestUnlock>
 						</PickUnlock>
 					) : (
 						<p className="text-sm leading-relaxed text-text">{rozpoczety ? c.noneAfter : c.none}</p>

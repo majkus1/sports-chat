@@ -4,6 +4,7 @@ import { ArrowRight, Check, Lock, X } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import LeagueLinks from '@/components/seo/LeagueLinks';
 import PaidPickReveal from '@/components/seo/PaidPickReveal';
+import GuestUnlock from '@/components/today/GuestUnlock';
 import { Link } from '@/i18n/routing';
 import DailyPick from '@/models/DailyPick';
 import { buildMetadata } from '@/lib/seo/metadata';
@@ -219,7 +220,13 @@ export default async function Page({ params }) {
 				<>
 					<Dzien title={c.today} items={model.today} c={c} locale={locale} />
 					<Dzien title={c.tomorrow} items={model.tomorrow} c={c} locale={locale} />
-					{model.withPick > 0 && <p className="mt-3 text-xs leading-relaxed text-muted">{c.lockedNote}</p>}
+					{model.withPick > 0 && (
+						<div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+							{/* Gość: rejestracja (okres próbny odkrywa typy); zalogowany z planem widzi je przez `PaidPickReveal`. */}
+							<GuestUnlock label={c.register} />
+							<p className="text-xs leading-relaxed text-muted">{c.lockedNote}</p>
+						</div>
+					)}
 				</>
 			)}
 
