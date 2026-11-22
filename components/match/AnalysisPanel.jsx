@@ -172,80 +172,11 @@ export default function AnalysisPanel({
 			 * sklejone. `gap` nie jest marginesem, więc ta reguła go nie dotyczy.
 			 */}
 			<CardContent className="flex flex-col gap-8 px-5 py-5">
-				<p className="text-[15px] leading-7 text-text">
-					{sections.summary}
-					{isPartial && sections.summary && (
-						<span className="ml-0.5 inline-block h-4 w-1.5 translate-y-0.5 bg-accent motion-safe:animate-pulse" />
-					)}
-				</p>
-
-				{!insufficient && probabilitiesReady && (
-					<div className="flex flex-col gap-2">
-						<ProbabilityBar
-							homeName={homeTeam}
-							awayName={awayTeam}
-							probabilities={sections.probabilities}
-						/>
-						{/* Skąd liczby: z własnego rachunku sił drużyn, nie z oceny modelu językowego.
-						    Pole pojawia się po związaniu odpowiedzi z modelem, więc w trakcie strumienia
-						    go nie ma — i wtedy nic nie obiecujemy. */}
-						{sections.model?.version && (
-							<p className="text-xs leading-relaxed text-muted">
-								{t(sections.model.inPlay ? 'analysis_model_note_live' : 'analysis_model_note')}
-							</p>
-						)}
-					</div>
-				)}
-
-				{sections.goals && !insufficient && (
-					/*
-					 * Liczby bramkowe zostają, ale z zastrzeżeniem.
-					 *
-					 * Sprawdziliśmy prognozy sumy goli i „obie strzelą" na 3541 rozegranych meczach:
-					 * wypadają gorzej niż stałe zgadywanie średniej ligowej. Dlatego nie wystawiamy
-					 * w nich typów — a skoro nie wystawiamy, nie wolno pokazywać tych procentów jak
-					 * prognozy, za którą stoimy. Zostają jako opis charakteru meczu, z podpisem
-					 * mówiącym wprost, ile są warte.
-					 */
-					<div>
-						<div className="grid grid-cols-3 gap-3">
-							{goalStats.map((stat) => (
-								<div
-									key={stat.label}
-									className="rounded-[var(--radius-ui)] bg-surface-2 px-3 py-3.5 text-center"
-								>
-									<div className="text-xl font-bold text-text">{stat.value}</div>
-									<div className="mt-1 text-xs text-muted">{stat.label}</div>
-								</div>
-							))}
-						</div>
-						<p className="mt-2 text-xs leading-relaxed text-muted">{t('goals_indicative')}</p>
-					</div>
-				)}
-
-				{sections.keyFactors?.length > 0 && (
-					<section>
-						<h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">
-							{t('key_factors')}
-						</h4>
-						<ul className="[&>li+li]:mt-3">
-							{sections.keyFactors.map((factor, idx) => (
-								<li key={idx} className="rounded-[var(--radius-ui)] bg-surface-2 px-4 py-3.5">
-									<div className="flex flex-wrap items-center gap-2">
-										<span className="text-sm font-semibold text-text">{factor.title}</span>
-										{FAVORS_SIDES.has(factor.favors) && (
-											<Badge variant="outline">
-												{factor.favors === 'home' ? homeTeam : awayTeam}
-											</Badge>
-										)}
-									</div>
-									<p className="mt-2 text-sm leading-relaxed text-muted">{factor.detail}</p>
-								</li>
-							))}
-						</ul>
-					</section>
-				)}
-
+				{/*
+				 * KOLEJNOŚĆ: typ na górze. Po to gracz klika mecz — wcześniej typ stał piąty, pod
+				 * podsumowaniem, szansami, golami i czynnikami. Potem szanse 1X2, podsumowanie słowami,
+				 * czynniki i ryzyka, a liczby bramkowe na końcu (orientacyjne, bez typu).
+				 */}
 				{sections.picks?.length > 0 && (
 					<section>
 						<h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">
@@ -314,6 +245,54 @@ export default function AnalysisPanel({
 					</section>
 				)}
 
+				{!insufficient && probabilitiesReady && (
+					<div className="flex flex-col gap-2">
+						<ProbabilityBar
+							homeName={homeTeam}
+							awayName={awayTeam}
+							probabilities={sections.probabilities}
+						/>
+						{/* Skąd liczby: z własnego rachunku sił drużyn, nie z oceny modelu językowego.
+						    Pole pojawia się po związaniu odpowiedzi z modelem, więc w trakcie strumienia
+						    go nie ma — i wtedy nic nie obiecujemy. */}
+						{sections.model?.version && (
+							<p className="text-xs leading-relaxed text-muted">
+								{t(sections.model.inPlay ? 'analysis_model_note_live' : 'analysis_model_note')}
+							</p>
+						)}
+					</div>
+				)}
+
+				<p className="text-[15px] leading-7 text-text">
+					{sections.summary}
+					{isPartial && sections.summary && (
+						<span className="ml-0.5 inline-block h-4 w-1.5 translate-y-0.5 bg-accent motion-safe:animate-pulse" />
+					)}
+				</p>
+
+				{sections.keyFactors?.length > 0 && (
+					<section>
+						<h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">
+							{t('key_factors')}
+						</h4>
+						<ul className="[&>li+li]:mt-3">
+							{sections.keyFactors.map((factor, idx) => (
+								<li key={idx} className="rounded-[var(--radius-ui)] bg-surface-2 px-4 py-3.5">
+									<div className="flex flex-wrap items-center gap-2">
+										<span className="text-sm font-semibold text-text">{factor.title}</span>
+										{FAVORS_SIDES.has(factor.favors) && (
+											<Badge variant="outline">
+												{factor.favors === 'home' ? homeTeam : awayTeam}
+											</Badge>
+										)}
+									</div>
+									<p className="mt-2 text-sm leading-relaxed text-muted">{factor.detail}</p>
+								</li>
+							))}
+						</ul>
+					</section>
+				)}
+
 				{sections.risks?.length > 0 && (
 					<section>
 						<h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">
@@ -325,6 +304,32 @@ export default function AnalysisPanel({
 							))}
 						</ul>
 					</section>
+				)}
+
+				{sections.goals && !insufficient && (
+					/*
+					 * Liczby bramkowe zostają, ale z zastrzeżeniem.
+					 *
+					 * Sprawdziliśmy prognozy sumy goli i „obie strzelą" na 3541 rozegranych meczach:
+					 * wypadają gorzej niż stałe zgadywanie średniej ligowej. Dlatego nie wystawiamy
+					 * w nich typów — a skoro nie wystawiamy, nie wolno pokazywać tych procentów jak
+					 * prognozy, za którą stoimy. Zostają jako opis charakteru meczu, z podpisem
+					 * mówiącym wprost, ile są warte.
+					 */
+					<div>
+						<div className="grid grid-cols-3 gap-3">
+							{goalStats.map((stat) => (
+								<div
+									key={stat.label}
+									className="rounded-[var(--radius-ui)] bg-surface-2 px-3 py-3.5 text-center"
+								>
+									<div className="text-xl font-bold text-text">{stat.value}</div>
+									<div className="mt-1 text-xs text-muted">{stat.label}</div>
+								</div>
+							))}
+						</div>
+						<p className="mt-2 text-xs leading-relaxed text-muted">{t('goals_indicative')}</p>
+					</div>
 				)}
 
 				{/* Stopka karty: autorstwo, czas powstania i klauzula. Jedna linia oddzielająca

@@ -13,6 +13,7 @@ import ChatPanel from '@/components/chat/ChatPanel';
 import { useAnalysisStream } from '@/components/match/useAnalysisStream';
 import { shouldRefresh } from '@/lib/football/refreshPolicy';
 import { Button } from '@/components/ui/Button';
+import LimitPass from '@/components/assistant/LimitPass';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { useUrlState } from '@/lib/hooks/useUrlState';
@@ -119,6 +120,8 @@ export default function MatchPageClient({ params }) {
 						text: t('analysis_view_limit', { limit: data.viewLimit }),
 						sections: null,
 						limitReached: true,
+						// Po liczbie poznajemy limit OGLĄDANIA — inny komunikat niż wyczerpane generowanie.
+						viewLimit: data.viewLimit,
 					});
 					return;
 				}
@@ -165,13 +168,21 @@ export default function MatchPageClient({ params }) {
 		);
 	}
 
+	/*
+	 * Wyczerpany limit: zamiast martwego zdania i „Zobacz plany" — jedno zdanie z tym, co daje
+	 * Pro na 7 dni, i przycisk z ceną (`LimitPass`). Limit oglądania gotowych analiz ma własne zdanie.
+	 */
 	const analysisButton = analysis.limitReached ? (
 		/* `gap`, nie `space-y` — margines na dzieciach kasuje globalne `* { margin: 0 }`. */
-		<div className="flex flex-col items-center gap-4 py-2">
-			<p className="max-w-sm text-sm leading-relaxed text-loss">{analysis.text}</p>
-			<Button asChild variant="accent" size="lg" className="rounded-full px-6">
-				<Link href="/cennik">{t('see_plans')}</Link>
-			</Button>
+		<div className="flex max-w-sm flex-col items-center gap-3 py-2 [&>div]:items-center">
+			{Number.isFinite(analysis.viewLimit) ? (
+				<LimitPass kind="analysis_view" limit={analysis.viewLimit} />
+			) : (
+				<>
+					<p className="text-sm leading-relaxed text-loss">{analysis.text}</p>
+					<LimitPass kind="analysis" />
+				</>
+			)}
 		</div>
 	) : (
 		<Button

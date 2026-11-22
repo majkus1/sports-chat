@@ -191,7 +191,8 @@ describe('narzędzia: podpięcie', () => {
 		assert.ok(czytaj('app', 'sitemap.js').includes("path: '/narzedzia'"), 'brak w mapie witryny');
 		// SITE_LINKS zasila i menu w nagłówku, i kolumnę „Serwis" w stopce.
 		assert.ok(SITE_LINKS.some((l) => l.href === '/narzedzia'), 'brak w SITE_LINKS');
-		assert.ok(czytaj('components', 'FootballMenu.js').includes('href="/narzedzia"'), 'brak w menu piłki');
+		// W menu piłki „Wszystkie narzędzia" są pod „Więcej" (pozycja listy, nie osobny odnośnik).
+		assert.ok(czytaj('components', 'FootballMenu.js').includes("href: '/narzedzia'"), 'brak w menu piłki');
 		assert.ok(czytaj('components', 'landing', 'LandingSections.jsx').includes('href="/narzedzia"'), 'brak na stronie głównej');
 	});
 

@@ -13,6 +13,7 @@ import { useGameDetailsModal } from '@/components/football/useGameDetailsModal';
 import { UserContext } from '@/context/UserContext';
 import { useReportStream } from '@/components/reports/useReportStream';
 import ReportPicks from '@/components/reports/ReportPicks';
+import LimitPass from '@/components/assistant/LimitPass';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -289,11 +290,8 @@ export default function ReportsHubClient() {
 										<Card>
 											<CardContent className="flex flex-col items-center gap-3 px-6 py-6 text-center">
 												<p className="text-sm text-loss">{report.error}</p>
-												{report.limitReached && (
-													<Button asChild variant="accent" className="rounded-full">
-														<Link href="/cennik">{t('see_plans')}</Link>
-													</Button>
-												)}
+												{/* Koniec puli raportów: zdanie z ceną Pro na 7 dni i przycisk zamiast „Zobacz plany". */}
+												{report.limitReached && <LimitPass kind="report" className="items-center [&>p]:text-center" />}
 											</CardContent>
 										</Card>
 									)}

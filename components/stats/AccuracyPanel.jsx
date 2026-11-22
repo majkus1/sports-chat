@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { Check, Globe, Info, Minus, Target, TrendingUp, Trophy, User, X } from 'lucide-react';
+import { Check, ChevronRight, Info, Minus, Target, TrendingUp, Trophy, User, X } from 'lucide-react';
+import { Link } from '@/i18n/routing';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
+import MoreDetails from '@/components/stats/MoreDetails';
 import CouponStats from '@/components/coupons/CouponStats';
 import ValueStats from '@/components/value/ValueStats';
 import { couponContent } from '@/lib/coupons/content';
@@ -38,6 +40,9 @@ const PROBATION_KIND = 'new_leagues';
 const MA_LIGI_PROBNE = [...LEAGUE_TIERS.values()].includes(PROBATION_TIER);
 /** Zakładki z osobnym bilansem — druga grupa pigułek, tylko w publicznej skuteczności. */
 const EXTRA_KINDS = [...Object.keys(COUPON_KINDS), VALUE_KIND, ...(MA_LIGI_PROBNE ? [PROBATION_KIND] : [])];
+/** Pigułki na wierzchu — reszta rodzajów w liście „Więcej…". */
+const PRIMARY_KINDS = ['all', 'daily', 'coupon_daily', VALUE_KIND];
+const ME_PRIMARY_KINDS = ['all', 'daily', 'prematch', 'report'];
 const AUTHORS = ['ai', 'user'];
 const RANGES = ['30', '90', 'all'];
 
@@ -81,31 +86,33 @@ function HitRate({ value, settled, interval, reliable = true, baseline = null, t
 					? 'text-text'
 					: 'text-loss';
 
+	/*
+	 * Przedział ufności nie znika, ale schodzi do podpowiedzi po najechaniu: na ekranie
+	 * zostaje proste „mało typów", które gracz rozumie bez słownika statystyki.
+	 */
+	const przedzial = known && interval ? t('accuracy_interval', { low: interval.low, high: interval.high }) : undefined;
+
 	return (
 		<div className="flex flex-col gap-1">
-			<div className="flex items-baseline gap-3">
-				<span className={cn('font-display text-5xl font-bold tabular-nums', ton)}>
+			<div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+				<span className={cn('font-display text-6xl font-bold tabular-nums', ton)} title={przedzial}>
 					{known ? `${value}%` : '—'}
 				</span>
-				<span className="text-sm text-muted">
+				<span className="text-base font-semibold text-text">
 					{known ? t('accuracy_from_settled', { count: settled }) : t('accuracy_no_data')}
 				</span>
 			</div>
 
-			{known && interval && (
-				<p className="text-xs text-muted">
-					{t('accuracy_interval', { low: interval.low, high: interval.high })}
-					{!reliable && ` · ${t('accuracy_small_sample')}`}
-				</p>
-			)}
-
-			{/* Norma tych samych typów obok trafności — bez niej procent nie ma punktu odniesienia. */}
-			{known && baseline && (
-				<p className="text-xs text-muted">
-					{t('accuracy_baseline', {
-						base: baseline.expectedHitRate,
-						edge: `${baseline.edge > 0 ? '+' : ''}${baseline.edge}`,
-					})}
+			{/* Zwykła częstość tych samych typów — bez niej procent nie ma punktu odniesienia. */}
+			{known && (baseline || !reliable) && (
+				<p className="text-sm text-muted">
+					{baseline &&
+						t('accuracy_baseline', {
+							base: baseline.expectedHitRate,
+							edge: `${baseline.edge > 0 ? '+' : ''}${baseline.edge}`,
+						})}
+					{baseline && !reliable && ' · '}
+					{!reliable && t('accuracy_small_sample')}
 				</p>
 			)}
 		</div>
@@ -160,6 +167,7 @@ export default function AccuracyPanel({
 	rememberScroll = false,
 }) {
 	const t = useTranslations('common');
+	const tp = useTranslations('ux_p4');
 	const locale = useLocale();
 
 	const [localKind, setLocalKind] = useState(defaultKind);
@@ -247,15 +255,22 @@ export default function AccuracyPanel({
 	const cc = couponContent(locale);
 	const vc = valueContent(locale);
 	/*
-	 * Dwie grupy pigułek zamiast jednej: wszystkie dziewięć w jednym pasku nie mieściło się
-	 * nawet na komputerze i ostatnie chowały się za krawędzią. Kupony i wyższe kursy mają
-	 * własny bilans, więc osobna grupa mówi przy okazji, że to nie część głównej liczby.
+	 * Cztery pigułki i lista „Więcej…" zamiast dwunastu pigułek w dwóch grupach.
+	 *
+	 * Gracz pyta o trzy rzeczy: jak trafiają typy, typ dnia i kupon dnia (plus wyższe kursy,
+	 * bo tam są kursy). Reszta rodzajów jest dla dociekliwych — zostaje w liście wyboru, a jej
+	 * wartości `?kind=` się nie zmieniają, więc linki z innych stron dalej otwierają swoją zakładkę.
+	 * W profilu (`scope === 'me'`) nie ma kuponów ani wyższych kursów — to bilanse wspólne.
 	 */
-	const grupy = [
-		{ key: 'kind', label: t('accuracy_filter_kind'), items: KINDS },
-		...(scope === 'me' ? [] : [{ key: 'extra', label: cc.filterLabel, items: EXTRA_KINDS }]),
-	];
+	const dostepne = scope === 'me' ? KINDS : PUBLIC_KINDS;
+	const naWierzchu = (scope === 'me' ? ME_PRIMARY_KINDS : PRIMARY_KINDS).filter((k) => dostepne.includes(k));
+	const wiecej = dostepne.filter((k) => !naWierzchu.includes(k));
 	const kupon = COUPON_KINDS[kind];
+	const maRozbicia = Boolean(
+		data &&
+			((!compact && (data.byKind?.length > 1 || data.bySource?.length > 1 || data.byThreshold?.length > 1 || data.byConfidence?.length > 0)) ||
+				data.byMarket?.length > 0)
+	);
 
 	const kindLabel = {
 		all: t('accuracy_kind_all'),
@@ -275,26 +290,24 @@ export default function AccuracyPanel({
 	return (
 		<div className={cn('flex flex-col gap-4', className)}>
 			{/*
-			 * Jawne oznaczenie zakresu danych.
+			 * Oznaczenie zakresu danych — tylko w profilu.
 			 *
-			 * Bez tego widget w profilu i publiczna zakładka wyglądają identycznie — a przy
-			 * jednym aktywnym użytkowniku pokazują nawet te same liczby, więc nie da się
-			 * poznać, czy patrzy się na swoje typy, czy na cały serwis.
+			 * Tam widget łatwo pomylić z publiczną zakładką (przy jednym aktywnym użytkowniku
+			 * pokazują nawet te same liczby). Na publicznej stronie plakietka „Cały serwis" była
+			 * szumem: tytuł strony mówi już, czyje to typy.
 			 */}
-			<div className="flex items-center gap-2">
-				{/* `shrink-0`: na telefonie długi podpis obok ściskał plakietkę do dwóch linii. */}
-				<Badge variant={scope === 'me' ? 'accent' : 'outline'} className="shrink-0">
-					{scope === 'me' ? <User size={12} aria-hidden="true" /> : <Globe size={12} aria-hidden="true" />}
-					{scope === 'me' ? t('accuracy_scope_mine') : t('accuracy_scope_global')}
-				</Badge>
-				<span className="text-xs text-muted">
-					{scope !== 'me'
-						? t('accuracy_scope_global_hint')
-						: author === 'user'
-							? t('accuracy_author_user_hint')
-							: t('accuracy_scope_mine_hint')}
-				</span>
-			</div>
+			{scope === 'me' && (
+				<div className="flex items-center gap-2">
+					{/* `shrink-0`: na telefonie długi podpis obok ściskał plakietkę do dwóch linii. */}
+					<Badge variant="accent" className="shrink-0">
+						<User size={12} aria-hidden="true" />
+						{t('accuracy_scope_mine')}
+					</Badge>
+					<span className="text-xs text-muted">
+						{author === 'user' ? t('accuracy_author_user_hint') : t('accuracy_scope_mine_hint')}
+					</span>
+				</div>
+			)}
 
 			{/*
 			 * Każda grupa filtrów ma podpis.
@@ -336,13 +349,12 @@ export default function AccuracyPanel({
 			    szerokości treści, więc pasek pigułek zamiast przewijać się w sobie rozpychał
 			    cały panel. */}
 			<div className="flex flex-wrap items-end gap-x-4 gap-y-3">
-				{grupy.map((g) => (
-				<div key={g.key} className={cn('flex min-w-0 max-w-full flex-col gap-1', author === 'user' && 'hidden')}>
+				<div className={cn('flex min-w-0 max-w-full flex-col gap-1', author === 'user' && 'hidden')}>
 					<span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-						{g.label}
+						{t('accuracy_filter_kind')}
 					</span>
 					<div className="flex max-w-full flex-wrap items-center gap-0.5 self-start rounded-[1.25rem] border border-border bg-surface-2 p-1">
-						{g.items.map((k) => (
+						{naWierzchu.map((k) => (
 							<button
 								key={k}
 								type="button"
@@ -358,9 +370,31 @@ export default function AccuracyPanel({
 								{kindLabel[k]}
 							</button>
 						))}
+						{/* Pozostałe rodzaje w liście wyboru. Wybrany z niej rodzaj podświetla listę jak pigułkę. */}
+						{wiecej.length > 0 && (
+							<select
+								value={wiecej.includes(kind) ? kind : ''}
+								onChange={(e) => e.target.value && setKind(e.target.value)}
+								aria-label={tp('accuracy_kind_more')}
+								className={cn(
+									'h-[26px] max-w-[11rem] cursor-pointer rounded-full border-0 px-2.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+									wiecej.includes(kind)
+										? 'bg-brand text-brand-fg shadow-sm'
+										: 'bg-transparent text-muted hover:bg-surface-3 hover:text-text'
+								)}
+							>
+								<option value="" disabled>
+									{tp('accuracy_kind_more')}
+								</option>
+								{wiecej.map((k) => (
+									<option key={k} value={k} className="bg-surface text-text">
+										{kindLabel[k]}
+									</option>
+								))}
+							</select>
+						)}
 					</div>
 				</div>
-				))}
 
 				{!compact && (
 					<div className="flex min-w-0 max-w-full flex-col gap-1">
@@ -459,121 +493,6 @@ export default function AccuracyPanel({
 						</CardContent>
 					</Card>
 
-					{!compact && data.byKind?.length > 1 && (
-						<Card>
-							<CardContent className="flex flex-col gap-1 px-5 py-4">
-								<h3 className="mb-1 flex items-center gap-1.5 text-sm font-bold text-text">
-									<Target size={14} aria-hidden="true" className="text-accent" />
-									{t('accuracy_by_kind')}
-								</h3>
-								{data.byKind.map((row) => (
-									<BreakdownRow key={row.key} row={{ ...row, label: kindLabel[row.key] ?? row.key }} t={t} />
-								))}
-							</CardContent>
-						</Card>
-					)}
-
-					{/* Podział po rynkach pokazujemy także w wersji kompaktowej — sam procent
-					    bez informacji, na czym się trafia, niewiele daje. */}
-					{data.byMarket?.length > 0 && (
-						<Card>
-							<CardContent className="flex flex-col gap-1 px-5 py-4">
-								<h3 className="mb-1 flex items-center gap-1.5 text-sm font-bold text-text">
-									<TrendingUp size={14} aria-hidden="true" className="text-accent" />
-									{t('accuracy_by_market')}
-								</h3>
-								{data.byMarket.map((row) => (
-									<BreakdownRow key={row.key} row={row} t={t} />
-								))}
-							</CardContent>
-						</Card>
-					)}
-
-					{/*
-					 * Kto policzył liczbę: nasz model czy model językowy.
-					 *
-					 * Model liczbowy działa w ligach z kompletem wyników; w pucharach i poza
-					 * obsługiwaną listą prawdopodobieństwo szacuje AI. Bez tego rozbicia spadek
-					 * trafności nie mówi, czy zawiódł rachunek, czy AI tam, gdzie rachunku nie ma.
-					 */}
-					{!compact && data.bySource?.length > 1 && (
-						<Card>
-							<CardContent className="flex flex-col gap-1 px-5 py-4">
-								<h3 className="mb-1 flex items-center gap-1.5 text-sm font-bold text-text">
-									<TrendingUp size={14} aria-hidden="true" className="text-accent" />
-									{t('accuracy_by_source')}
-								</h3>
-								<p className="mb-2 text-xs leading-relaxed text-muted">
-									{t('accuracy_by_source_hint')}
-								</p>
-								{data.bySource.map((row) => (
-									<BreakdownRow
-										key={row.key}
-										row={{
-											...row,
-											label: t(
-												row.key === 'model' ? 'accuracy_source_model' : 'accuracy_source_ai'
-											),
-										}}
-										t={t}
-									/>
-								))}
-							</CardContent>
-						</Card>
-					)}
-
-					{/*
-					 * Typy nad progiem kontra zapasowe.
-					 *
-					 * Typ zapasowy powstaje, gdy żadna selekcja nie przewyższa normy o wymagany
-					 * margines, i wchodzi do skuteczności na równi z resztą — taka była decyzja
-					 * produktowa, bo analiza bez typu jest dla czytelnika bezużyteczna. Ale jest
-					 * z definicji słabszy, więc bez tego rozbicia jedna liczba miesza dwie różne
-					 * rzeczy i nie widać, skąd bierze się zmiana trafności.
-					 */}
-					{!compact && data.byThreshold?.length > 1 && (
-						<Card>
-							<CardContent className="flex flex-col gap-1 px-5 py-4">
-								<h3 className="mb-1 flex items-center gap-1.5 text-sm font-bold text-text">
-									<Target size={14} aria-hidden="true" className="text-accent" />
-									{t('accuracy_by_threshold')}
-								</h3>
-								<p className="mb-2 text-xs leading-relaxed text-muted">
-									{t('accuracy_by_threshold_hint')}
-								</p>
-								{data.byThreshold.map((row) => (
-									<BreakdownRow
-										key={row.key}
-										row={{
-											...row,
-											label: t(
-												row.key === 'above'
-													? 'accuracy_threshold_above'
-													: 'accuracy_threshold_fallback'
-											),
-										}}
-										t={t}
-									/>
-								))}
-							</CardContent>
-						</Card>
-					)}
-
-					{/* Kalibracja: czy deklarowana pewność ma pokrycie w wynikach. */}
-					{!compact && data.byConfidence?.length > 0 && (
-						<Card>
-							<CardContent className="flex flex-col gap-1 px-5 py-4">
-								<h3 className="text-sm font-bold text-text">{t('accuracy_by_confidence')}</h3>
-								<p className="mb-1 text-xs leading-relaxed text-muted">
-									{t('accuracy_by_confidence_hint')}
-								</p>
-								{data.byConfidence.map((row) => (
-									<BreakdownRow key={row.key} row={row} t={t} />
-								))}
-							</CardContent>
-						</Card>
-					)}
-
 					{!compact && data.recent?.length > 0 && (
 						<Card>
 							<CardContent className="px-5 py-4">
@@ -606,6 +525,138 @@ export default function AccuracyPanel({
 								</div>
 							</CardContent>
 						</Card>
+					)}
+
+					{/* Rejestr — pełna lista z godziną zapisu. Odnośnik zamiast przewijania do przełącznika widoków. */}
+					{scope !== 'me' && (
+						<Link href="/pilka-nozna/skutecznosc?view=register" className="inline-flex items-center gap-1 self-start text-sm font-bold text-accent no-underline hover:underline">
+							{tp('accuracy_register_link')}
+							<ChevronRight size={15} aria-hidden="true" />
+						</Link>
+					)}
+
+					{/*
+					 * Rozbicia (rodzaj, rynek, źródło liczby, próg, pewność) — zwinięte. To dowody dla
+					 * dociekliwych; na wierzchu zostaje jedna liczba i ostatnie rozliczone typy.
+					 */}
+					{maRozbicia && (
+						<MoreDetails summary={tp('accuracy_more')}>
+							{!compact && data.byKind?.length > 1 && (
+								<Card>
+									<CardContent className="flex flex-col gap-1 px-5 py-4">
+										<h3 className="mb-1 flex items-center gap-1.5 text-sm font-bold text-text">
+											<Target size={14} aria-hidden="true" className="text-accent" />
+											{t('accuracy_by_kind')}
+										</h3>
+										{data.byKind.map((row) => (
+											<BreakdownRow key={row.key} row={{ ...row, label: kindLabel[row.key] ?? row.key }} t={t} />
+										))}
+									</CardContent>
+								</Card>
+							)}
+
+							{/* Podział po rynkach pokazujemy także w wersji kompaktowej — sam procent
+							    bez informacji, na czym się trafia, niewiele daje. */}
+							{data.byMarket?.length > 0 && (
+								<Card>
+									<CardContent className="flex flex-col gap-1 px-5 py-4">
+										<h3 className="mb-1 flex items-center gap-1.5 text-sm font-bold text-text">
+											<TrendingUp size={14} aria-hidden="true" className="text-accent" />
+											{t('accuracy_by_market')}
+										</h3>
+										{data.byMarket.map((row) => (
+											<BreakdownRow key={row.key} row={row} t={t} />
+										))}
+									</CardContent>
+								</Card>
+							)}
+
+							{/*
+							 * Kto policzył liczbę: nasz model czy model językowy.
+							 *
+							 * Model liczbowy działa w ligach z kompletem wyników; w pucharach i poza
+							 * obsługiwaną listą prawdopodobieństwo szacuje AI. Bez tego rozbicia spadek
+							 * trafności nie mówi, czy zawiódł rachunek, czy AI tam, gdzie rachunku nie ma.
+							 */}
+							{!compact && data.bySource?.length > 1 && (
+								<Card>
+									<CardContent className="flex flex-col gap-1 px-5 py-4">
+										<h3 className="mb-1 flex items-center gap-1.5 text-sm font-bold text-text">
+											<TrendingUp size={14} aria-hidden="true" className="text-accent" />
+											{t('accuracy_by_source')}
+										</h3>
+										<p className="mb-2 text-xs leading-relaxed text-muted">
+											{t('accuracy_by_source_hint')}
+										</p>
+										{data.bySource.map((row) => (
+											<BreakdownRow
+												key={row.key}
+												row={{
+													...row,
+													label: t(
+														row.key === 'model' ? 'accuracy_source_model' : 'accuracy_source_ai'
+													),
+												}}
+												t={t}
+											/>
+										))}
+									</CardContent>
+								</Card>
+							)}
+
+							{/*
+							 * Typy nad progiem kontra zapasowe.
+							 *
+							 * Typ zapasowy powstaje, gdy żadna selekcja nie przewyższa normy o wymagany
+							 * margines, i wchodzi do skuteczności na równi z resztą — taka była decyzja
+							 * produktowa, bo analiza bez typu jest dla czytelnika bezużyteczna. Ale jest
+							 * z definicji słabszy, więc bez tego rozbicia jedna liczba miesza dwie różne
+							 * rzeczy i nie widać, skąd bierze się zmiana trafności.
+							 */}
+							{!compact && data.byThreshold?.length > 1 && (
+								<Card>
+									<CardContent className="flex flex-col gap-1 px-5 py-4">
+										<h3 className="mb-1 flex items-center gap-1.5 text-sm font-bold text-text">
+											<Target size={14} aria-hidden="true" className="text-accent" />
+											{t('accuracy_by_threshold')}
+										</h3>
+										<p className="mb-2 text-xs leading-relaxed text-muted">
+											{t('accuracy_by_threshold_hint')}
+										</p>
+										{data.byThreshold.map((row) => (
+											<BreakdownRow
+												key={row.key}
+												row={{
+													...row,
+													label: t(
+														row.key === 'above'
+															? 'accuracy_threshold_above'
+															: 'accuracy_threshold_fallback'
+													),
+												}}
+												t={t}
+											/>
+										))}
+									</CardContent>
+								</Card>
+							)}
+
+							{/* Kalibracja: czy deklarowana pewność ma pokrycie w wynikach. */}
+							{!compact && data.byConfidence?.length > 0 && (
+								<Card>
+									<CardContent className="flex flex-col gap-1 px-5 py-4">
+										<h3 className="text-sm font-bold text-text">{t('accuracy_by_confidence')}</h3>
+										<p className="mb-1 text-xs leading-relaxed text-muted">
+											{t('accuracy_by_confidence_hint')}
+										</p>
+										{data.byConfidence.map((row) => (
+											<BreakdownRow key={row.key} row={row} t={t} />
+										))}
+									</CardContent>
+								</Card>
+							)}
+
+						</MoreDetails>
 					)}
 
 					<p className="text-xs leading-relaxed text-muted">{t('accuracy_disclaimer')}</p>
