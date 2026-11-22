@@ -12,8 +12,16 @@ import CommunityPicks from '@/components/picks/CommunityPicks';
 import SquadPanel, { SquadAlert } from '@/components/lineups/SquadPanel';
 import { useUrlState } from '@/lib/hooks/useUrlState';
 
-/** Zakładki panelu danych — także dopuszczalne wartości `?tab=` w adresie pokoju meczowego. */
-const TABS = ['analysis', 'feed', 'stats', 'recent', 'h2h', 'lineups', 'standings', 'picks'];
+/**
+ * Zakładki panelu danych — także dopuszczalne wartości `?tab=` w adresie pokoju meczowego.
+ *
+ * Sześć zamiast ośmiu: „Ostatnie mecze" i „H2H" to jedno pytanie gracza („w jakiej są formie?"),
+ * więc stoją razem w zakładce „Forma". Przebieg (widget meczu) tylko od pierwszego gwizdka —
+ * przed meczem nie ma w nim czego oglądać.
+ */
+const TABS = ['analysis', 'feed', 'lineups', 'stats', 'form', 'standings', 'picks'];
+/** Stare adresy (`?tab=recent`, `?tab=h2h`) z wysłanych linków otwierają nową zakładkę „Forma". */
+const LEGACY_TABS = { recent: 'form', h2h: 'form' };
 
 function Empty({ children }) {
 	return <p className="px-1 py-6 text-center text-sm text-muted">{children}</p>;
@@ -363,9 +371,12 @@ export default function MatchDataTabs({
 	className,
 }) {
 	const t = useTranslations('common');
+	const tp = useTranslations('ux_p4');
 	const locale = useLocale();
 	const widgets = widgetSources(bundle.fixture, locale);
 	const isLive = bundle.fixture.status?.isLive;
+	// Przebieg od pierwszego gwizdka: w trakcie i po meczu (zdarzenia), przed meczem — nic do pokazania.
+	const hasFeed = Boolean(widgets.game) && Boolean(isLive || bundle.fixture.status?.isFinished);
 
 	/*
 	 * W trwającym meczu na wierzchu ląduje przebieg, nie analiza: kto wchodzi w trakcie,
@@ -373,21 +384,22 @@ export default function MatchDataTabs({
 	 * montowaniu, więc mecz, który rozpocznie się przy otwartej stronie, nie przestawi
 	 * zakładki pod palcami czytającego.
 	 *
-	 * Wybrana zakładka jest w adresie (`?tab=h2h`): odświeżenie, powrót z innej strony i wysłany
+	 * Wybrana zakładka jest w adresie (`?tab=form`): odświeżenie, powrót z innej strony i wysłany
 	 * link otwierają tę samą. Przebieg tylko tam, gdzie jest widget — inaczej `?tab=feed` z meczu
 	 * na żywo otwierałby pustą zakładkę w meczu bez danych na żywo.
 	 */
 	const [defaultTab] = useState(() => (isLive && widgets.game ? 'feed' : 'analysis'));
-	const [tab, setTab] = useUrlState('tab', {
-		allowed: widgets.game ? TABS : TABS.filter((v) => v !== 'feed'),
+	const [rawTab, setTab] = useUrlState('tab', {
+		allowed: [...(hasFeed ? TABS : TABS.filter((v) => v !== 'feed')), ...Object.keys(LEGACY_TABS)],
 		fallback: defaultTab,
 	});
+	const tab = LEGACY_TABS[rawTab] ?? rawTab;
 
 	return (
 		<Tabs value={tab} onValueChange={setTab} className={className}>
 			<TabsList>
 				<TabsTrigger value="analysis">{t('analysis_title')}</TabsTrigger>
-				{widgets.game && (
+				{hasFeed && (
 					<TabsTrigger value="feed">
 						{isLive && (
 							<span
@@ -398,11 +410,9 @@ export default function MatchDataTabs({
 						{t('match_room_feed')}
 					</TabsTrigger>
 				)}
-				<TabsTrigger value="stats">{t('match_room_stats')}</TabsTrigger>
-				{/* Ostatnie mecze przed H2H: częściej pyta się o formę niż o historię par. */}
-				<TabsTrigger value="recent">{t('match_room_recent')}</TabsTrigger>
-				<TabsTrigger value="h2h">{t('match_room_h2h')}</TabsTrigger>
 				<TabsTrigger value="lineups">{t('match_room_lineups')}</TabsTrigger>
+				<TabsTrigger value="stats">{t('match_room_stats')}</TabsTrigger>
+				<TabsTrigger value="form">{tp('match_tab_form')}</TabsTrigger>
 				<TabsTrigger value="standings">{t('match_room_standings')}</TabsTrigger>
 				<TabsTrigger value="picks">{t('pick_tab')}</TabsTrigger>
 			</TabsList>
@@ -460,7 +470,7 @@ export default function MatchDataTabs({
 
 			{/* Zakładki Radix montują tylko aktywną treść, więc widget ładuje się dopiero
 			    po kliknięciu — nie startujemy kilku iframe'ów naraz przy wejściu na mecz. */}
-			{widgets.game && (
+			{hasFeed && (
 				<TabsContent value="feed">
 					<Card>
 						<CardContent>
@@ -486,11 +496,10 @@ export default function MatchDataTabs({
 				)}
 			</TabsContent>
 
-			<TabsContent value="recent">
+			{/* Forma: najpierw ostatnie mecze obu drużyn (o to pyta się częściej), pod nimi H2H. */}
+			<TabsContent value="form">
 				<RecentFormTab bundle={bundle} />
-			</TabsContent>
-
-			<TabsContent value="h2h">
+				<h3 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wide text-muted">{t('match_room_h2h')}</h3>
 				{widgets.h2h ? (
 					<Card>
 						<CardContent>

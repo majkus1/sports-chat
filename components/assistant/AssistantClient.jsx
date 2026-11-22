@@ -9,7 +9,6 @@ import FootballMenu from '@/components/FootballMenu';
 import FullScreenModal from '@/components/FullScreenModal';
 import Footer from '@/components/layout/Footer';
 import { UserContext } from '@/context/UserContext';
-import { Link } from '@/i18n/routing';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import Answer from '@/components/assistant/Answer';
@@ -17,6 +16,7 @@ import { Button } from '@/components/ui/Button';
 import AutoGrowTextarea from '@/components/ui/AutoGrowTextarea';
 import { MAX_CHAT_MSG_LEN } from '@/lib/chatConstraints';
 import { cn } from '@/lib/utils';
+import LimitPass from '@/components/assistant/LimitPass';
 import {
 	NEW_KEY,
 	claimMemory,
@@ -632,11 +632,8 @@ export default function AssistantClient() {
 									)}
 
 									{error && <p className="text-sm text-loss">{error}</p>}
-									{limitReached && (
-										<Link href="/cennik" className="text-sm font-semibold text-accent underline">
-											{t('see_plans')}
-										</Link>
-									)}
+									{/* Koniec puli pytań: zdanie z ceną Pro na 7 dni i przycisk zamiast samego „Zobacz plany". */}
+									{limitReached && <LimitPass kind="chat" />}
 
 									{!limitReached && (
 										<form

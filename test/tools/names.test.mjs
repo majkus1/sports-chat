@@ -79,17 +79,26 @@ describe('nazwy narzędzi', () => {
 
 	/*
 	 * Komponentów nie renderujemy (testy chodzą bez bundlera), więc sprawdzamy źródło: to samo
-	 * podejście co `href="/narzedzia"` w test/tools/tools.test.mjs.
+	 * podejście co `href: '/narzedzia'` w test/tools/tools.test.mjs.
 	 */
-	test('„Typy na dziś" w pasku piłki — pod „⋯" na telefonie i obok „Wszystkich narzędzi" na komputerze', () => {
+	/*
+	 * Menu piłki uproszczone (pakiet UX P4): na wierzchu najwyżej cztery pozycje plus asystent,
+	 * reszta pod „Więcej". Pilnujemy, żeby przy okazji żadna funkcja nie zniknęła z menu.
+	 */
+	test('pasek piłki: „Typy na dziś" na wierzchu, najwyżej 4 pozycje, reszta pod „Więcej"', () => {
 		const zrodlo = readFileSync(path.join(ROOT, 'components', 'FootballMenu.js'), 'utf8');
-		assert.ok(zrodlo.includes("href: '/typy-na-dzis'"), 'brak /typy-na-dzis w pasku piłki');
-		assert.ok(zrodlo.includes("t('today_picks_menu')"), 'etykieta inna niż w menu nagłówka (today_picks_menu)');
-		assert.ok(zrodlo.includes('[todayItem, ...secondaryItems]'), 'brak w rozwijanym „⋯"');
-		assert.ok(zrodlo.includes('href={todayItem.href}'), 'brak obok „Wszystkich narzędzi"');
-		// Pas zakładek bez zmian — kolejna pozycja w nim zrzuciłaby pigułkę asystenta do drugiego rzędu.
-		const pas = zrodlo.slice(zrodlo.indexOf('const menuItems = ['), zrodlo.indexOf('];', zrodlo.indexOf('const menuItems = [')));
-		assert.ok(!pas.includes('/typy-na-dzis'), '„Typy na dziś" w pasie zakładek');
+		const wycinek = (poczatek) => zrodlo.slice(zrodlo.indexOf(poczatek), zrodlo.indexOf('];', zrodlo.indexOf(poczatek)));
+		const pas = wycinek('const menuItems = [');
+		const wiecej = wycinek('const moreItems = [');
+		assert.ok(pas.includes("href: '/typy-na-dzis'"), 'brak /typy-na-dzis w pasie');
+		assert.ok(pas.includes("t('today_picks_menu')"), 'etykieta inna niż w menu nagłówka (today_picks_menu)');
+		assert.ok((pas.match(/key: '/g) || []).length <= 4, 'w pasie więcej niż 4 pozycje');
+		// Każda funkcja z dawnego paska nadal osiągalna: w pasie albo pod „Więcej".
+		for (const cel of ['/pilka-nozna/przedmeczowe', '/pilka-nozna/live', '/pilka-nozna/skutecznosc', '/pilka-nozna/ai-agent', '/pilka-nozna/kolejka', '/narzedzia']) {
+			assert.ok(pas.includes(`'${cel}'`) || wiecej.includes(`'${cel}'`), `brak ${cel} w menu piłki`);
+		}
+		for (const klucz of ["t('results')", "t('guide_menu')"]) assert.ok(wiecej.includes(klucz), `brak ${klucz} pod „Więcej"`);
+		assert.ok(zrodlo.includes('href="/pilka-nozna/asystent"'), 'brak pigułki asystenta');
 	});
 
 	test('menu nagłówka: działy piłki rozwinięte od razu (☰ → dział, dwa kliknięcia)', () => {

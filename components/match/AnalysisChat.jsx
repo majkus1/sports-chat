@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import Answer from '@/components/assistant/Answer';
 import AutoGrowTextarea from '@/components/ui/AutoGrowTextarea';
 import { MAX_CHAT_MSG_LEN } from '@/lib/chatConstraints';
+import LimitPass from '@/components/assistant/LimitPass';
 import { cn } from '@/lib/utils';
 
 /**
@@ -198,6 +199,8 @@ export default function AnalysisChat({ fixtureId, language, className }) {
 				)}
 
 				{error && <p className="text-sm text-loss">{error}</p>}
+				{/* Koniec puli pytań: wyjście z ceną Pro na 7 dni zamiast martwego komunikatu. */}
+				{limitReached && <LimitPass kind="chat" />}
 
 				{!limitReached && (
 					<form

@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { ChevronLeft, ChevronRight, Clock, Lock, ShieldCheck, TrendingUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Lock, ShieldCheck } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import Verdict from '@/components/trust/Verdict';
+import MoreDetails from '@/components/stats/MoreDetails';
 import { useSelectionText } from '@/components/trust/useSelectionText';
 import { cn } from '@/lib/utils';
 import { isPageParam } from '@/lib/urlState';
@@ -33,10 +34,10 @@ import {
 /**
  * Rejestr typów AI — zakładka strony skuteczności (`?view=register`).
  *
- * KOLEJNOŚĆ EKRANU jest kolejnością pytań, które zadaje nieufny czytelnik: (1) czy macie
- * przewagę — werdykt i cztery liczby, (2) dlaczego mam wierzyć tej liczbie — CLV po ludzku,
- * (3) gdzie to działa, a gdzie nie — okresy, rynki, ligi, (4) pokażcie typy — lista,
- * (5) skąd wiem, że nie dopisaliście ich po meczu — zasady z liczbą odrzuconych.
+ * KOLEJNOŚĆ EKRANU: na wierzchu to, co gracz łapie w trzy sekundy — werdykt, cztery liczby
+ * (najpierw trafienia, bo tę rozumie każdy), jedna linia „zapisane przed gwizdkiem" z liczbą
+ * odrzuconych i lista typów. Dowody dla dociekliwych (CLV po ludzku, przekroje okresów, rodzajów
+ * typów i lig, pełne zasady) są niżej w zwiniętych sekcjach — w HTML-u, ale nie w strumieniu.
  *
  * PRZEGRANA WYGLĄDA JAK WYGRANA. Ten sam wiersz, ta sama wielkość, ta sama pozycja; różni się
  * tylko kolor plakietki. Rejestr, w którym chybienia są szare i drobne, kłamie krojem pisma.
@@ -47,6 +48,9 @@ import {
 
 const PILL =
 	'whitespace-nowrap rounded-full border-0 px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
+
+const SELECT =
+	'h-9 max-w-full rounded-full border border-border bg-surface-2 px-3 text-xs font-semibold text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:max-w-[16rem]';
 
 function Pills({ label, items, value, onChange, labelFor }) {
 	return (
@@ -228,6 +232,8 @@ function RegisterRow({ row, t, locale, selectionText }) {
  */
 export default function RegisterPanel({ rememberScroll = false }) {
 	const t = useTranslations('trust');
+	// Etykiety rozwijanych sekcji w przestrzeni pakietu UX — `trust` ma te same klucze w obu językach (test).
+	const tp = useTranslations('ux_p4');
 	const locale = useLocale();
 	const selectionText = useSelectionText();
 
@@ -285,19 +291,23 @@ export default function RegisterPanel({ rememberScroll = false }) {
 
 			<div className="flex flex-wrap items-end gap-x-4 gap-y-3">
 				<Pills label={t('filter_period')} items={REGISTER_PERIODS} value={period} onChange={(v) => ustaw('period', v, DEFAULT_PERIOD)} labelFor={okres} />
-				<Pills
-					label={t('filter_market')}
-					items={REGISTER_MARKETS}
-					value={market}
-					onChange={(v) => ustaw('market', v, DEFAULT_MARKET)}
-					labelFor={(k) => t(`market_${k}`)}
-				/>
+				{/* Rodzaj typu — lista wyboru zamiast pięciu pigułek: jedna grupa pigułek na ekran wystarczy. */}
+				<label className="flex min-w-0 max-w-full flex-col gap-1">
+					<span className="text-[11px] font-semibold uppercase tracking-wide text-muted">{t('filter_market')}</span>
+					<select value={market} onChange={(e) => ustaw('market', e.target.value, DEFAULT_MARKET)} className={SELECT}>
+						{REGISTER_MARKETS.map((k) => (
+							<option key={k} value={k}>
+								{t(`market_${k}`)}
+							</option>
+						))}
+					</select>
+				</label>
 				<label className="flex min-w-0 max-w-full flex-col gap-1">
 					<span className="text-[11px] font-semibold uppercase tracking-wide text-muted">{t('filter_league')}</span>
 					<select
 						value={league}
 						onChange={(e) => ustaw('league', e.target.value, DEFAULT_LEAGUE)}
-						className="h-9 max-w-full rounded-full border border-border bg-surface-2 px-3 text-xs font-semibold text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:max-w-[16rem]"
+						className={SELECT}
 					>
 						<option value="all">{t('league_all')}</option>
 						{(data?.leagues || []).map((l) => (
@@ -329,6 +339,20 @@ export default function RegisterPanel({ rememberScroll = false }) {
 
 					<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
 						<Stat
+							label={t('sum_hits')}
+							value={s.settled ? formatShare(s.hitRate, locale) : t('sum_none')}
+							hint={
+								s.settled
+									? t('sum_hits_hint', { won: s.won, settled: s.settled, low: s.interval?.low ?? '—', high: s.interval?.high ?? '—' })
+									: null
+							}
+						/>
+						<Stat
+							label={t('sum_beat')}
+							value={s.clv.n ? formatShare(s.clv.beat, locale) : t('sum_none')}
+							hint={s.clv.n ? t('sum_beat_hint', { same: formatShare(s.clv.same, locale), worse: formatShare(s.clv.worse, locale) }) : null}
+						/>
+						<Stat
 							label={t('sum_clv')}
 							value={s.clv.n ? formatSignedPct(s.clv.mean, locale, 2) : t('sum_none')}
 							tone={clvTone(s.clv.mean)}
@@ -339,20 +363,6 @@ export default function RegisterPanel({ rememberScroll = false }) {
 											low: formatSignedPct(s.clv.low, locale, 2) ?? '—',
 											high: formatSignedPct(s.clv.high, locale, 2) ?? '—',
 										})
-									: null
-							}
-						/>
-						<Stat
-							label={t('sum_beat')}
-							value={s.clv.n ? formatShare(s.clv.beat, locale) : t('sum_none')}
-							hint={s.clv.n ? t('sum_beat_hint', { same: formatShare(s.clv.same, locale), worse: formatShare(s.clv.worse, locale) }) : null}
-						/>
-						<Stat
-							label={t('sum_hits')}
-							value={s.settled ? formatShare(s.hitRate, locale) : t('sum_none')}
-							hint={
-								s.settled
-									? t('sum_hits_hint', { won: s.won, settled: s.settled, low: s.interval?.low ?? '—', high: s.interval?.high ?? '—' })
 									: null
 							}
 						/>
@@ -372,50 +382,11 @@ export default function RegisterPanel({ rememberScroll = false }) {
 						/>
 					</div>
 
-					{/* CLV po ludzku — pod liczbami, bo bez tego „+0,26%" nic laikowi nie mówi. */}
-					<Card>
-						<CardContent className="flex flex-col gap-2 px-5 py-4">
-							<h3 className="flex items-center gap-2 text-sm font-bold text-text">
-								<TrendingUp size={16} aria-hidden="true" className="text-accent" />
-								{t('clv_why_title')}
-							</h3>
-							<p className="text-sm leading-relaxed text-muted">{t('clv_why_1')}</p>
-							<p className="text-sm leading-relaxed text-muted">{t('clv_why_2')}</p>
-							<p className="text-sm leading-relaxed text-muted">{t('clv_why_3')}</p>
-							<p className="rounded-[var(--radius-ui)] bg-surface-2 px-3 py-2 text-xs tabular-nums text-text">{t('clv_why_formula')}</p>
-						</CardContent>
-					</Card>
-
-					<div className="grid gap-4 lg:grid-cols-2">
-						<Breakdown
-							title={t('periods_title')}
-							firstCol={t('col_period')}
-							rows={data.periods.filter((r) => r.total > 0)}
-							labelFor={(r) => okres(r.key)}
-							onPick={(k) => ustaw('period', k, DEFAULT_PERIOD)}
-							t={t}
-							locale={locale}
-						/>
-						<Breakdown
-							title={t('markets_title')}
-							firstCol={t('col_market')}
-							rows={data.byMarket}
-							labelFor={(r) => t(`market_${r.key}`)}
-							onPick={(k) => ustaw('market', k, DEFAULT_MARKET)}
-							t={t}
-							locale={locale}
-						/>
-					</div>
-					<Breakdown
-						title={t('leagues_title')}
-						note={t('leagues_more')}
-						firstCol={t('col_league')}
-						rows={data.byLeague}
-						labelFor={nazwaLigi}
-						onPick={(k) => ustaw('league', k, DEFAULT_LEAGUE)}
-						t={t}
-						locale={locale}
-					/>
+					{/* Najmocniejszy dowód w jednej linii — reszta zasad w „Zasadach rejestru" niżej. */}
+					<p className="flex items-start gap-2 text-sm leading-relaxed text-text">
+						<ShieldCheck size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-accent" />
+						<span>{t('rule_before', { count: data.rules.afterKickoff, checked: data.rules.checked })}</span>
+					</p>
 
 					<Card id="register-list" className="scroll-mt-20">
 						<CardContent className="px-4 py-4 sm:px-5">
@@ -459,17 +430,52 @@ export default function RegisterPanel({ rememberScroll = false }) {
 						</CardContent>
 					</Card>
 
-					{/* Zasady z liczbami — „nie dopisujemy typów po meczu" ma być sprawdzalne, nie obiecane. */}
-					<Card>
-						<CardContent className="flex flex-col gap-2 px-5 py-4">
-							<h3 className="flex items-center gap-2 text-sm font-bold text-text">
-								<ShieldCheck size={16} aria-hidden="true" className="text-accent" />
-								{t('rules_title')}
-							</h3>
+					{/*
+					 * Dla dociekliwych — zwinięte, ale w HTML-u: CLV po ludzku, przekroje i pełne zasady.
+					 * Gracz ma najpierw zobaczyć liczby i listę typów, a nie lekcję ekonomii.
+					 */}
+					<div className="flex flex-col gap-2">
+						<MoreDetails summary={tp('clv_more')}>
+							<p className="text-sm leading-relaxed text-muted">{t('clv_why_1')}</p>
+							<p className="text-sm leading-relaxed text-muted">{t('clv_why_2')}</p>
+							<p className="text-sm leading-relaxed text-muted">{t('clv_why_3')}</p>
+							<p className="rounded-[var(--radius-ui)] bg-surface-2 px-3 py-2 text-xs tabular-nums text-text">{t('clv_why_formula')}</p>
+						</MoreDetails>
+
+						<MoreDetails summary={tp('breakdowns_more')}>
+							<Breakdown
+								title={t('periods_title')}
+								firstCol={t('col_period')}
+								rows={data.periods.filter((r) => r.total > 0)}
+								labelFor={(r) => okres(r.key)}
+								onPick={(k) => ustaw('period', k, DEFAULT_PERIOD)}
+								t={t}
+								locale={locale}
+							/>
+							<Breakdown
+								title={t('markets_title')}
+								firstCol={t('col_market')}
+								rows={data.byMarket}
+								labelFor={(r) => t(`market_${r.key}`)}
+								onPick={(k) => ustaw('market', k, DEFAULT_MARKET)}
+								t={t}
+								locale={locale}
+							/>
+							<Breakdown
+								title={t('leagues_title')}
+								note={t('leagues_more')}
+								firstCol={t('col_league')}
+								rows={data.byLeague}
+								labelFor={nazwaLigi}
+								onPick={(k) => ustaw('league', k, DEFAULT_LEAGUE)}
+								t={t}
+								locale={locale}
+							/>
+						</MoreDetails>
+
+						{/* Zasady z liczbami — „nie dopisujemy typów po meczu" ma być sprawdzalne, nie obiecane. */}
+						<MoreDetails summary={tp('rules_more')}>
 							<ul className="flex list-disc flex-col gap-1.5 pl-5 text-sm leading-relaxed text-muted">
-								<li>
-									{t('rule_before', { count: data.rules.afterKickoff, checked: data.rules.checked })}
-								</li>
 								<li>{t('rule_once')}</li>
 								<li>{t('rule_live', { count: data.rules.live })}</li>
 								<li>{t('rule_ref')}</li>
@@ -477,8 +483,8 @@ export default function RegisterPanel({ rememberScroll = false }) {
 								<li>{t('rule_missing', { share: formatShare(s.coverage, locale) ?? '—' })}</li>
 								<li>{t('rule_scope')}</li>
 							</ul>
-						</CardContent>
-					</Card>
+						</MoreDetails>
+					</div>
 
 					<p className="text-xs leading-relaxed text-muted">{t('disclaimer')}</p>
 				</div>

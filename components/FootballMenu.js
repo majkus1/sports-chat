@@ -2,37 +2,41 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Blocks, CircleHelp, ListChecks, Sparkles } from 'lucide-react';
+import { ChevronDown, Sparkles } from 'lucide-react';
 import { Link, usePathname } from '@/i18n/routing';
 import GuideModal from '@/components/football/GuideModal';
 
 /**
  * Nawigacja sekcji piłkarskiej.
  *
- * Na wąskim ekranie w pasie mieszczą się tylko dwie pierwsze pozycje — reszta chowa się
- * pod „⋯". Na szerokim wszystkie stoją obok siebie. Podział steruje jedną stałą poniżej,
- * a nie trzema kopiami tego samego JSX-a, jak było wcześniej.
+ * MNIEJ POZYCJI NA WIERZCHU. Dawniej pasek miał dziesięć wejść (sześć zakładek, „Typy na dziś",
+ * „Wszystkie narzędzia", przewodnik i asystent) — gracz widział ścianę przycisków. Teraz na
+ * wierzchu stoją cztery najczęściej klikane strony i asystent, a reszta (wyniki, raport AI,
+ * kolejka, przewodnik, wszystkie narzędzia) jest pod „Więcej". Każda funkcja zostaje osiągalna,
+ * a pełna lista z opisami jest na stronie „Narzędzia".
+ *
+ * Na wąskim ekranie w pasie mieszczą się trzy pierwsze pozycje — pozostałe z pasa dochodzą
+ * na górę listy „Więcej". Podział steruje jedną stałą poniżej.
  *
  * ASYSTENT TO NIE ZAKŁADKA, TYLKO WEJŚCIE. Stoi poza listą zakładek, jako wyróżniona pigułka
  * z iskrą — na każdym rozmiarze ekranu. Na komputerze po prawej stronie paska, na telefonie
- * jako szeroki przycisk w osobnym rzędzie pod zakładkami (w jednym pasie z nimi się nie mieści:
- * ~379 px przy 343 dostępnych). Wygląda jak przycisk akcji, nie jak podkreślona pozycja, więc
- * nie myli się z tym, gdzie użytkownik akurat jest; na samej stronie asystenta wypełnia się kolorem.
+ * jako szeroki przycisk w osobnym rzędzie pod zakładkami. Wygląda jak przycisk akcji, nie jak
+ * podkreślona pozycja, więc nie myli się z tym, gdzie użytkownik akurat jest.
  */
 
-/** Ile pozycji zostaje w pasie na telefonie. Reszta ląduje w rozwijanym menu. */
-const VISIBLE_ON_MOBILE = 2;
+/** Ile pozycji pasa zostaje na telefonie. Reszta pasa ląduje na górze listy „Więcej". */
+const VISIBLE_ON_MOBILE = 3;
 
-function MenuItem({ item, isActive, onSelect }) {
-	const className = `pre-match-p ${isActive ? 'active-section' : ''}`;
+function MenuItem({ item, isActive, onSelect, className = '' }) {
+	const cls = `pre-match-p ${isActive ? 'active-section' : ''} ${className}`;
 
 	if (item.isButton) {
 		return (
 			<button
 				type="button"
-				className={className}
+				className={cls}
 				onClick={() => {
-					item.onClick();
+					item.onClick?.();
 					onSelect?.();
 				}}
 			>
@@ -42,7 +46,7 @@ function MenuItem({ item, isActive, onSelect }) {
 	}
 
 	return (
-		<Link href={item.href} className={className} onClick={onSelect}>
+		<Link href={item.href} className={cls} onClick={onSelect}>
 			{item.label}
 		</Link>
 	);
@@ -50,6 +54,7 @@ function MenuItem({ item, isActive, onSelect }) {
 
 export default function FootballMenu({ onResultsClick }) {
 	const t = useTranslations('common');
+	const tp = useTranslations('ux_p4');
 	const pathname = usePathname();
 	const [isMenuExpanded, setIsMenuExpanded] = useState(false);
 	/*
@@ -59,27 +64,29 @@ export default function FootballMenu({ onResultsClick }) {
 	const [isGuideOpen, setIsGuideOpen] = useState(false);
 	const wrapperRef = useRef(null);
 
+	/* Pas: to, po co gracz przychodzi — typy, mecze przed gwizdkiem, mecze na żywo i dowód skuteczności. */
 	const menuItems = [
+		{ href: '/typy-na-dzis', label: t('today_picks_menu'), key: 'typy-na-dzis' },
 		{ href: '/pilka-nozna/przedmeczowe', label: t('match'), key: 'przedmeczowe' },
 		{ href: '/pilka-nozna/live', label: t('onlive'), key: 'live' },
-		{ onClick: onResultsClick, label: t('results'), key: 'results', isButton: true },
-		{ href: '/pilka-nozna/ai-agent', label: t('ai_agent_title'), key: 'ai-agent' },
-		{ href: '/pilka-nozna/kolejka', label: t('round_menu'), key: 'kolejka' },
 		{ href: '/pilka-nozna/skutecznosc', label: t('accuracy_menu'), key: 'skutecznosc' },
 	];
 
-	const primaryItems = menuItems.slice(0, VISIBLE_ON_MOBILE);
-	const secondaryItems = menuItems.slice(VISIBLE_ON_MOBILE);
+	/* Pod „Więcej" — rzadziej klikane, ale każda osiągalna jednym rozwinięciem. */
+	const moreItems = [
+		{ onClick: onResultsClick, label: t('results'), key: 'results', isButton: true },
+		{ href: '/pilka-nozna/ai-agent', label: t('ai_agent_title'), key: 'ai-agent' },
+		{ href: '/pilka-nozna/kolejka', label: t('round_menu'), key: 'kolejka' },
+		{ onClick: () => setIsGuideOpen(true), label: t('guide_menu'), key: 'guide', isButton: true },
+		{ href: '/narzedzia', label: t('tools_menu_all'), key: 'narzedzia' },
+	];
 
-	/*
-	 * „Typy na dziś" — poza pasem zakładek, bo pas jest pełny (patrz odnośnik „Wszystkie narzędzia"
-	 * niżej). Na komputerze stoi obok tego odnośnika, w rzędzie plakietki „Piłka nożna"; na telefonie
-	 * jest pierwszą pozycją pod „⋯". Wcześniej z paska piłki nie było do tej strony drogi wcale.
-	 */
-	const todayItem = { href: '/typy-na-dzis', label: t('today_picks_menu'), key: 'typy-na-dzis' };
+	const mobileOverflow = menuItems.slice(VISIBLE_ON_MOBILE);
 
 	const isActive = (item) => !item.isButton && pathname === item.href;
 	const naAsystencie = pathname === '/pilka-nozna/asystent';
+	// Bieżąca strona schowana pod „Więcej" — podkreślamy przycisk, żeby było widać, gdzie się jest.
+	const activeInMore = moreItems.some(isActive);
 
 	/** Kliknięcie poza menu i Escape zamykają listę — bez tego zostaje otwarta po wyborze. */
 	useEffect(() => {
@@ -100,92 +107,44 @@ export default function FootballMenu({ onResultsClick }) {
 		};
 	}, [isMenuExpanded]);
 
+	const close = () => setIsMenuExpanded(false);
+
 	return (
 		<>
 			<div ref={wrapperRef} className="choose-time football-menu-wrapper">
-				{/*
-				 * Wszystkie narzędzia — w rzędzie plakietki „Piłka nożna", po prawej, a nie w pasie.
-				 * Pas jest pełny: na stronach z panelem bocznym zajmuje 783 z 790 px (zmierzone przy
-				 * 1280 px), więc każda kolejna pozycja zrzucałaby pigułkę asystenta do drugiego rzędu.
-				 * Pozycja bezwzględna nie zabiera miejsca w pasie; plakietka stoi nad menu na każdej
-				 * z sześciu stron, które go używają. Na telefonie krótszy napis, żeby zmieścić się obok.
-				 *
-				 * Na komputerze w tym samym rzędzie stoją też „Typy na dziś" — miejsca jest tam dość
-				 * (szacunkowo plakietka i dwa odnośniki to ~450 px przy co najmniej ~560 px szerokości
-				 * treści, gdy obok stoi panel boczny). Na telefonie ich tu nie ma — są pod „⋯".
-				 */}
-				<div className="football-top-links">
-					<Link href={todayItem.href} className="football-tools-link football-today-link">
-						<ListChecks size={14} aria-hidden="true" />
-						<span>{todayItem.label}</span>
-					</Link>
-					<Link href="/narzedzia" className="football-tools-link">
-						<Blocks size={14} aria-hidden="true" />
-						<span className="football-tools-short">{t('tools_menu')}</span>
-						<span className="football-tools-long">{t('tools_menu_all')}</span>
-					</Link>
-				</div>
-
-				{primaryItems.map((item) => (
-					<span key={item.key} className="football-menu-item">
+				{menuItems.map((item, i) => (
+					<span key={item.key} className={`football-menu-item ${i >= VISIBLE_ON_MOBILE ? 'menu-desktop-only' : ''}`}>
 						<MenuItem item={item} isActive={isActive(item)} />
 					</span>
 				))}
 
-				{/*
-				 * Przewodnik zawsze w pasie — także na telefonie, gdzie reszta chowa się pod „⋯".
-				 * Nowy użytkownik ma go zobaczyć bez rozwijania czegokolwiek; na wąskim ekranie
-				 * zostaje sama ikona, żeby nie zabierać miejsca dwóm pierwszym zakładkom.
-				 */}
-				<span className="football-menu-item">
+				<span className="football-more">
 					<button
 						type="button"
-						className="pre-match-p guide-button"
-						onClick={() => setIsGuideOpen(true)}
-						aria-haspopup="dialog"
-						aria-label={t('guide_menu')}
+						onClick={() => setIsMenuExpanded((open) => !open)}
+						className={`pre-match-p football-more-button ${activeInMore ? 'active-section' : ''}`}
+						aria-expanded={isMenuExpanded}
+						aria-haspopup="true"
+						aria-label={tp('menu_more')}
 					>
-						<CircleHelp size={15} aria-hidden="true" />
-						<span className="guide-label">{t('guide_menu')}</span>
+						{/* Na telefonie sam „⋯" — napis „Więcej" zepchnąłby przycisk do drugiego rzędu przy 320 px. */}
+						<span className="football-more-label">{tp('menu_more')}</span>
+						<ChevronDown size={14} aria-hidden="true" className={`football-more-label ${isMenuExpanded ? 'rotate-180' : ''}`} />
+						<span className="football-more-dots" aria-hidden="true">⋯</span>
 					</button>
-				</span>
 
-				{secondaryItems.length > 0 && (
-					<>
-						{/* Ten sam zestaw dwa razy: w pasie na szerokim ekranie i w rozwijanym
-						    menu na wąskim. Widocznością steruje CSS, nie stan komponentu. */}
-						<span className="menu-desktop-items">
-							{secondaryItems.map((item) => (
-								<span key={item.key} className="football-menu-item">
-									<MenuItem item={item} isActive={isActive(item)} />
-								</span>
+					{isMenuExpanded && (
+						<div className="menu-expanded">
+							{/* Pozycje pasa, które na telefonie się nie zmieściły — na komputerze CSS je chowa. */}
+							{mobileOverflow.map((item) => (
+								<MenuItem key={item.key} item={item} isActive={isActive(item)} onSelect={close} className="menu-mobile-only" />
 							))}
-						</span>
-
-						<button
-							type="button"
-							onClick={() => setIsMenuExpanded((open) => !open)}
-							className="menu-dots-button"
-							aria-expanded={isMenuExpanded}
-							aria-label={t('menu')}
-						>
-							⋯
-						</button>
-
-						{isMenuExpanded && (
-							<div className="menu-expanded">
-								{[todayItem, ...secondaryItems].map((item) => (
-									<MenuItem
-										key={item.key}
-										item={item}
-										isActive={isActive(item)}
-										onSelect={() => setIsMenuExpanded(false)}
-									/>
-								))}
-							</div>
-						)}
-					</>
-				)}
+							{moreItems.map((item) => (
+								<MenuItem key={item.key} item={item} isActive={isActive(item)} onSelect={close} />
+							))}
+						</div>
+					)}
+				</span>
 
 				<Link
 					href="/pilka-nozna/asystent"
@@ -201,16 +160,6 @@ export default function FootballMenu({ onResultsClick }) {
 			<GuideModal open={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
 
 			<style>{`
-        /* Reguła .choose-time .pre-match-p z arkusza ma wyższą specyficzność — te muszą ją przebić. */
-        .choose-time .guide-button {
-          gap: 5px;
-          color: var(--accent);
-        }
-
-        .choose-time .guide-button:hover {
-          color: var(--accent-hover, var(--accent));
-        }
-
         .football-menu-wrapper {
           display: flex;
           gap: 22px;
@@ -220,60 +169,31 @@ export default function FootballMenu({ onResultsClick }) {
           margin-bottom: 18px;
         }
 
-        .football-menu-item {
+        .football-menu-item,
+        .football-more {
           display: inline-flex;
           align-items: center;
         }
 
-        /* Wszystkie narzędzia (i na komputerze Typy na dziś): w rzędzie plakietki „Piłka nożna"
-           nad paskiem, przy prawej krawędzi. 14 px to górny margines paska (.choose-time), 28 px —
-           wysokość plakietki, więc odnośniki stoją w jednej linii z nią i nie przesuwają niczego w pasie. */
-        .football-top-links {
-          position: absolute;
-          right: 0;
-          bottom: calc(100% + 14px);
-          display: flex;
-          align-items: center;
-          gap: 8px;
+        .football-more {
+          position: relative;
         }
 
-        .football-tools-link {
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
-          height: 28px;
-          padding: 0 11px 0 9px;
-          border: 1px solid var(--border);
-          border-radius: 999px;
-          background: var(--surface);
-          color: var(--text);
-          font-family: 'Roboto Condensed', sans-serif;
-          font-size: 12px;
-          font-weight: 700;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-          text-decoration: none;
-          white-space: nowrap;
-          transition: border-color 0.15s ease, background 0.15s ease;
+        /* Reguła .choose-time .pre-match-p z arkusza ma wyższą specyficzność — ta musi ją przebić. */
+        .choose-time .football-more-button {
+          gap: 3px;
+          border: 0;
+          background: transparent;
         }
 
-        .football-tools-link svg {
-          flex-shrink: 0;
-          color: var(--accent);
+        .football-more-button svg {
+          transition: transform 0.15s ease;
         }
 
-        .football-tools-link:hover {
-          border-color: var(--accent);
-          background: var(--accent-soft);
-        }
-
-        .football-tools-link:focus-visible {
-          outline: 2px solid var(--ring);
-          outline-offset: 2px;
-        }
-
-        .football-tools-short {
+        .football-more-dots {
           display: none;
+          font-size: 20px;
+          line-height: 1;
         }
 
         /* Asystent: pigułka akcji po prawej stronie paska, nie kolejna zakładka. */
@@ -321,53 +241,82 @@ export default function FootballMenu({ onResultsClick }) {
           letter-spacing: 0;
         }
 
-        /* Rozwijacz nie nosi klasy .pre-match-p celowo: tamta reguła jest zagnieżdżona
-           w .choose-time, więc ma wyższą specyficzność i jej "display" wygrywałby
-           z ukrywaniem na desktopie. Własne style zamykają temat bez licytacji. */
-        .menu-dots-button {
-          display: none;
-          align-items: center;
-          color: var(--muted);
-          font-family: 'Roboto Condensed', sans-serif;
-          font-size: 20px;
-          line-height: 1;
-          padding: 0 4px;
-          transition: color 0.15s ease;
-        }
-
-        .menu-dots-button:hover {
-          color: var(--text);
-        }
-
+        /* Lista „Więcej" pod przyciskiem — na każdym ekranie. */
         .menu-expanded {
+          display: flex;
+          flex-direction: column;
+          position: absolute;
+          top: 100%;
+          left: 0;
+          min-width: 200px;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          box-shadow: var(--shadow-soft);
+          padding: 6px;
+          margin-top: 6px;
+          z-index: 100;
+          animation: slideDown 0.18s ease-out;
+        }
+
+        /* W rozwijanej liście pozycje są wierszami, więc gubią odstęp i podkreślenie z paska poziomego. */
+        .choose-time .menu-expanded .pre-match-p {
+          display: block;
+          width: 100%;
+          margin-top: 0;
+          padding: 9px 10px;
+          border: 0;
+          border-radius: 7px;
+          background: transparent;
+          text-align: left;
+        }
+
+        .choose-time .menu-expanded .pre-match-p:hover {
+          background: var(--surface-2);
+        }
+
+        .menu-expanded .active-section::after {
           display: none;
         }
 
-        /* Bez wyśrodkowania dzieci rozciągałyby się na wysokość kontenera, a tekst
-           siadałby wyżej niż w pozycjach spoza tego opakowania. */
-        .menu-desktop-items {
-          display: inline-flex;
-          align-items: center;
-          gap: 22px;
+        .choose-time .menu-expanded .menu-mobile-only {
+          display: none;
+        }
+
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-6px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
 
         @media (max-width: 768px) {
-          .menu-dots-button {
-            display: inline-flex;
+          /* Trzy pozycje i „Więcej" w jednym rzędzie od 320 px — stąd mniejszy odstęp. */
+          .football-menu-wrapper {
+            gap: 16px;
           }
 
-          /* Obok plakietki na telefonie mieści się tylko krótki napis (320 px: 143 + 107 z 280).
-             Typy na dziś się nie mieszczą — na telefonie są pierwszą pozycją pod „⋯". */
-          .football-today-link {
+          .menu-desktop-only,
+          .football-more-label {
             display: none;
           }
 
-          .football-tools-short {
+          .football-more-dots {
             display: inline;
           }
 
-          .football-tools-long {
-            display: none;
+          .choose-time .menu-expanded .menu-mobile-only {
+            display: block;
+          }
+
+          /* „Więcej" stoi przy prawej krawędzi — lista otwiera się w lewo, żeby nie wyjść za ekran. */
+          .menu-expanded {
+            left: auto;
+            right: 0;
           }
 
           /* Na telefonie asystent dostaje własny rząd pod zakładkami — szeroki, łatwy do trafienia kciukiem. */
@@ -382,71 +331,6 @@ export default function FootballMenu({ onResultsClick }) {
 
           .assistant-pill-more {
             display: inline;
-          }
-
-          /* Na telefonie zostaje sama ikona — ale w kółku, żeby dało się w nią trafić kciukiem. */
-          .guide-label {
-            display: none;
-          }
-
-          .choose-time .guide-button {
-            justify-content: center;
-            width: 30px;
-            height: 30px;
-            padding: 0;
-            border-radius: 999px;
-            background: var(--accent-soft);
-          }
-
-          .menu-desktop-items {
-            display: none;
-          }
-
-          .menu-expanded {
-            display: flex;
-            flex-direction: column;
-            position: absolute;
-            top: 100%;
-            left: 0;
-            min-width: 190px;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            box-shadow: var(--shadow-soft);
-            padding: 6px;
-            margin-top: 6px;
-            z-index: 100;
-            animation: slideDown 0.18s ease-out;
-          }
-
-          /* W rozwijanym menu pozycje są wierszami listy, więc gubią odstęp i podkreślenie
-             z paska poziomego. */
-          .menu-expanded .pre-match-p {
-            display: block;
-            width: 100%;
-            margin-top: 0;
-            padding: 9px 10px;
-            border-radius: 7px;
-            text-align: left;
-          }
-
-          .menu-expanded .pre-match-p:hover {
-            background: var(--surface-2);
-          }
-
-          .menu-expanded .active-section::after {
-            display: none;
-          }
-
-          @keyframes slideDown {
-            from {
-              opacity: 0;
-              transform: translateY(-6px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
           }
         }
       `}</style>
