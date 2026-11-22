@@ -874,5 +874,8 @@
 		"limit_ai_chat": "Question limit used up. Pro for {week} days: {questions, plural, one {# question} other {# questions}} for {price} zł.",
 		"limit_analysis_view": "Daily limit of ready analyses used up. Pro for {week} days: no limit, for {price} zł.",
 		"limit_report": "AI report limit used up. Pro for {week} days: {reports, plural, one {# report} other {# reports}} for {price} zł."
+	},
+	"ux_p1": {
+		"unlock_guest": "Reveal the pick for free"
 	}
 }

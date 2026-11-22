@@ -874,5 +874,8 @@
 		"limit_ai_chat": "Limit pytań wykorzystany. Pro na {week} dni: {questions, plural, one {# pytanie} few {# pytania} many {# pytań} other {# pytania}} za {price} zł.",
 		"limit_analysis_view": "Dzienny limit gotowych analiz wykorzystany. Pro na {week} dni: bez limitu, za {price} zł.",
 		"limit_report": "Limit raportów AI wykorzystany. Pro na {week} dni: {reports, plural, one {# raport} few {# raporty} many {# raportów} other {# raportu}} za {price} zł."
+	},
+	"ux_p1": {
+		"unlock_guest": "Odkryj typ za darmo"
 	}
 }

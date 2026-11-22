@@ -59,6 +59,17 @@ describe('strona główna', () => {
 			for (const slowo of zakazane) assert.ok(!tekst.includes(slowo), slowo);
 		});
 
+		test(`${locale}: FAQ krótkie — najwyżej dziesięć pytań, zwięzłe odpowiedzi`, () => {
+			// 22.11.2026: z 23 pytań i ok. 1100 słów zostało 10; reszta jest na „Jak to działa".
+			assert.ok(faq.length <= 10, `za dużo pytań: ${faq.length}`);
+			for (const f of faq) {
+				const slowa = f.answer.split(/\s+/).length;
+				// Kupony dłużej, bo muszą mieć komplet zastrzeżeń.
+				const limit = O_KURSACH.test(f.question) ? 70 : 45;
+				assert.ok(slowa <= limit, `${f.question}: ${slowa} słów`);
+			}
+		});
+
 		test(`${locale}: FAQ ma pytanie o „zwykle" i o rodzaje typów`, () => {
 			const pytania = faq.map((f) => f.question.toLowerCase());
 			assert.ok(pytania.some((q) => q.includes('44')), 'brak pytania o „66% (zwykle 44%)"');

@@ -51,6 +51,16 @@ describe('dane strukturalne: oferty', () => {
 				assert.equal(dane.mainEntity[i].acceptedAnswer.text, item.answer);
 			});
 		});
+
+		test(`${locale}: FAQPage „Jak to działa" to pytania tej strony, bez pytań ze strony głównej`, async () => {
+			// 22.11.2026: rzadsze pytania zeszły ze strony głównej na „Jak to działa", z własnym FAQPage.
+			const { methodFaqItems } = await import('@/lib/landing/faq');
+			const faq = methodFaqItems(locale);
+			const dane = czytaj(faqLd(faq));
+			assert.equal(dane.mainEntity.length, faq.length);
+			const glowna = new Set(faqItems(locale).map((f) => f.question));
+			for (const pytanie of dane.mainEntity) assert.ok(!glowna.has(pytanie.name), pytanie.name);
+		});
 	}
 });
 

@@ -1,21 +1,21 @@
 import AppShell from '@/components/layout/AppShell';
-import {
-	MethodHero,
-	MethodLimits,
-	MethodProof,
-	MethodSteps,
-	MethodSummary,
-	MethodThreshold,
-} from '@/components/method/MethodSections';
+import { MethodDetails, MethodHero, MethodSummary } from '@/components/method/MethodSections';
+import { Faq } from '@/components/landing/LandingSections';
 import { methodContent } from '@/lib/landing/method';
+import { methodFaqItems } from '@/lib/landing/faq';
 import { buildMetadata } from '@/lib/seo/metadata';
+import { JsonLd, faqLd } from '@/lib/seo/jsonLd';
 
 /**
- * „Jak to liczymy" — strona o metodzie, w całości serwerowa.
+ * „Jak to działa" — strona o metodzie, w całości serwerowa.
  *
  * Powstała, bo serwis obiecuje analizy oparte na danych, a nigdzie nie mówił, co to
  * właściwie znaczy. Bez tej strony „model statystyczny" jest hasłem marketingowym;
  * z nią jest sprawdzalną deklaracją, razem z listą rzeczy, których świadomie nie robimy.
+ *
+ * Od 22.11.2026: skrót na górze, szczegóły w `details`, a na dole pytania zdjęte ze strony
+ * głównej — z własnym `FAQPage` (te same pytania co na ekranie, żadne nie powtarza się
+ * z FAQPage strony głównej).
  *
  * Adres jest po polsku i bez segmentu dyscypliny, bo metoda dotyczy całego serwisu,
  * a nie jednego sportu.
@@ -38,15 +38,15 @@ export async function generateMetadata({ params }) {
 export default async function Page({ params }) {
 	const { locale } = await params;
 	const content = methodContent(locale);
+	const faq = methodFaqItems(locale);
 
 	return (
 		<AppShell>
+			<JsonLd data={faqLd(faq)} />
 			<MethodHero content={content} />
-			<MethodSummary content={content.summary} />
-			<MethodSteps content={content.steps} />
-			<MethodThreshold content={content.threshold} />
-			<MethodLimits content={content.limits} />
-			<MethodProof content={content.proof} />
+			<MethodSummary content={content.summary} cta={content.cta} proofCta={content.proof.cta} />
+			<MethodDetails content={content} />
+			<Faq title={content.faq.title} items={faq} titleId="method-faq-title" />
 		</AppShell>
 	);
 }
