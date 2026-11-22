@@ -22,7 +22,7 @@ import { landingContent } from '@/lib/landing/content';
 import { methodContent } from '@/lib/landing/method';
 import { faqItems } from '@/lib/landing/faq';
 import { SPORT_CATEGORIES } from '@/lib/navigation';
-import { PUBLIC_PLANS } from '@/lib/billing/plans';
+import { PLAN_PASS_DAYS, PRO_WEEK, PUBLIC_PLANS } from '@/lib/billing/plans';
 import { ANALIZY, PYTANIA, RAPORTY, odmien } from '@/lib/landing/plural';
 
 /**
@@ -61,18 +61,25 @@ export async function generateMetadata({ params }) {
 	});
 }
 
-/** Krótki opis planu na landingu — pełna tabela jest w cenniku. */
-function planSummary(plan, locale) {
-	const analysis = plan.limits.analysis;
-	const chat = plan.limits.aiChat;
-	const report = plan.limits.report;
+/**
+ * Krótki opis planu na landingu — pełna tabela jest w cenniku.
+ *
+ * `days` — długość biletu (7 albo 30); darmowy liczy limity w miesiącu. Płatne to jednorazowy
+ * dostęp, nie abonament, więc „na 30 dni", a nie „miesięcznie" (tak samo mówi cennik).
+ */
+function planSummary(limits, locale, days = null) {
+	const analysis = limits.analysis;
+	const chat = limits.aiChat;
+	const report = limits.report;
 
 	if (locale === 'en') {
-		return `${analysis} analyses · ${chat} questions · ${report || 'no'} reports per month`;
+		const okres = days ? `for ${days} days` : 'per month';
+		return `${analysis} analyses · ${chat} questions · ${report || 'no'} reports ${okres}`;
 	}
+	const okres = days ? `na ${days} dni` : 'miesięcznie';
 	return (
 		`${analysis} ${odmien(analysis, ANALIZY)} · ${chat} ${odmien(chat, PYTANIA)} · ` +
-		`${report ? `${report} ${odmien(report, RAPORTY)}` : 'bez raportów'} miesięcznie`
+		`${report ? `${report} ${odmien(report, RAPORTY)}` : 'bez raportów'} ${okres}`
 	);
 }
 
@@ -84,12 +91,30 @@ export default async function HomePage({ params }) {
 	const method = methodContent(locale);
 	const faq = faqItems(locale);
 
-	const plans = PUBLIC_PLANS.map((plan) => ({
-		id: plan.id,
-		priceMonthlyPln: plan.priceMonthlyPln,
-		name: t(plan.nameKey),
-		summary: planSummary(plan, locale),
-	}));
+	const tb = await getTranslations('billing2');
+	/*
+	 * Cztery karty jak w cenniku: darmowy, przepustka Pro na 7 dni (wejście za 19 zł — do 22.11.2026
+	 * strona główna jej nie pokazywała, choć cennik tak), Pro i VIP na 30 dni.
+	 */
+	const plans = PUBLIC_PLANS.flatMap((plan) => {
+		const karta = {
+			id: plan.id,
+			price: plan.priceMonthlyPln,
+			days: plan.priceMonthlyPln > 0 ? PLAN_PASS_DAYS : null,
+			name: t(plan.nameKey),
+			summary: planSummary(plan.limits, locale, plan.priceMonthlyPln > 0 ? PLAN_PASS_DAYS : null),
+		};
+		if (plan.id !== PRO_WEEK.planId) return [karta];
+		const tydzien = {
+			id: PRO_WEEK.id,
+			price: PRO_WEEK.priceGrosze / 100,
+			days: PRO_WEEK.days,
+			name: tb('card_week_title', { week: PRO_WEEK.days }),
+			summary: planSummary(PRO_WEEK.limits, locale, PRO_WEEK.days),
+			badge: tb('card_week_badge'),
+		};
+		return [tydzien, karta];
+	});
 
 	return (
 		<AppShell contentClassName="px-0">
@@ -101,11 +126,9 @@ export default async function HomePage({ params }) {
 
 			<Hero content={content.hero} />
 			{/*
-			 * Kolejność: analiza w 30 sekund (nagłówek) → sprawdzalny wynik (rejestr typów z CLV) →
-			 * narzędzia. Rejestr przed typem dnia i kuponami: najpierw dowód, potem oferta.
+			 * Kolejność (decyzja właściciela z 22.11.2026): najpierw to, po co ktoś przyszedł — typ dnia
+			 * i kupony — a pod nimi rejestr typów jako dowód, że te same typy są rozliczane publicznie.
 			 */}
-			<Register content={content.register} note={tt('landing_note')} />
-			{/* Typ dnia pod rejestrem — konkretny przykład tego, co rejestr rozlicza. */}
 			<DailyPickTeaser />
 			<CouponTeaser />
 			{/* Wyższe kursy pod kuponami — bez liczb (strona główna nie pyta bazy o bilans). */}
@@ -114,6 +137,7 @@ export default async function HomePage({ params }) {
 					<ValueTeaser c={valueContent(locale)} compact />
 				</div>
 			</section>
+			<Register content={content.register} note={tt('landing_note')} />
 			<Problem content={content.problem} />
 			<Features content={content.features} />
 			<HowItWorks content={content.how} />
@@ -123,7 +147,7 @@ export default async function HomePage({ params }) {
 				content={content.pricing}
 				plans={plans}
 				freeLabel={t('pricing_free')}
-				monthLabel={t('pricing_month')}
+				daysLabel={(days) => tb('limit_per_days', { days })}
 			/>
 			<Faq title={content.faq.title} items={faq} />
 			<FinalCta content={content.finalCta} note={t('footer_responsible_gaming')} />

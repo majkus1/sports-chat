@@ -352,10 +352,11 @@ describe('teksty: bez obietnic zysku i zachęt do gry', () => {
 			assert.ok(trust.landing_note.includes('18+'), 'brak 18+ przy liczbach na stronie głównej');
 		});
 
-		test(`${locale}: hero mówi o analizie w 30 sekund i o sprawdzalnym wyniku`, () => {
-			const hero = landingContent(locale).hero;
-			assert.match(hero.title, /30/);
-			assert.ok(hero.registerCta, 'brak odnośnika do rejestru w nagłówku');
+		test(`${locale}: hasło o analizie w 30 sekund stoi nad rejestrem, nagłówek ma odnośnik do rejestru`, () => {
+			// 22.11.2026: nagłówek wrócił do poprzedniego tytułu, hasło przeszło do sekcji rejestru.
+			const c = landingContent(locale);
+			assert.match(c.register.title, /30/);
+			assert.ok(c.hero.registerCta, 'brak odnośnika do rejestru w nagłówku');
 		});
 	}
 });

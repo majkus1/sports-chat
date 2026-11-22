@@ -256,28 +256,31 @@ export function Sports({ content, categories, labelFor }) {
 	);
 }
 
-export function Pricing({ content, plans, freeLabel, monthLabel }) {
+export function Pricing({ content, plans, freeLabel, daysLabel }) {
 	return (
 		<Section titleId="pricing-title">
 			<SectionTitle id="pricing-title">{content.title}</SectionTitle>
 			<p className="mt-3 max-w-2xl text-base leading-relaxed text-muted">{content.body}</p>
 
-			<div className="mt-8 grid gap-4 sm:grid-cols-3">
+			<div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 				{plans.map((plan) => (
 					<Card
 						key={plan.id}
 						// Darmowy wyróżniony celowo: to on zdejmuje barierę wejścia, a nie plan za 99 zł.
-						className={cn('h-full', plan.priceMonthlyPln === 0 && 'border-accent ring-1 ring-accent')}
+						className={cn('h-full', plan.price === 0 && 'border-accent ring-1 ring-accent')}
 					>
 						<CardContent className="flex h-full flex-col gap-2 px-5 py-5">
-							<p className="text-xs font-bold uppercase tracking-wide text-muted">{plan.name}</p>
+							<div className="flex flex-wrap items-center justify-between gap-2">
+								<p className="text-xs font-bold uppercase tracking-wide text-muted">{plan.name}</p>
+								{plan.badge && <Badge variant="outline">{plan.badge}</Badge>}
+							</div>
 							<p className="font-display text-2xl font-bold text-text">
-								{plan.priceMonthlyPln === 0 ? (
+								{plan.price === 0 ? (
 									freeLabel
 								) : (
 									<>
-										{plan.priceMonthlyPln} zł
-										<span className="text-sm font-normal text-muted"> / {monthLabel}</span>
+										{plan.price} zł
+										<span className="text-sm font-normal text-muted"> {daysLabel(plan.days)}</span>
 									</>
 								)}
 							</p>
