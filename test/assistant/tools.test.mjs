@@ -806,6 +806,36 @@ describe('zloz_kupon — kreator kuponu z rozmowy', () => {
 		assert.equal(w.limit, 'nie został zużyty — zostało 3 z 3 na dziś');
 	});
 
+	test('„nie da się" z propozycjami: asystent dostaje ustawienia do ponownego `zloz_kupon` i zapowiedź', async () => {
+		const { uruchom } = wykonawca({
+			zrodla: {
+				customCoupon: async () => ({
+					status: 'impossible',
+					reason: 'few_picks',
+					params: { odds: '2.5', legs: 4, window: 'evening', leagues: [], skipPublished: false },
+					counts: { matches: 2, withOdds: 2, picks: 1, needed: 2 },
+					suggest: ['window'],
+					dropped: [],
+					partial: false,
+					alternatives: [
+						{
+							params: { odds: '2.5', legs: 4, window: 'tomorrow', leagues: [], skipPublished: false },
+							changes: [{ field: 'window', from: 'evening', to: 'tomorrow' }],
+							preview: { legs: [{}, {}, {}], totalOdds: 2.52, chance: 39 },
+							picks: { before: 1, after: 6 },
+						},
+					],
+					quota: { limit: 3, used: 0, remaining: 3 },
+				}),
+			},
+		});
+		const w = await uruchom('zloz_kupon', { kurs: 2.5, okno: 'evening' });
+		assert.equal(w.propozycje.length, 1);
+		assert.deepEqual(w.propozycje[0].zloz_z, { kurs: 2.5, mecze: 4, okno: 'tomorrow', bez_kuponow_serwisu: false });
+		assert.deepEqual(w.propozycje[0].zapowiedz, { liczba_meczow: 3, kurs_laczny: 2.52, szansa_pct: 39 });
+		assert.match(w.propozycje[0].ustawienia, /Jutro 12–23/);
+	});
+
 	test('plan bez kreatora — "dostep" z cennikiem; limit na dziś — "niedostepne"; gość — bez wołania serwisu', async () => {
 		const bezPlanu = await wykonawca({ user: DARMOWY, zrodla: { customCoupon: async () => ({ status: 'plan_required' }) } }).uruchom('zloz_kupon', {});
 		assert.match(bezPlanu.dostep, /Pro/);

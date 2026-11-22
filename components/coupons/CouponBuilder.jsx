@@ -1,10 +1,12 @@
 'use client';
 
 import { useContext, useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ArrowRight, History, Loader2, Lock, ShieldAlert, SlidersHorizontal, TicketPlus, TriangleAlert } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { UserContext, useAuthKey } from '@/context/UserContext';
 import CouponCard from '@/components/coupons/CouponCard';
+import CouponAlternatives from '@/components/coupons/CouponAlternatives';
 import { Switch } from '@/components/ui/Switch';
 import { couponBuilderContent, couponContent, customImpossibleText } from '@/lib/coupons/content';
 import {
@@ -25,7 +27,9 @@ import { cn } from '@/lib/utils';
  * Kilka pigułek zamiast formularza: kurs łączny, najwyżej ile meczów, kiedy mecze się zaczynają,
  * ligi i „bez meczów z kuponów serwisu". Wynik to ta sama karta co kupony serwisu (`CouponCard`) —
  * kurs łączny i szansa modelu obok siebie, notki terminarza, informacja o sprawdzeniu wiadomości —
- * albo uczciwe „nie da się" z powodem i podpowiedzią (limit wtedy nie schodzi).
+ * albo uczciwe „nie da się" z powodem i (od 22.11.2026) kartą „Tak się nie da, ale możemy…" z 1–3
+ * działającymi wariantami ustawień (`CouponAlternatives`): zapowiedź kuponu, krótki powód i przycisk,
+ * który składa kupon z tymi ustawieniami. Limit schodzi dopiero przy faktycznie złożonym kuponie.
  *
  * DOSTĘP z serwera: gość i plan bez kreatora widzą zapowiedź z cennikiem; o licznik „zostało X z Y"
  * pytamy `/api/coupons/mine?limit=0`. Sama trasa i tak sprawdza plan i limit — przycisk nic nie obchodzi.
@@ -89,6 +93,7 @@ function Grupa({ label, children, note }) {
 
 export default function CouponBuilder({ locale, className }) {
 	const b = couponBuilderContent(locale);
+	const t2 = useTranslations('builder2');
 	const karta = { ...couponContent(locale), newsChecked: b.newsChecked };
 	const { isAuthed } = useContext(UserContext) || {};
 	const authKey = useAuthKey();
@@ -99,6 +104,9 @@ export default function CouponBuilder({ locale, className }) {
 	const [laduje, setLaduje] = useState(false);
 	const [wynik, setWynik] = useState(null);
 	const [blad, setBlad] = useState(null);
+	// Która propozycja się składa (numer karty) — spinner na jej przycisku, nie na głównym.
+	const [przyjmowana, setPrzyjmowana] = useState(null);
+	const wynikRef = useRef(null);
 	const zamontowany = useRef(true);
 	const wczytane = useRef(false);
 
@@ -173,15 +181,21 @@ export default function CouponBuilder({ locale, className }) {
 		});
 	};
 
-	const zloz = async () => {
+	/**
+	 * Złożenie z bieżących ustawień albo z przyjętej propozycji (`from` — próba i numer karty, do dziennika
+	 * prób). Przy propozycji pigułki przestawiają się na jej ustawienia, żeby było widać, z czego kupon powstał.
+	 */
+	const zloz = async (params = ustawienia, from = null) => {
 		setLaduje(true);
 		setBlad(null);
+		setPrzyjmowana(from ? from.index : null);
+		if (from) setUstawienia(params);
 		try {
 			const res = await fetch('/api/coupons/generate', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ params: ustawienia }),
+				body: JSON.stringify(from ? { params, from } : { params }),
 			});
 			const dane = await res.json().catch(() => null);
 			if (!zamontowany.current) return;
@@ -202,11 +216,16 @@ export default function CouponBuilder({ locale, className }) {
 				setBlad(b.error);
 				return;
 			}
-			setWynik(dane);
+			setWynik({ ...dane, fromProposal: Boolean(from) });
+			// Czytnik ekranu i klawiatura trafiają od razu do wyniku (kupon albo karta z propozycjami).
+			requestAnimationFrame(() => wynikRef.current?.focus({ preventScroll: false }));
 		} catch {
 			if (zamontowany.current) setBlad(b.error);
 		} finally {
-			if (zamontowany.current) setLaduje(false);
+			if (zamontowany.current) {
+				setLaduje(false);
+				setPrzyjmowana(null);
+			}
 		}
 	};
 
@@ -297,11 +316,15 @@ export default function CouponBuilder({ locale, className }) {
 						<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
 							<button
 								type="button"
-								onClick={zloz}
+								onClick={() => zloz()}
 								disabled={laduje || brakLimitu || !oknoOtwarte}
 								className="inline-flex items-center justify-center gap-2 rounded-[var(--radius-ui)] bg-accent px-5 py-3 text-base font-bold text-accent-fg transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
 							>
-								{laduje ? <Loader2 size={18} aria-hidden="true" className="motion-safe:animate-spin" /> : <TicketPlus size={18} aria-hidden="true" />}
+								{laduje && przyjmowana === null ? (
+									<Loader2 size={18} aria-hidden="true" className="motion-safe:animate-spin" />
+								) : (
+									<TicketPlus size={18} aria-hidden="true" />
+								)}
 								{b.submit}
 							</button>
 							{quota && (
@@ -326,7 +349,22 @@ export default function CouponBuilder({ locale, className }) {
 							</p>
 						)}
 
-						{wynik && !laduje && <Wynik b={b} karta={karta} wynik={wynik} locale={locale} />}
+						{/* Karta z propozycjami zostaje w czasie składania propozycji — przycisk na niej pokazuje postęp. */}
+						{wynik && (!laduje || przyjmowana !== null) && (
+							<div ref={wynikRef} tabIndex={-1} className="outline-none">
+								<Wynik
+									b={b}
+									t2={t2}
+									karta={karta}
+									wynik={wynik}
+									locale={locale}
+									laduje={laduje}
+									przyjmowana={przyjmowana}
+									brakLimitu={brakLimitu}
+									onAccept={(alt, index) => zloz(alt.params, { attempt: wynik.attemptId, index })}
+								/>
+							</div>
+						)}
 
 						<p className="text-xs leading-relaxed text-muted">{b.honest}</p>
 						<Link
@@ -344,11 +382,14 @@ export default function CouponBuilder({ locale, className }) {
 	);
 }
 
-function Wynik({ b, karta, wynik, locale }) {
+function Wynik({ b, t2, karta, wynik, locale, laduje, przyjmowana, brakLimitu, onAccept }) {
 	if (wynik.ok && wynik.coupon) {
 		const k = wynik.coupon;
 		return (
 			<div className="flex flex-col gap-2" aria-live="polite">
+				{wynik.fromProposal && (
+					<p className="rounded-[var(--radius-ui)] bg-accent-soft/60 px-3 py-2 text-xs font-semibold text-text">{t2('fromProposal')}</p>
+				)}
 				{k.params && <p className="text-xs text-muted">{b.paramsLine(k.params)}</p>}
 				{wynik.repeated && <p className="rounded-[var(--radius-ui)] bg-surface-2 px-3 py-2 text-xs text-muted">{b.repeated}</p>}
 				{k.newsSkipped && (
@@ -359,6 +400,20 @@ function Wynik({ b, karta, wynik, locale }) {
 				)}
 				<CouponCard coupon={k} c={karta} label={b.resultLabel(k.createdAt)} locale={locale} />
 			</div>
+		);
+	}
+	if (wynik.alternatives?.length) {
+		return (
+			<CouponAlternatives
+				b={b}
+				t2={t2}
+				wynik={wynik}
+				locale={locale}
+				laduje={laduje}
+				przyjmowana={przyjmowana}
+				brakLimitu={brakLimitu}
+				onAccept={onAccept}
+			/>
 		);
 	}
 	const t = customImpossibleText(locale, wynik);
@@ -383,6 +438,10 @@ function Wynik({ b, karta, wynik, locale }) {
 				<p className="mt-2 text-xs leading-relaxed text-muted">
 					<span className="font-semibold text-text">{b.suggestTitle}</span> {t.suggestions.join('; ')}.
 				</p>
+			)}
+			{/* Serwer szukał propozycji i żadna nie spełnia zasad — mówimy to wprost, zamiast milczeć. */}
+			{Array.isArray(wynik.alternatives) && wynik.reason !== 'unavailable' && (
+				<p className="mt-2 text-xs leading-relaxed text-muted">{t2('none')}</p>
 			)}
 			<p className="mt-2 text-xs font-semibold text-accent">{b.noCharge}</p>
 		</div>

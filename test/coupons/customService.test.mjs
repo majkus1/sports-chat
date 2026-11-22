@@ -23,6 +23,7 @@ setupEnv();
 await mongoose.connect(process.env.DATABASE_URL, { serverSelectionTimeoutMS: 20000 });
 
 const Coupon = (await import('@/models/Coupon')).default;
+const CouponGenAttempt = (await import('@/models/CouponGenAttempt')).default;
 const { customGenerateHttp, customMineHttp } = await import('@/lib/coupons/customService');
 const { settleCoupons, couponsOverview, couponLegsForDate, couponStats, activeCouponFixtureIds } = await import('@/lib/coupons/service');
 const { trialAllowance } = await import('@/lib/billing/entitlements');
@@ -32,6 +33,8 @@ const { localMidnight } = await import('@/lib/time');
 const PREFIX = `8${crypto.randomInt(10_000_000, 99_999_999)}`;
 const USER = new mongoose.Types.ObjectId();
 const INNY = new mongoose.Types.ObjectId();
+/** Konto do propozycji i dziennika prób — osobne, żeby nie mieszać „Moich kuponów" pierwszego konta. */
+const TRZECI = new mongoose.Types.ObjectId();
 const PRO = { plan: 'pro', planStatus: 'active', planValidUntil: new Date('2099-12-31T00:00:00Z'), createdAt: new Date('2020-01-01') };
 
 const o = (date, h, m = 0) => new Date(localMidnight(date).getTime() + (h * 60 + m) * 60_000);
@@ -81,11 +84,16 @@ const LISTY = {
 	[D]: [...wieczor(D), wpis(D, 22, 70, 1.39), wpis(D, 22, 69, 1.39, { m: 30 })],
 	[E]: wieczor(E),
 };
+// Propozycje: wybrane ligi (Hiszpania) bez meczów, w Anglii wieczorem kupon jest — „wszystkie ligi" działa.
+const F = '2099-07-04';
+const G = '2099-07-08';
+LISTY[F] = wieczor(F);
+LISTY[G] = wieczor(G);
 const RYZYKOWNY = LISTY[C][0].fixtureId;
 
 /** Zależności serwisu — liczniki wywołań, żeby sprawdzić także to, czego NIE zrobiono. */
 function zaleznosci(over = {}) {
-	const s = { zuzyte: [], uzycie: [], plakietki: 0, wiadomosci: [] };
+	const s = { zuzyte: [], uzycie: [], plakietki: 0, wiadomosci: [], kursy: 0, podglad: 0 };
 	s.deps = {
 		loadUser: async () => PRO,
 		checkQuota: async () => ({ allowed: true, limit: 3, used: 0, remaining: 3, plan: 'pro' }),
@@ -96,7 +104,16 @@ function zaleznosci(over = {}) {
 			s.plakietki += 1;
 			return { list: LISTY[date] || [] };
 		},
-		fetchOdds: async (id) => ({ at: new Date(), bookmakers: 8, home: kursy.get(id) ?? null }),
+		fetchOdds: async (id) => {
+			s.kursy += 1;
+			return { at: new Date(), bookmakers: 8, home: kursy.get(id) ?? null };
+		},
+		// Propozycje: kursy „z pamięci podręcznej" — te same liczby, ale osobny licznik (to nie zapytania).
+		peekOdds: async (id) => {
+			s.podglad += 1;
+			return { at: new Date(), bookmakers: 8, home: kursy.get(id) ?? null };
+		},
+		peekVerdict: () => null,
 		checkNews: async (leg) => {
 			s.wiadomosci.push(leg.fixtureId);
 			return leg.fixtureId === RYZYKOWNY
@@ -113,7 +130,8 @@ const zloz = (s, params, now, userId = USER) => customGenerateHttp({ userId, bod
 const WIECZOR_25 = { odds: 2.5, legs: 4, window: 'evening' };
 
 after(async () => {
-	await Coupon.deleteMany({ $or: [{ userId: { $in: [USER, INNY] } }, { key: `daily:${D}` }] });
+	await Coupon.deleteMany({ $or: [{ userId: { $in: [USER, INNY, TRZECI] } }, { key: `daily:${D}` }] });
+	await CouponGenAttempt.deleteMany({ userId: { $in: [USER, INNY, TRZECI] } });
 	await mongoose.disconnect();
 });
 
@@ -227,15 +245,24 @@ describe('złożenie kuponu', () => {
 		assert.equal(await Coupon.countDocuments({ userId: USER, date: B }), 0);
 	});
 
-	test('dwa mecze przy ok. 3,0 albo okno już puste: „nie da się" bez pobierania czegokolwiek', async () => {
+	test('dwa mecze przy ok. 3,0 albo okno już puste: „nie da się" bez zapytań o kursy, z propozycją', async () => {
 		const s = zaleznosci();
 		// Nogi do 1,60: dwie dają najwyżej 2,56 — dość na ~2,5, za mało na ~3,0.
 		const dwa = await zloz(s, { ...WIECZOR_25, odds: 3, legs: 2 }, o(A, 10));
 		assert.equal(dwa.body.reason, 'too_few_legs');
 		assert.equal(dwa.body.needed, 3);
+		// Cztery wieczorne typy po 1,35–1,38 dają 3,47 — propozycja „najwyżej 4 mecze" (trzy dają tylko 2,57).
+		assert.ok(dwa.body.alternatives.length >= 1, JSON.stringify(dwa.body));
+		assert.ok(dwa.body.alternatives.every((a) => a.params.legs >= 3));
+		assert.ok(dwa.body.alternatives.some((a) => a.params.odds === '3.0' && a.params.legs === 4 && a.preview.legs.length === 4));
 		const pozno = await zloz(s, WIECZOR_25, o(A, 22, 30));
 		assert.equal(pozno.body.reason, 'window_closed');
-		assert.equal(s.plakietki, 0);
+		// Po 22:30 z dzisiejszych meczów nic nie zostało — w danych testu nie ma meczów jutro, więc bez propozycji.
+		assert.deepEqual(pozno.body.alternatives, []);
+		// Propozycje czytają plakietki (pamięć procesu) i kursy z pamięci podręcznej — dostawcy kursów o nic nie pytamy.
+		assert.equal(s.kursy, 0);
+		assert.ok(s.podglad > 0);
+		assert.deepEqual(s.wiadomosci, []);
 		assert.equal(s.zuzyte.length, 0);
 	});
 
@@ -292,6 +319,151 @@ describe('złożenie kuponu', () => {
 		assert.equal(bez.body.ok, true, JSON.stringify(bez.body));
 		assert.ok(!bez.body.coupon.legs.some((l) => ids.includes(l.fixtureId)));
 		assert.equal(bez.body.coupon.params.skipPublished, true);
+	});
+});
+
+describe('propozycje przy „nie da się" i dziennik prób', () => {
+	const HISZPANIA = { ...WIECZOR_25, leagues: ['spain'] };
+	let proba;
+
+	test('wybrane ligi bez meczów: powód „w wybranych ligach nic", propozycja „wszystkie ligi" z zapowiedzią, limit nietknięty', async () => {
+		const s = zaleznosci({ checkQuota: async () => ({ allowed: true, limit: 2, used: 0, remaining: 2, plan: 'free', inTrial: true }) });
+		const r = await zloz(s, HISZPANIA, o(F, 10), TRZECI);
+		assert.equal(r.status, 200);
+		assert.equal(r.body.ok, false);
+		assert.equal(r.body.reason, 'leagues_empty', JSON.stringify(r.body));
+		assert.equal(r.body.counts.otherLeagues, 4);
+		const [pierwsza] = r.body.alternatives;
+		assert.deepEqual(pierwsza.changes, [{ field: 'leagues', from: ['spain'], to: [] }]);
+		assert.deepEqual(pierwsza.params, { odds: '2.5', legs: 4, window: 'evening', leagues: [], skipPublished: false });
+		assert.equal(pierwsza.preview.legs.length, 3);
+		assert.ok(pierwsza.preview.totalOdds >= 2.4 && pierwsza.preview.totalOdds <= 2.8);
+		assert.ok(pierwsza.preview.legs.every((l) => LISTY[F].some((w) => w.fixtureId === l.fixtureId)));
+		// Zapowiedź nie sprawdza wiadomości i nie zużywa limitu.
+		assert.deepEqual(s.wiadomosci, []);
+		assert.equal(s.zuzyte.length, 0);
+		assert.deepEqual(r.body.quota, { limit: 2, used: 0, remaining: 2, inTrial: true });
+
+		// Dziennik: ustawienia, powód, propozycje, plan — i nic poza `userId` o osobie.
+		assert.match(r.body.attemptId, /^[0-9a-f]{24}$/);
+		proba = await CouponGenAttempt.findById(r.body.attemptId).lean();
+		assert.equal(String(proba.userId), String(TRZECI));
+		assert.equal(proba.plan, 'free');
+		assert.equal(proba.inTrial, true);
+		assert.equal(proba.reason, 'leagues_empty');
+		assert.deepEqual(proba.params, { odds: '2.5', legs: 4, window: 'evening', leagues: ['spain'], skipPublished: false });
+		assert.equal(proba.alternatives.length, r.body.alternatives.length);
+		assert.deepEqual(proba.alternatives[0].changes, ['leagues']);
+		assert.equal(proba.accepted, null);
+		assert.equal(proba.createdAt.toISOString(), o(F, 10).toISOString());
+		const dni = (proba.expiresAt - Date.now()) / 86_400_000;
+		assert.ok(dni > 179 && dni <= 180, `TTL ${dni} dni`);
+		assert.deepEqual(
+			Object.keys(proba).filter((k) => !['_id', '__v', 'createdAt', 'updatedAt'].includes(k)).sort(),
+			['accepted', 'alternatives', 'counts', 'dropped', 'expiresAt', 'fromAttempt', 'inTrial', 'params', 'partial', 'plan', 'reason', 'userId']
+		);
+	});
+
+	test('przyjęcie propozycji jednym kliknięciem: kupon z jej ustawień, limit zużyty raz, w dzienniku „przyjęta, kupon powstał"', async () => {
+		const s = zaleznosci();
+		const alt = (await CouponGenAttempt.findById(proba._id).lean()).alternatives[0];
+		const r = await customGenerateHttp({
+			userId: TRZECI,
+			body: { params: alt.params, from: { attempt: String(proba._id), index: 0 } },
+			now: o(F, 10, 1),
+			deps: s.deps,
+		});
+		assert.equal(r.body.ok, true, JSON.stringify(r.body));
+		assert.deepEqual(r.body.coupon.params.leagues, []);
+		assert.ok(r.body.coupon.newsCheck.checked >= 3, 'przyjęta propozycja przechodzi sprawdzenie wiadomości');
+		assert.equal(s.zuzyte.length, 1);
+		const po = await CouponGenAttempt.findById(proba._id).lean();
+		assert.equal(po.accepted.index, 0);
+		assert.equal(po.accepted.outcome, 'ok');
+
+		// Drugie przyjęcie z tej samej próby nie nadpisuje pierwszego (a ten sam kupon minutę później to powtórka bez zużycia).
+		await customGenerateHttp({ userId: TRZECI, body: { params: alt.params, from: { attempt: String(proba._id), index: 1 } }, now: o(F, 10, 2), deps: s.deps });
+		assert.equal((await CouponGenAttempt.findById(proba._id).lean()).accepted.index, 0);
+		assert.equal(s.zuzyte.length, 1);
+	});
+
+	test('cudza próba: przyjęcie nie zmienia wpisu innego konta', async () => {
+		const s = zaleznosci();
+		const alt = (await CouponGenAttempt.findById(proba._id).lean()).alternatives[0];
+		await CouponGenAttempt.updateOne({ _id: proba._id }, { $set: { accepted: null } });
+		await customGenerateHttp({ userId: INNY, body: { params: alt.params, from: { attempt: String(proba._id), index: 0 } }, now: o(F, 10, 3), deps: s.deps });
+		assert.equal((await CouponGenAttempt.findById(proba._id).lean()).accepted, null);
+	});
+
+	test('przyjęta propozycja, ale wiadomości odrzucają typy: nowe „nie da się", limit nietknięty, oba wpisy w dzienniku', async () => {
+		const pierwsza = await zloz(zaleznosci(), HISZPANIA, o(G, 10), TRZECI);
+		const alt = pierwsza.body.alternatives[0];
+		assert.ok(alt, JSON.stringify(pierwsza.body));
+		const s = zaleznosci({
+			checkNews: async (leg) => {
+				s.wiadomosci.push(leg.fixtureId);
+				return { verdict: 'risk', reason: 'rotacja', sources: [] };
+			},
+		});
+		const r = await customGenerateHttp({
+			userId: TRZECI,
+			body: { params: alt.params, from: { attempt: pierwsza.body.attemptId, index: 0 } },
+			now: o(G, 10, 1),
+			deps: s.deps,
+		});
+		assert.equal(r.body.ok, false);
+		assert.equal(r.body.reason, 'news_dropped');
+		assert.equal(s.zuzyte.length, 0);
+		// Typy odrzucone przez wiadomości nie wracają w żadnej nowej zapowiedzi.
+		const odrzucone = r.body.dropped.map((d) => d.fixtureId);
+		assert.ok(odrzucone.length >= 3);
+		assert.ok(r.body.alternatives.every((a) => !a.preview.legs.some((l) => odrzucone.includes(l.fixtureId))));
+		const [stara, nowa] = await Promise.all([
+			CouponGenAttempt.findById(pierwsza.body.attemptId).lean(),
+			CouponGenAttempt.findById(r.body.attemptId).lean(),
+		]);
+		assert.equal(stara.accepted.outcome, 'impossible');
+		assert.equal(String(nowa.fromAttempt), pierwsza.body.attemptId);
+		assert.equal(nowa.dropped, odrzucone.length);
+	});
+
+	test('zapisane ryzyko z wiadomości (12 h) wyklucza typ z zapowiedzi bez nowego wyszukania', async () => {
+		const zly = LISTY[F][0].fixtureId;
+		const s = zaleznosci({ peekVerdict: (leg) => (leg.fixtureId === zly ? { verdict: 'risk', reason: 'kontuzja' } : null) });
+		const r = await zloz(s, HISZPANIA, o(F, 11), INNY);
+		assert.ok(r.body.alternatives.length >= 1, JSON.stringify(r.body));
+		assert.ok(r.body.alternatives.every((a) => !a.preview.legs.some((l) => l.fixtureId === zly)));
+		assert.deepEqual(s.wiadomosci, []);
+	});
+
+	test('błąd dziennika i propozycji nie psuje odpowiedzi: zostaje powód, limit nietknięty', async () => {
+		const s = zaleznosci({
+			logAttempt: async () => null,
+			peekOdds: async () => {
+				throw new Error('Redis leży');
+			},
+			hintsFor: async (date) => {
+				if (date !== F) throw new Error('awaria');
+				return { list: LISTY[F] };
+			},
+		});
+		const r = await zloz(s, HISZPANIA, o(F, 12), INNY);
+		assert.equal(r.status, 200);
+		assert.equal(r.body.ok, false);
+		assert.equal(r.body.attemptId, null);
+		assert.equal(s.zuzyte.length, 0);
+	});
+
+	test('`from` z byle czym jest pomijane (to tylko pomiar) — złożenie idzie normalnie', async () => {
+		const s = zaleznosci();
+		const r = await customGenerateHttp({
+			userId: INNY,
+			body: { params: WIECZOR_25, from: { attempt: { $ne: null }, index: 'x' } },
+			now: o(G, 12),
+			deps: s.deps,
+		});
+		assert.equal(r.status, 200);
+		assert.equal(r.body.ok, true, JSON.stringify(r.body));
 	});
 });
 
