@@ -1,5 +1,6 @@
 'use client';
 
+import VerifyEmailBar from '@/components/auth/VerifyEmailBar';
 import NavBar from '@/components/NavBar';
 import Footer from '@/components/layout/Footer';
 import UpsellBanner from '@/components/billing2/UpsellBanner';
@@ -31,6 +32,8 @@ export default function AppShell({
 					{/* Najwyżej jeden baner zakupu (koniec próby, trafiony typ, ~80% puli) — `components/billing2/UpsellBanner`.
 					    Na stronach bez bocznego marginesu (`px-0`, strona główna) dostaje własny. */}
 					<div className="[.px-0>&]:px-5">
+						{/* Prośba o potwierdzenie adresu — konto działa i bez niego (od 22.11.2026). */}
+						<VerifyEmailBar />
 						<UpsellBanner />
 					</div>
 					{children}

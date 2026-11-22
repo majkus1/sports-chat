@@ -40,13 +40,12 @@ export async function POST(request) {
       return Response.json({ error: 'login_invalid' }, { status: 401 });
     }
 
-    // Check if email is verified (only for non-Google users)
-    if (!user.googleId && !user.isEmailVerified) {
-      return Response.json({ 
-        error: 'email_not_verified',
-        message: 'Please verify your email address before logging in. Check your inbox for the verification link.'
-      }, { status: 403 });
-    }
+    /*
+     * Niepotwierdzony adres NIE blokuje logowania (od 22.11.2026, próba od razu). Potwierdzenie
+     * odblokowuje tylko maile — `lib/auth/verificationEmail.js`. Przejęcie konta założonego na
+     * cudzy adres zamyka reset hasła (idzie na ten adres) i reguła łączenia z Google
+     * (`lib/auth/googleSignIn.js`: przy niepotwierdzonym adresie hasło jest kasowane).
+     */
 
     const accessToken = signAccessToken({
       userId: user.id,

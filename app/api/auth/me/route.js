@@ -19,7 +19,7 @@ export async function GET(request) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await User.findById(session.userId).select('username email image role');
+    const user = await User.findById(session.userId).select('username email image role isEmailVerified googleId');
     if (!user) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -32,6 +32,8 @@ export async function GET(request) {
       // Własna rola — interfejs pokazuje administratorowi skróty (np. post na X).
       // Uprawnień nie daje: każda trasa admina sprawdza rolę w bazie sama.
       role: user.role || 'user',
+      // Pasek „potwierdź adres" (`components/auth/VerifyEmailBar.jsx`) — konto Google ma adres potwierdzony przez Google.
+      emailVerified: Boolean(user.isEmailVerified || user.googleId),
       // Kiedy wygasa token dostępu — klient odświeża go zawczasu, także po uśpieniu laptopa.
       accessExpiresAt: session.accessExpiresAt ?? null,
     }, { status: 200 });

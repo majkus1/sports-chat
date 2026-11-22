@@ -61,7 +61,10 @@ export default function VerifyEmailClient() {
           if (status !== 'success') {
             setStatus('success');
             setUsername(data.username || '');
-            
+            // Zalogowany w tej przeglądarce (od 22.11.2026 rejestracja loguje od razu) — pasek
+            // „potwierdź adres" ma zniknąć bez przeładowania. Niezalogowany dostanie okno logowania niżej.
+            refreshUser?.();
+
             // Redirect to home page with login modal open after short delay
             setTimeout(() => {
               router.push(`/${locale}?login=true`);
