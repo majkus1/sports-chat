@@ -1,3 +1,4 @@
+import { pricingHref } from '@/lib/upsell/placements';
 import { ArrowRight, Bot, ChevronDown, FileText, Radio, ShieldCheck, Target } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/routing';
@@ -244,7 +245,7 @@ export function Pricing({ content, plans, freeLabel, daysLabel, buyWeekLabel, we
 								</p>
 								<p className="text-sm leading-relaxed text-muted">{plan.summary}</p>
 								{tydzien && (
-									<CtaLink href={`/cennik?oferta=${weekId}`} size="sm" className="mt-auto self-start">
+									<CtaLink href={pricingHref('landing_pricing', weekId)} size="sm" className="mt-auto self-start">
 										{buyWeekLabel}
 									</CtaLink>
 								)}
