@@ -315,13 +315,15 @@ export default async function Page({ params }) {
 				</section>
 			)}
 
-			<div className="mt-6 flex flex-wrap gap-2">
+			<div className="mt-6 flex flex-wrap items-center gap-2">
+				{/* Główne wyjście ze strony: pełna analiza AI i czat meczu — wyróżnione, reszta to odnośniki pomocnicze. */}
 				<Link
 					href={`/mecz/${f.fixtureId}`}
-					className="inline-flex items-center gap-1.5 rounded-[var(--radius-ui)] border border-border px-4 py-2.5 text-sm font-bold text-text no-underline transition-colors hover:border-accent hover:bg-accent-soft"
+					className="inline-flex items-center gap-2 rounded-[var(--radius-ui)] border-0 bg-accent px-5 py-3 text-base font-bold text-accent-fg no-underline shadow-[var(--shadow-soft)] transition-colors hover:bg-accent-hover"
 				>
+					<Sparkles size={17} aria-hidden="true" />
 					{c.room}
-					<ArrowRight size={15} aria-hidden="true" />
+					<ArrowRight size={17} aria-hidden="true" />
 				</Link>
 				{stronaLigi && (
 					<Link
