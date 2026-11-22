@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { ArrowRight, Check, Lock, X } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import LeagueLinks from '@/components/seo/LeagueLinks';
+import PaidPickReveal from '@/components/seo/PaidPickReveal';
 import { Link } from '@/i18n/routing';
 import DailyPick from '@/models/DailyPick';
 import { buildMetadata } from '@/lib/seo/metadata';
@@ -14,6 +15,7 @@ import { leaguePageContent, leaguePageModel } from '@/lib/seo/leaguePage';
 import { ldScript, sportsEventData } from '@/lib/seo/matchPreview';
 import { accuracyHref } from '@/lib/urlState';
 import { cn } from '@/lib/utils';
+import { localDate } from '@/lib/time';
 
 /**
  * „Typy na dziś [liga]" — indeksowana strona ligi z dziennika prognoz. Opis w `lib/seo/leaguePage.js`.
@@ -91,14 +93,17 @@ function Szanse({ n, home, away, draw }) {
 	);
 }
 
-function Typ({ pick, c }) {
+function Typ({ pick, c, fixtureId, kickoff }) {
 	if (pick.state === 'none') return <span className="text-xs text-muted">{c.pickNone}</span>;
 	if (pick.state === 'locked')
 		return (
-			<span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-bold text-accent">
-				<Lock size={12} aria-hidden="true" />
-				{c.pickLocked}
-			</span>
+			// Kłódka z serwera dla wszystkich; zalogowany z planem dostaje typ w przeglądarce (`PaidPickReveal`).
+			<PaidPickReveal fixtureId={fixtureId} date={localDate(new Date(kickoff))} usually={c.usually}>
+				<span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-bold text-accent">
+					<Lock size={12} aria-hidden="true" />
+					{c.pickLocked}
+				</span>
+			</PaidPickReveal>
 		);
 	return (
 		<span className="inline-flex flex-wrap items-center gap-1.5 text-xs">
@@ -146,7 +151,7 @@ function Dzien({ title, items, c, locale }) {
 								<Szanse n={m.numbers} home={m.home} away={m.away} draw={c.draw} />
 							</div>
 							<div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-								<Typ pick={m.pick} c={c} />
+								<Typ pick={m.pick} c={c} fixtureId={m.fixtureId} kickoff={m.kickoff} />
 								<span className="text-xs text-muted tabular-nums">
 									{c.goals}: {m.numbers.lambdaHome} – {m.numbers.lambdaAway}
 								</span>
