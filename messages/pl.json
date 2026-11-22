@@ -842,5 +842,13 @@
 		"warning_badge": "Skład",
 		"warning_hint": "Osłabiony skład drużyny, na którą stawia typ — bez kilku podstawowych, bramkarza nr 1 albo najlepszego strzelca.",
 		"leg_warning_after": "Opublikowano przed składami — typ zostaje bez zmian."
+	},
+	"auth2": {
+		"register_done": "Konto gotowe — próba już działa. Link do potwierdzenia adresu jest w skrzynce.",
+		"verify_text": "Potwierdź adres e-mail — dostaniesz poranne typy i odzyskasz hasło.",
+		"verify_resend": "Wyślij link",
+		"verify_sent": "Wysłane na {email}. Sprawdź też spam.",
+		"verify_error": "Nie udało się wysłać. Spróbuj za chwilę.",
+		"verify_close": "Zamknij"
 	}
 }

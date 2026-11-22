@@ -842,5 +842,13 @@
 		"warning_badge": "Line-up",
 		"warning_hint": "Weakened line-up of the team this pick backs — several regulars, the first-choice keeper or the top scorer missing.",
 		"leg_warning_after": "Published before line-ups — the pick stays unchanged."
+	},
+	"auth2": {
+		"register_done": "Account ready — your trial is on. The confirmation link is in your inbox.",
+		"verify_text": "Confirm your email — get morning picks and recover your password.",
+		"verify_resend": "Send link",
+		"verify_sent": "Sent to {email}. Check spam too.",
+		"verify_error": "Couldn’t send. Try again shortly.",
+		"verify_close": "Close"
 	}
 }

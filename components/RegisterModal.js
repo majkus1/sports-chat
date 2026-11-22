@@ -31,7 +31,8 @@ export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 	const [morningEmail, setMorningEmail] = useState(false);
 	const t = useTranslations('common');
 	const locale = useLocale();
-	useContext(UserContext);
+	const { refreshUser } = useContext(UserContext) || {};
+	const t2 = useTranslations('auth2');
 	const { showAlert } = useAlert();
 
 	if (!isOpen) return null;
@@ -54,6 +55,22 @@ export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 			if (!response.ok) {
 				showAlert(t(data?.error || 'server_error'), 'error');
 				setIsRegistering(false);
+				return;
+			}
+
+			/*
+			 * Od 22.11.2026 rejestracja od razu loguje (próba bez czekania na link z maila): odświeżamy
+			 * sesję, zamykamy okno i mówimy jednym zdaniem, że wszystko działa, a link jest w skrzynce.
+			 */
+			if (data.loggedIn) {
+				await refreshUser?.();
+				showAlert(t2('register_done'), 'success', 7000);
+				setEmail('');
+				setPassword('');
+				setUsernameInput('');
+				setAcceptedTerms(false);
+				setMorningEmail(false);
+				onRequestClose?.();
 				return;
 			}
 
