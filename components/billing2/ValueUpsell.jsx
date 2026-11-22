@@ -22,7 +22,7 @@ export default function ValueUpsell({ className }) {
 			placement="value_list"
 			title={t('nudge_value_title')}
 			body={`${t('nudge_value_body', { price: String(PRO_WEEK.priceGrosze / 100) })} ${t('nudge_18')}`}
-			cta={t('nudge_value_title')}
+			cta={t('nudge_cta_pass', { price: String(PRO_WEEK.priceGrosze / 100) })}
 			hideDays={7}
 			className={className}
 		/>

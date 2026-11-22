@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useB2 } from '@/components/billing2/useB2';
-import { Coins, TriangleAlert } from 'lucide-react';
+import { ChevronDown, Coins, TriangleAlert } from 'lucide-react';
 import { Link } from '@/i18n/routing';
+import LimitPassCta from '@/components/billing2/LimitPassCta';
 import { planMessageParams } from '@/lib/billing/planTexts';
+import { pricingHref } from '@/lib/upsell/placements';
 
 /**
  * Stan konta: plan, termin jego ważności, saldo kredytów i zużycie każdego limitu.
@@ -17,17 +19,28 @@ import { planMessageParams } from '@/lib/billing/planTexts';
  *
  * Kolejność sekcji odpowiada temu, po co się tu zagląda: najpierw „ile mi zostało czasu",
  * potem „ile mam kredytów", na końcu „ile zużyłem".
+ *
+ * Od 22.11.2026 krócej: na wierzchu trzy liczby, o które się pyta (analizy, pytania, raporty),
+ * reszta pod „Wszystkie limity". Konto bez planu dostaje jeden przycisk z ceną Pro na 7 dni,
+ * a przy wyczerpanym limicie — zdanie, co da przepustka (`LimitPassCta`).
  */
 
-/** Kolejność jak w cenniku; nazwy krótkie, bo wiersz panelu jest wąski. */
+/** Na wierzchu — kolejność jak w kartach cennika; nazwy krótkie, bo wiersz panelu jest wąski. */
 const KINDS = [
 	['analysis', 'quota_analysis'],
-	['analysisView', 'quota_analysis_view'],
 	['aiChat', 'quota_ai_chat'],
-	['aiNews', 'quota_ai_news'],
 	['report', 'quota_report'],
+];
+
+/** Pod „Wszystkie limity". */
+const MORE_KINDS = [
+	['analysisView', 'quota_analysis_view'],
+	['aiNews', 'quota_ai_news'],
 	['couponGen', 'quota_coupon_gen'],
 ];
+
+/** Limit wyczerpany — tylko gdy w ogóle był (zero raportów w planie darmowym to nie „wyczerpany"). */
+const wyczerpany = (row) => row && row.limit !== null && row.limit > 0 && (row.used ?? 0) >= row.limit;
 
 /** Ile dni zostało do podanej daty; `null`, gdy termin nie obowiązuje. */
 function daysLeft(validUntil) {
@@ -80,6 +93,7 @@ function UsageRow({ label, limit, used }) {
 
 export default function PlanSummary({ className = '' }) {
 	const t = useTranslations('common');
+	const u = useTranslations('ux_p2');
 	const b = useB2();
 	const locale = useLocale();
 	const [data, setData] = useState(null);
@@ -109,6 +123,16 @@ export default function PlanSummary({ className = '' }) {
 	const isPass = data.pass === 'pro_week';
 	// Z przepustki naturalnym przedłużeniem jest Pro na 30 dni (dni przepustki nie przepadają).
 	const extendHref = isPass ? '/cennik?oferta=pro' : '/cennik';
+	// Pierwszy wyczerpany limit konta bez planu — z niego zdanie „Pro na 7 dni: … za 19 zł".
+	const pelny = !isPaid ? [...KINDS, ...MORE_KINDS].map(([kind]) => kind).find((kind) => wyczerpany(data.usage?.[kind])) : null;
+	const wiersze = (lista) =>
+		lista.map(([kind, labelKey]) => {
+			const row = data.usage?.[kind];
+			if (!row) return null;
+			return <UsageRow key={kind} label={t(labelKey)} limit={row.limit} used={row.used} />;
+		});
+	// Przepustka odnawia limity co 7 dni, plan na 30 dni — co 30: zdanie podaje długość biletu konta.
+	const resetDays = isPass && data.passDays ? { days: data.passDays } : planMessageParams(locale).quota_reset_note;
 
 	return (
 		<div className={className}>
@@ -152,25 +176,33 @@ export default function PlanSummary({ className = '' }) {
 				</p>
 			)}
 
-			<ul className="mt-3 flex flex-col gap-2.5">
-				{KINDS.map(([kind, labelKey]) => {
-					const row = data.usage?.[kind];
-					if (!row) return null;
-					return <UsageRow key={kind} label={t(labelKey)} limit={row.limit} used={row.used} />;
-				})}
-			</ul>
+			{pelny && <LimitPassCta kind={pelny} placement="panel_plan" className="mt-3" />}
 
-			{/*
-			 * Dwa zdania, nie akapit. „Czytanie cudzych analiz" to jedyna pozycja tej listy,
-			 * której nazwa sama z siebie nic nie mówi — użytkownik nie wie, skąd biorą się
-			 * cudze analizy ani dlaczego mają osobny licznik. Wyjaśnienie idzie pierwsze,
-			 * bo bez niego pozostała część przypisu dotyczy czegoś nieznanego.
-			 */}
-			<p className="mt-3 text-xs leading-relaxed text-muted">
-				{t('quota_shared_note')} {t('quota_reset_note', planMessageParams(locale).quota_reset_note)}{' '}
-				<Link href="/cennik" className="footer-link underline">
-					{t('see_plans')}
-				</Link>
+			<ul className="mt-3 flex flex-col gap-2.5">{wiersze(KINDS)}</ul>
+			<details className="group mt-2.5">
+				<summary className="flex cursor-pointer list-none items-center gap-1 text-xs text-muted hover:text-text [&::-webkit-details-marker]:hidden">
+					{u('all_limits')}
+					<ChevronDown size={13} aria-hidden="true" className="transition-transform group-open:rotate-180" />
+				</summary>
+				<ul className="mt-2.5 flex flex-col gap-2.5">{wiersze(MORE_KINDS)}</ul>
+				<p className="mt-3 text-xs leading-relaxed text-muted">
+					{t('quota_shared_note')} {t('quota_reset_note', resetDays)}
+				</p>
+			</details>
+
+			{/* Konto bez planu: jeden konkretny przycisk z ceną zamiast „Zobacz plany". */}
+			<p className="mt-3 text-xs">
+				{isPaid ? (
+					<Link href="/cennik" className="footer-link underline">
+						{t('see_plans')}
+					</Link>
+				) : (
+					!pelny && (
+						<Link href={pricingHref('panel_plan')} className="font-semibold text-accent underline">
+							{b('buy_week')}
+						</Link>
+					)
+				)}
 			</p>
 		</div>
 	);

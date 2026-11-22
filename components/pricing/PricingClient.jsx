@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { useB2 } from '@/components/billing2/useB2';
-import { Check, CheckCircle2, Clock, Loader2, Minus, Sparkles } from 'lucide-react';
+import { Check, CheckCircle2, ChevronDown, Clock, Loader2, Minus, Sparkles } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import BackLink from '@/components/layout/BackLink';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -12,9 +12,11 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { PRO_WEEK, QUOTA_PERIODS, TRIAL } from '@/lib/billing/plans';
 import { FEATURE_ROWS, QUOTA_ROWS, planMessageParams } from '@/lib/billing/planTexts';
-import { PRICING_OFFERS, formatZl, monthVsWeekSaving } from '@/lib/billing/offers';
+import { PRICING_OFFERS, compareParams, formatZl } from '@/lib/billing/offers';
 import { OPERATOR } from '@/lib/legal/operator';
 import { isPlacement } from '@/lib/upsell/placements';
+import { trackUpsell } from '@/lib/upsell/track';
+import { Link } from '@/i18n/routing';
 import { useAuthKey } from '@/context/UserContext';
 import CreditPacks from '@/components/billing/CreditPacks';
 import PurchaseConsentDialog from '@/components/billing/PurchaseConsentDialog';
@@ -37,7 +39,44 @@ import { cn } from '@/lib/utils';
  *
  * Pozycje cennika (`QUOTA_ROWS`, `FEATURE_ROWS`) — te same w karcie i w słowniczku pod kartami;
  * zero jako kreska, nie fajka. Lista i liczby do zdań: `lib/billing/planTexts.js`.
+ *
+ * OD 22.11.2026 KRÓCEJ (pakiet UX P2). Strona miała ok. 950 słów: zaczynała od tłumaczenia kosztów AI,
+ * karta miała 10 wierszy (najpierw limity, wartość na końcu), słowniczek i kredyty stały na wierzchu.
+ * Teraz na górze jedno zdanie z ceną, karta ma 6 wierszy — najpierw to, co gracz dostaje, potem
+ * trzy liczby — a reszta limitów, słowniczek i kredyty są w `details`. Nic nie zniknęło ze strony
+ * (robot i ktoś bez JavaScriptu widzą całość), tylko przestało zasłaniać ceny.
  */
+
+/**
+ * Wiersze na wierzchu karty, w tej kolejności: najpierw funkcje, potem trzy liczby.
+ * Pozostałe pozycje z `planTexts.js` idą pod „Wszystkie limity". Podzbiór po etykietach,
+ * żeby lista w `planTexts.js` (i jej testy) została jedynym źródłem pozycji.
+ */
+const NA_WIERZCHU = ['pricing_model_hints', 'pricing_coupons', 'pricing_live_analysis', 'pricing_analyses', 'pricing_ai_chat', 'pricing_reports'];
+const WSZYSTKIE = [
+	...FEATURE_ROWS.map(([key, label, what]) => ({ type: 'feature', key, label, what })),
+	...QUOTA_ROWS.map(([key, label, what]) => ({ type: 'quota', key, label, what })),
+];
+const GLOWNE = NA_WIERZCHU.map((label) => WSZYSTKIE.find((w) => w.label === label)).filter(Boolean);
+const POZOSTALE = WSZYSTKIE.filter((w) => !NA_WIERZCHU.includes(w.label));
+
+/** Rozwijany blok: `details`, żeby treść była w HTML-u od początku (robot, czytnik, brak JS). */
+function More({ summary, children, className, small = false }) {
+	return (
+		<details className={cn('group', className)}>
+			<summary
+				className={cn(
+					'flex cursor-pointer list-none items-center gap-1.5 [&::-webkit-details-marker]:hidden',
+					small ? 'text-xs text-muted hover:text-text' : 'text-sm font-semibold text-text'
+				)}
+			>
+				{summary}
+				<ChevronDown size={14} aria-hidden="true" className="shrink-0 text-muted transition-transform group-open:rotate-180" />
+			</summary>
+			{children}
+		</details>
+	);
+}
 
 /** Limit: liczba z okresem, `null` jako „bez limitu", zero jako kreska — nie fajka przy zerze. */
 function LimitRow({ label, value, period }) {
@@ -89,6 +128,7 @@ const POLL_MS = 2000;
 
 export default function PricingClient() {
 	const t = useTranslations('common');
+	const u = useTranslations('ux_p2');
 	const b = useB2();
 	const locale = useLocale();
 	const authKey = useAuthKey();
@@ -188,6 +228,14 @@ export default function PricingClient() {
 		};
 	}, [paymentResult, loadEntitlements]);
 
+	/*
+	 * Wejście z maila (`?z=mail_*`) to kliknięcie przycisku w mailu — w skrzynce nie da się go
+	 * policzyć, więc liczymy je tu. Bez tego miejsce z maila miałoby zakupy, ale zero kliknięć.
+	 */
+	useEffect(() => {
+		if (source?.startsWith('mail_')) trackUpsell(source, 'click');
+	}, [source]);
+
 	// Przewinięcie do karty wskazanej przez okno zakupu, gdy już wiadomo, jak wygląda strona.
 	useEffect(() => {
 		if (!highlightId || !entitlements) return;
@@ -215,12 +263,39 @@ export default function PricingClient() {
 
 	const title = (offer) => (offer.id === 'free' ? t('plan_free') : b(offer.titleKey));
 	const weekOffer = PRICING_OFFERS.find((o) => o.id === PRO_WEEK.id);
-	const monthOffer = PRICING_OFFERS.find((o) => o.id === 'pro');
+	const weekPrice = formatZl(PRO_WEEK.priceGrosze, locale);
 	// Nowy = bez planu płatnego (gość, okres próbny, plan darmowy). Płacący rekomendacji nie widzą.
 	const showRecommendation = !isPaid;
 	const data = (iso) => new Date(iso).toLocaleDateString(locale === 'en' ? 'en-GB' : 'pl-PL');
 
+	/** Jeden wiersz karty: funkcja (fajka albo kreska) albo limit (liczba z okresem). */
+	const wiersz = (offer, w) =>
+		w.type === 'feature' ? (
+			<FeatureRow key={w.label} label={t(w.label)} on={offer.features.includes(w.key)} />
+		) : (
+			<LimitRow
+				key={w.label}
+				label={t(w.label)}
+				value={offer.limits[w.key]}
+				period={
+					QUOTA_PERIODS[w.key] === 'day'
+						? t('pricing_per_day')
+						: offer.days
+							? b('limit_per_days', { days: offer.days })
+							: t('pricing_per_month')
+				}
+			/>
+		);
+
 	const buyButton = (offer) => {
+		// Gość przy darmowej karcie: rejestracja, bo „Plan domyślny" nic mu nie mówi i nic nie robi.
+		if (offer.priceGrosze === 0 && entitlements && !isLoggedIn) {
+			return (
+				<Button variant="outline" block onClick={openRegister}>
+					{u('free_signup')}
+				</Button>
+			);
+		}
 		if (offer.priceGrosze === 0) {
 			return (
 				<Button variant="outline" block disabled>
@@ -267,11 +342,16 @@ export default function PricingClient() {
 		<AppShell contentClassName="mx-auto w-full max-w-6xl">
 			<BackLink label={t('back_home')} />
 			<h1 className="font-display text-2xl font-bold uppercase tracking-wide text-text">{t('pricing_title')}</h1>
-			<p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{t('pricing_intro')}</p>
-			{/* Pula powitalna to główny argument za założeniem konta — musi być widoczna obok cen. */}
-			<p className="mt-3 inline-flex rounded-full border border-accent bg-accent-soft px-3 py-1.5 text-sm font-semibold text-accent">
-				{t('pricing_trial', liczby.pricing_trial)}
+			{/* Pierwsze zdanie mówi o cenie i o tym, że nic się nie odnawia — nie o kosztach serwisu. */}
+			<p className="mt-2 max-w-2xl text-base font-semibold leading-relaxed text-text">
+				{u('pricing_lead', { week: PRO_WEEK.days, price: weekPrice })}
 			</p>
+			{/* Okres próbny to główny argument za założeniem konta — obok cen, ale nie dla płacących. */}
+			{!isPaid && (
+				<p className="mt-3 inline-flex rounded-full border border-accent bg-accent-soft px-3 py-1.5 text-sm font-semibold text-accent">
+					{t('pricing_trial', liczby.pricing_trial)}
+				</p>
+			)}
 
 			{ret && <ReturnStatus ret={ret} locale={locale} />}
 
@@ -286,10 +366,7 @@ export default function PricingClient() {
 				</p>
 			)}
 
-			{/*
-			 * Rekomendacja dla nowych: przepustka 7 dni. Jedno zdanie o tym, co daje, i jedno o tym,
-			 * że nic się nie odnawia — to dwa pytania, które padają przed pierwszym zakupem.
-			 */}
+			{/* Rekomendacja dla nowych: Pro na 7 dni — co daje i że samo się kończy, z ceną na przycisku. */}
 			{showRecommendation && (
 				<section
 					aria-labelledby="pricing-start"
@@ -300,9 +377,7 @@ export default function PricingClient() {
 							<Sparkles size={16} aria-hidden="true" className="text-accent" />
 							{b('recommend_title')}
 						</h2>
-						<p className="mt-1 text-sm leading-relaxed text-muted">
-							{b('recommend_body', { price: formatZl(PRO_WEEK.priceGrosze, locale) })}
-						</p>
+						<p className="mt-1 text-sm leading-relaxed text-muted">{b('recommend_body')}</p>
 					</div>
 					{paymentsReady && (
 						<Button
@@ -311,7 +386,7 @@ export default function PricingClient() {
 							disabled={busyId !== null}
 							onClick={() => (isLoggedIn ? setPendingOffer(weekOffer) : openRegister())}
 						>
-							{isLoggedIn ? b('recommend_cta') : b('guest_buy')}
+							{isLoggedIn ? b('buy_week', { price: weekPrice }) : b('guest_buy')}
 						</Button>
 					)}
 				</section>
@@ -368,25 +443,10 @@ export default function PricingClient() {
 							</CardHeader>
 
 							<CardContent className="flex flex-1 flex-col gap-4">
-								<ul className="[&>li+li]:mt-2">
-									{QUOTA_ROWS.map(([kind, labelKey]) => (
-										<LimitRow
-											key={kind}
-											label={t(labelKey)}
-											value={offer.limits[kind]}
-											period={
-												QUOTA_PERIODS[kind] === 'day'
-													? t('pricing_per_day')
-													: offer.days
-														? b('limit_per_days', { days: offer.days })
-														: t('pricing_per_month')
-											}
-										/>
-									))}
-									{FEATURE_ROWS.map(([feature, labelKey]) => (
-										<FeatureRow key={labelKey} label={t(labelKey)} on={offer.features.includes(feature)} />
-									))}
-								</ul>
+								<ul className="[&>li+li]:mt-2">{GLOWNE.map((w) => wiersz(offer, w))}</ul>
+								<More summary={u('all_limits')} small>
+									<ul className="mt-2 [&>li+li]:mt-2">{POZOSTALE.map((w) => wiersz(offer, w))}</ul>
+								</More>
 								<div className="mt-auto pt-2">{buyButton(offer)}</div>
 							</CardContent>
 						</Card>
@@ -394,13 +454,8 @@ export default function PricingClient() {
 				})}
 			</div>
 
-			<p className="mt-4 text-sm text-muted">
-				{b('compare', {
-					saving: monthVsWeekSaving(),
-					month: formatZl(monthOffer.perDayGrosze, locale),
-					week: formatZl(weekOffer.perDayGrosze, locale),
-				})}
-			</p>
+			{/* Ceny za dzień mają własne miejsca — `month`/`week` w `billing2` to liczby dni (`compareParams`). */}
+			<p className="mt-4 text-sm text-muted">{b('compare', compareParams(locale))}</p>
 
 			<CheckoutError error={error} />
 
@@ -409,26 +464,25 @@ export default function PricingClient() {
 			)}
 
 			{/*
-			 * Słowniczek: każda pozycja z kart jednym zdaniem — co to jest, gdzie to działa
-			 * i co się liczy do limitu. Tu, nie w kartach, bo w kartach byłoby cztery razy.
+			 * Słowniczek: każda pozycja z kart jednym zdaniem. Zwinięty — kto porównuje ceny, nie musi
+			 * go czytać, a kto pyta „co to jest raport AI", znajdzie odpowiedź pod kartami.
 			 */}
-			<section className="mt-8" aria-labelledby="pricing-glossary">
-				<h2 id="pricing-glossary" className="font-display text-lg font-bold uppercase tracking-wide text-text">
-					{t('pricing_glossary_title')}
-				</h2>
-				<dl className="mt-3 grid gap-x-8 gap-y-4 sm:grid-cols-2">
-					{[...QUOTA_ROWS, ...FEATURE_ROWS].map(([, labelKey, whatKey]) => (
-						<div key={labelKey}>
-							<dt className="text-sm font-semibold text-text">{t(labelKey)}</dt>
-							<dd className="mt-0.5 text-sm leading-relaxed text-muted">{t(whatKey, liczby[whatKey])}</dd>
+			<More summary={t('pricing_glossary_title')} className="mt-8 rounded-[var(--radius-ui)] border border-border bg-surface px-5 py-4">
+				<dl className="mt-3 grid gap-x-8 gap-y-3 sm:grid-cols-2">
+					{[...GLOWNE, ...POZOSTALE].map((w) => (
+						<div key={w.label}>
+							<dt className="text-sm font-semibold text-text">{t(w.label)}</dt>
+							<dd className="mt-0.5 text-sm leading-relaxed text-muted">{t(w.what, liczby[w.what])}</dd>
 						</div>
 					))}
 				</dl>
-			</section>
-
-			<p className="mt-6 max-w-2xl text-xs leading-relaxed text-muted">
-				{t('pricing_one_off_note', liczby.pricing_one_off_note)}
-			</p>
+				<p className="mt-4 text-xs leading-relaxed text-muted">
+					{t('pricing_one_off_note', liczby.pricing_one_off_note)}{' '}
+					<Link href="/zwroty" className="underline">
+						{u('refunds_link')}
+					</Link>
+				</p>
+			</More>
 
 			<PurchaseConsentDialog
 				item={
@@ -444,14 +498,17 @@ export default function PricingClient() {
 				onClose={() => setPendingOffer(null)}
 			/>
 
-			<CreditPacks
-				credits={entitlements?.credits ?? 0}
-				isLoggedIn={isLoggedIn}
-				available={paymentsReady}
-				source={source}
-			/>
+			{/* Kredyty pod planami i zwinięte: przy tej samej cenie Pro na 7 dni daje więcej, a mniej opcji to szybsza decyzja. */}
+			<More summary={t('credits_title')} className="mt-3 rounded-[var(--radius-ui)] border border-border bg-surface px-5 py-4">
+				<CreditPacks
+					credits={entitlements?.credits ?? 0}
+					isLoggedIn={isLoggedIn}
+					available={paymentsReady}
+					source={source}
+				/>
+			</More>
 
-			<p className="mt-10 text-xs leading-relaxed text-muted">{t('analysis_disclaimer')}</p>
+			<p className="mt-10 text-xs leading-relaxed text-muted">{u('pricing_disclaimer')}</p>
 		</AppShell>
 	);
 }

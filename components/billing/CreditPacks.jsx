@@ -56,24 +56,22 @@ export default function CreditPacks({ credits = 0, isLoggedIn = false, available
 	};
 
 	return (
-		<section className="mt-12">
-			<div className="flex flex-wrap items-center gap-3">
-				<h2 className="font-display text-xl font-bold uppercase tracking-wide text-text">
-					{t('credits_title')}
-				</h2>
-				{isLoggedIn && (
-					<Badge variant="outline">
-						<Coins size={12} aria-hidden="true" />
-						{t('credits_balance', { count: credits })}
-					</Badge>
-				)}
-			</div>
-
-			<p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
+		/*
+		 * Bez własnego nagłówka: od 22.11.2026 pakiety leżą w cenniku w zwiniętym bloku, którego
+		 * etykieta („Bez planu? Kredyty…") jest tytułem. Tu zostaje saldo i jedno zdanie o cenie kredytu.
+		 */
+		<section className="mt-3">
+			<p className="max-w-2xl text-sm leading-relaxed text-muted">
 				{t('credits_intro', { analysis: CREDIT_COSTS.analysis, report: CREDIT_COSTS.report })}
 			</p>
+			{isLoggedIn && (
+				<Badge variant="outline" className="mt-2">
+					<Coins size={12} aria-hidden="true" />
+					{t('credits_balance', { count: credits })}
+				</Badge>
+			)}
 
-			<div className="mt-5 grid gap-4 sm:grid-cols-3">
+			<div className="mt-4 grid gap-4 sm:grid-cols-3">
 				{CREDIT_PACKS.map((pack) => {
 					const price = pack.priceGrosze / 100;
 					// Cena jednostkowa liczona z pakietu, nie wpisana ręcznie — inaczej rozjedzie

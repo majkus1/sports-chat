@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { useB2 } from '@/components/billing2/useB2';
 import { ArrowRight, Lock } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { PRO_WEEK } from '@/lib/billing/plans';
 import { pricingHref } from '@/lib/upsell/placements';
-import { trackUpsell, trackUpsellView } from '@/lib/upsell/track';
+import { trackUpsell } from '@/lib/upsell/track';
+import { useUpsellView } from '@/components/billing2/useUpsellView';
 
 /**
  * Wezwanie pod zablokowanym kuponem (3-, 5-dniowym, live): ten sam przycisk „Odblokuj" co dotąd,
@@ -26,24 +27,7 @@ export default function LockedUpsellCta({ placement, label, className = '' }) {
 	const t = useB2();
 	const ref = useRef(null);
 
-	useEffect(() => {
-		if (!ref.current) return undefined;
-		if (typeof IntersectionObserver === 'undefined') {
-			trackUpsellView(placement);
-			return undefined;
-		}
-		const obserwator = new IntersectionObserver(
-			(wpisy) => {
-				if (wpisy.some((w) => w.isIntersecting)) {
-					trackUpsellView(placement);
-					obserwator.disconnect();
-				}
-			},
-			{ threshold: 0.5 }
-		);
-		obserwator.observe(ref.current);
-		return () => obserwator.disconnect();
-	}, [placement]);
+	useUpsellView(ref, placement);
 
 	return (
 		<div ref={ref} className={className}>

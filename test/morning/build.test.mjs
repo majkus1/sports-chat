@@ -136,7 +136,7 @@ describe('poranny mail', () => {
 		const wynik = buildMorningEmail({ ...BAZA, yesterday: { model: [], mine: [] }, today: [typ(1)], favorites: [], round: null });
 		assert.ok(wynik.text.includes(BAZA.unsubscribeUrl));
 		assert.ok(wynik.html.includes(BAZA.unsubscribeUrl));
-		assert.ok(wynik.text.includes('To szacunki, nie pewniki'));
+		assert.ok(wynik.text.includes('To szacunki, nie pewniaki'));
 	});
 
 	test('mail z samym rozliczeniem nie pyta o wiadomości sprzed meczów, które już były', () => {
@@ -149,7 +149,7 @@ describe('poranny mail', () => {
 		});
 		assert.equal(tylkoWczoraj.text.includes('Zapytaj asystenta'), false);
 		assert.equal(tylkoWczoraj.text.includes('po kliknięciu meczu'), false);
-		assert.ok(tylkoWczoraj.text.includes('To szacunki, nie pewniki.'));
+		assert.ok(tylkoWczoraj.text.includes('To szacunki, nie pewniaki.'));
 
 		const zDzis = buildMorningEmail({ ...BAZA, yesterday: { model: [], mine: [] }, today: [typ(1)], favorites: [], round: null });
 		assert.ok(zDzis.text.includes('Zapytaj asystenta'));

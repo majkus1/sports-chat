@@ -10,7 +10,7 @@ import { setupEnv } from '../helpers/setup.mjs';
 setupEnv();
 const { buildWelcomeEmail } = await import('@/lib/onboarding/welcome');
 const { buildMorningEmail } = await import('@/lib/morning/build');
-const { TRIAL } = await import('@/lib/billing/plans');
+const { TRIAL, PRO_WEEK } = await import('@/lib/billing/plans');
 
 const DAILY = { fixtureId: '123', home: 'Legia', away: 'Lech', selection: 'Legia (gospodarze)', probability: 66, base: 44 };
 const ZAKAZANE = /kurs|zak[łl]ad|obstaw|stawk|bukmach|\bbet\b|odds|stake|wager|bookmaker/i;
@@ -49,6 +49,11 @@ describe('poranny mail w okresie próbnym', () => {
 		const m = buildMorningEmail({ ...BAZA, yesterday: { model: [], mine: [] }, today: [typ], favorites: [], round: null, trialDaysLeft: 3 });
 		assert.ok(m.text.includes('zostało 3 dni'));
 		assert.ok(m.text.includes('https://czatsportowy.pl/pl/cennik'));
+		// Stopka w próbie podaje Pro na 7 dni z ceną z planów i przycisk do wyróżnionej karty.
+		const cena = PRO_WEEK.priceGrosze / 100;
+		assert.ok(m.text.includes(`Pro na ${PRO_WEEK.days} dni za ${cena} zł`));
+		assert.ok(m.text.includes('https://czatsportowy.pl/pl/cennik?oferta=pro_week&z=mail_morning_trial'));
+		assert.ok(m.html.includes(`>Kup ${PRO_WEEK.days} dni za ${cena} zł</a>`));
 		assert.equal(m.text.includes('masz plan Pro lub VIP'), false);
 	});
 

@@ -1,6 +1,7 @@
 import PricingClient from '@/components/pricing/PricingClient';
 import { buildMetadata } from '@/lib/seo/metadata';
 import { pricingMetaDescription } from '@/lib/billing/planTexts';
+import { PRO_WEEK } from '@/lib/billing/plans';
 
 /**
  * Trasa serwerowa: dostarcza metadane, treść renderuje komponent kliencki.
@@ -15,7 +16,11 @@ export async function generateMetadata({ params }) {
 	return buildMetadata({
 		locale,
 		path: '/cennik',
-		title: locale === 'en' ? 'Plans, limits and credit packs' : 'Plany i limity — darmowy start',
+		// Tytuł w wynikach wyszukiwania mówi to samo co pierwsze zdanie strony: najtańsze wejście z ceną z planów.
+		title:
+			locale === 'en'
+				? `Pricing — Pro for ${PRO_WEEK.days} days for ${PRO_WEEK.priceGrosze / 100} zł`
+				: `Cennik — Pro na ${PRO_WEEK.days} dni za ${PRO_WEEK.priceGrosze / 100} zł`,
 		// Liczby z planów — opis w wynikach wyszukiwania nie może obiecywać innych limitów niż karty.
 		description: pricingMetaDescription(locale),
 	});
