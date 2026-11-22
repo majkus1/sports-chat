@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Link } from '@/i18n/routing';
 import { useAlert } from '@/context/AlertContext';
 import { getFirstTouch } from '@/lib/growth/firstTouch';
+import { TRIAL } from '@/lib/billing/plans';
 
 export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 	const [email, setEmail] = useState('');
@@ -30,6 +31,7 @@ export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 	 */
 	const [morningEmail, setMorningEmail] = useState(false);
 	const t = useTranslations('common');
+	const tx = useTranslations('ux_p5');
 	const locale = useLocale();
 	useContext(UserContext);
 	const { showAlert } = useAlert();
@@ -58,7 +60,8 @@ export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 			}
 
 			if (data.emailSent) {
-				showAlert(data.message || t('register_success_verify'), 'success');
+				// Własny tekst zamiast `data.message` z serwera: krótszy i w języku okna, nie trasy.
+				showAlert(t('register_success_verify'), 'success');
 				setEmail('');
 				setPassword('');
 				setUsernameInput('');
@@ -82,7 +85,11 @@ export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 	return (
 		<div className="modalOverlay" onClick={onRequestClose}>
 			<div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm px-4">
-				<AuthCard title={t('register')} description={t('register_hint')}>
+				{/*
+				 * Pod tytułem konkret, a nie lista funkcji: ile dni i co za darmo. Liczba z `TRIAL`,
+				 * więc zmiana długości próby w planach zmienia też ten napis.
+				 */}
+				<AuthCard title={t('register')} description={tx('register_hint_trial', { days: TRIAL.days })}>
 					{/*
 					 * Zgoda stoi nad obiema metodami zakładania konta, bo dotyczy obu.
 					 * Gdyby siedziała w formularzu, konto przez Google powstawałoby bez niej.
@@ -101,7 +108,8 @@ export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 							</Link>{' '}
 							{t('register_accept_and')}{' '}
 							<Link href="/polityka-prywatnosci" target="_blank" className="footer-link underline">
-								{t('privacy_title')}
+								{/* Biernik („akceptuję Politykę"), a nie tytuł dokumentu w mianowniku. */}
+								{tx('register_privacy_link')}
 							</Link>
 							. {t('register_accept_age')}
 						</span>
@@ -117,13 +125,13 @@ export default function RegisterModal({ isOpen, onRequestClose, onRegister }) {
 						<span>{t('register_morning_optin')}</span>
 					</label>
 
-					{acceptedTerms ? (
-						<GoogleAuthButton onSuccessClose={onRequestClose} acceptedTerms={acceptedTerms} morningEmail={morningEmail} />
-					) : (
-						<p className="mt-3 rounded-[var(--radius-ui)] bg-surface-2 px-3 py-2 text-xs text-muted">
-							{t('register_accept_hint')}
-						</p>
-					)}
+					{/* Google widoczny od razu; bez zaznaczonego regulaminu jest nieaktywny, z podpowiedzią. */}
+					<GoogleAuthButton
+						onSuccessClose={onRequestClose}
+						acceptedTerms={acceptedTerms}
+						morningEmail={morningEmail}
+						disabledHint={acceptedTerms ? undefined : t('register_accept_hint')}
+					/>
 
 					<AuthDivider label={t('or')} />
 
