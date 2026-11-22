@@ -21,9 +21,7 @@ z korektą Dixona-Colesa, wszystkie rynki wyprowadzone z jednej macierzy.
 | `forecastCheck.mjs` | pomiar na dzienniku: kalibracja, Brier wobec stałej, warianty 2,5, ligi, plakietki |
 | `chanceCalibration.js` | korekta zawyżonej szansy modelu per selekcja, z bezpiecznikami (sekcja z 21.11.2026) |
 | `chanceCalibration.mjs` | generator korekty z dziennika prognoz (`--emit`), tylko odczyt bazy |
-| `chanceCalibrationData.js` | GENEROWANY: przesunięcia per selekcja, wersja, data, wynik sprawdzianu |
 | `lineupCheck.mjs` | pomiar trybu cienia „siła składu": czy typy przy osłabionym składzie trafiają gorzej (sekcja z 22.11.2026) |
-
 | `chanceCalibrationData.js` | GENEROWANY: przesunięcia per selekcja, wersja, data, wynik sprawdzianu (zapas, gdy w bazie nie ma aktywnej wersji) |
 | `shotStrength.js` | siła drużyn z 0,7·gole + 0,3·strzały celne, reguła per mecz, wyłącznik (`dixon-coles/6`, sekcja z 22.11.2026) |
 | `xgFeatures.js`, `xgExperiment.mjs` | eksperyment xG/strzały celne; `--source=api` na serwerze sprawdza produkcję (wiersz `S70R`) |
