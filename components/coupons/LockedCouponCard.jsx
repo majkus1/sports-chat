@@ -1,5 +1,6 @@
 import { Lock, ShieldCheck, Ticket } from 'lucide-react';
 import LockedUpsellCta from '@/components/billing2/LockedUpsellCta';
+import GuestUnlock from '@/components/today/GuestUnlock';
 import { cn } from '@/lib/utils';
 
 /**
@@ -8,9 +9,12 @@ import { cn } from '@/lib/utils';
  * Kurs łączny, szansa, liczba typów i zakres dni są odkryte — widać, co się dostaje. Mecze nie:
  * trasa w ogóle ich nie wysyła (`couponDto({ unlocked: false })`), a wiersze niżej to atrapa.
  *
- * @param {{ coupon: object, c: object, label: string, locale: string, guest?: boolean, className?: string }} props
+ * Wezwanie: gość — rejestracja (okres próbny odkrywa kupony, `GuestUnlock`), zalogowany bez planu —
+ * przycisk z ceną przepustki (`LockedUpsellCta`). Jedno zdanie o dostępie, bez drugiego o próbie.
+ *
+ * @param {{ coupon: object, c: object, label: string, locale: string, className?: string }} props
  */
-export default function LockedCouponCard({ coupon, c, label, locale, guest = false, className }) {
+export default function LockedCouponCard({ coupon, c, label, locale, className }) {
 	if (!coupon?.locked) return null;
 	const dzien = (iso) =>
 		new Date(iso).toLocaleDateString(locale === 'en' ? 'en-GB' : 'pl-PL', {
@@ -76,13 +80,14 @@ export default function LockedCouponCard({ coupon, c, label, locale, guest = fal
 
 			<div className="mt-auto px-5 pb-5 pt-4 sm:px-6">
 				<p className="text-sm leading-relaxed text-muted">{c.lockedNote}</p>
-				{/* Przycisk z pomiarem i ceną wejścia (przepustka 7 dni) — `components/billing2`. */}
-				<LockedUpsellCta
-					placement={coupon.type === 'days5' ? 'coupon_days5' : 'coupon_days3'}
-					label={c.unlock}
-					className="mt-3"
-				/>
-				{guest && <p className="mt-2 text-xs leading-relaxed text-muted">{c.trialNote}</p>}
+				<GuestUnlock label={c.unlockGuest} className="mt-3">
+					{/* Przycisk z pomiarem i ceną wejścia (przepustka 7 dni) — `components/billing2`. */}
+					<LockedUpsellCta
+						placement={coupon.type === 'days5' ? 'coupon_days5' : 'coupon_days3'}
+						label={c.unlock}
+						className="mt-3"
+					/>
+				</GuestUnlock>
 			</div>
 		</article>
 	);

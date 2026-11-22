@@ -1,4 +1,4 @@
-import { Check, Clock, Minus, X } from 'lucide-react';
+import { Check, ChevronDown, Clock, Minus, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import CouponCard from '@/components/coupons/CouponCard';
 import { cn } from '@/lib/utils';
@@ -89,7 +89,14 @@ export default function CouponStats({ stats, c, locale, type }) {
 				</section>
 			)}
 
-			<p className="text-xs leading-relaxed text-muted">{c.how}</p>
+			{/* Zasady kuponu pod rozwinięciem — ten sam tekst co na „Typach na dziś". */}
+			<details className="group text-xs leading-relaxed text-muted">
+				<summary className="flex w-fit cursor-pointer list-none items-center gap-1 font-semibold text-text [&::-webkit-details-marker]:hidden">
+					{c.howTitle}
+					<ChevronDown size={14} aria-hidden="true" className="transition-transform group-open:rotate-180" />
+				</summary>
+				<p className="mt-1.5">{c.how}</p>
+			</details>
 			<p className="text-xs leading-relaxed text-muted">{c.disclaimer}</p>
 		</div>
 	);

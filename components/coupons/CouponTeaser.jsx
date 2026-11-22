@@ -1,10 +1,10 @@
 'use client';
 
-import { useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocale } from 'next-intl';
 import { ArrowRight } from 'lucide-react';
 import { Link } from '@/i18n/routing';
-import { UserContext, useAuthKey } from '@/context/UserContext';
+import { useAuthKey } from '@/context/UserContext';
 import CouponsBlock from '@/components/coupons/CouponsBlock';
 import { couponContent } from '@/lib/coupons/content';
 
@@ -16,7 +16,6 @@ import { couponContent } from '@/lib/coupons/content';
 export default function CouponTeaser() {
 	const locale = useLocale();
 	const c = couponContent(locale);
-	const { isAuthed } = useContext(UserContext);
 	const authKey = useAuthKey();
 	const [dane, setDane] = useState(null);
 
@@ -44,7 +43,7 @@ export default function CouponTeaser() {
 				<h2 id="kupony-glowna" className="mb-3 font-display text-xl font-bold uppercase tracking-wide text-text">
 					{c.sectionTitle}
 				</h2>
-				<CouponsBlock data={dane} c={c} locale={locale} compact guest={!isAuthed} />
+				<CouponsBlock data={dane} c={c} locale={locale} compact />
 				<div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
 					{rekord?.total > 0 ? <span className="text-muted">{c.record('daily', rekord.won, rekord.total)}</span> : <span className="text-xs text-muted">18+</span>}
 					<Link href="/typy-na-dzis" className="inline-flex items-center gap-1.5 font-bold text-accent no-underline hover:underline">

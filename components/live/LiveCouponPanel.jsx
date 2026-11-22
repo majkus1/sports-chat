@@ -5,6 +5,7 @@ import { useLocale } from 'next-intl';
 import { Loader2, Lock, Radio, RefreshCw, Sparkles, Zap } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import LockedUpsellCta from '@/components/billing2/LockedUpsellCta';
+import GuestUnlock from '@/components/today/GuestUnlock';
 import { useAuthKey } from '@/context/UserContext';
 import { liveContent } from '@/lib/live/content';
 import { cn } from '@/lib/utils';
@@ -14,7 +15,8 @@ import { cn } from '@/lib/utils';
  *
  * Plan z liczbami: kupon (albo najlepszy pojedynczy typ, albo „nic wartego uwagi") z minutą,
  * wynikiem, kursem live, szansą rynku i modelu oraz uzasadnieniem AI przy każdym typie.
- * Pozostali: karta z kłódką — co to jest i, jeśli kupon jest świeży, jego liczby bez meczów.
+ * Pozostali: karta z kłódką — co to jest i, jeśli kupon jest świeży, jego liczby bez meczów; gość
+ * dostaje rejestrację (okres próbny odkrywa kupon live), zalogowany bez planu — przycisk z ceną.
  */
 export default function LiveCouponPanel() {
 	const locale = useLocale();
@@ -108,8 +110,10 @@ function Zablokowany({ c, teaser }) {
 				<p className="text-sm font-semibold text-text">{c.lockedReady(teaser.totalOdds, teaser.chance, teaser.legsCount)}</p>
 			)}
 			<p className="text-sm leading-relaxed text-muted">{c.lockedNote}</p>
-			{/* Przycisk z pomiarem i ceną wejścia (przepustka 7 dni) — `components/billing2`. */}
-			<LockedUpsellCta placement="coupon_live" label={c.unlock} />
+			<GuestUnlock label={c.unlockGuest}>
+				{/* Przycisk z pomiarem i ceną wejścia (przepustka 7 dni) — `components/billing2`. */}
+				<LockedUpsellCta placement="coupon_live" label={c.unlock} />
+			</GuestUnlock>
 		</div>
 	);
 }

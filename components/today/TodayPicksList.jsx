@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ChevronRight, Lock, Sparkles } from 'lucide-react';
+import { ArrowRight, ChevronRight, Lock, Sparkles } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { matchPath } from '@/lib/seo/matchPreview';
 import { useAuthKey } from '@/context/UserContext';
+import GuestUnlock from '@/components/today/GuestUnlock';
 
 /**
  * Lista dzisiejszych typów modelu na stronie „Typy na dziś".
@@ -15,9 +16,14 @@ import { useAuthKey } from '@/context/UserContext';
  *
  * Wiersz prowadzi na stronę „typ na mecz" (indeksowaną), a stamtąd jest przejście do pokoju
  * meczowego — dzięki temu robot trafia na strony meczów z tej, którą już zna.
+ *
+ * Pod zamkniętą listą jedno wezwanie: gość — rejestracja (okres próbny odkrywa typy), zalogowany —
+ * cennik, ale dopiero gdy plakietki wróciły nadal zamknięte (plan z liczbami nie zobaczy „Odblokuj").
  */
 export default function TodayPicksList({ items, date, locale, labels: c }) {
 	const [lista, setLista] = useState(items);
+	// Czy plakietki z sesją już wróciły — dopiero wtedy wiadomo, że zalogowany naprawdę nie ma planu.
+	const [doczytane, setDoczytane] = useState(false);
 	const authKey = useAuthKey();
 
 	useEffect(() => {
@@ -28,6 +34,7 @@ export default function TodayPicksList({ items, date, locale, labels: c }) {
 			.then((d) => {
 				if (anulowane || !d?.hints) return;
 				setLista((prev) => prev.map((p) => ({ ...p, hint: d.hints[p.fixtureId] ?? p.hint })));
+				setDoczytane(true);
 			})
 			.catch(() => {});
 		return () => {
@@ -83,7 +90,25 @@ export default function TodayPicksList({ items, date, locale, labels: c }) {
 					);
 				})}
 			</ul>
-			{zamkniete && <p className="mt-2 text-xs leading-relaxed text-muted">{c.listLocked}</p>}
+			{zamkniete && (
+				<div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+					{c.listUnlockGuest && (
+						<GuestUnlock label={c.listUnlockGuest}>
+							{doczytane && c.unlock ? (
+								<Link
+									href="/cennik"
+									className="inline-flex w-fit items-center gap-1.5 rounded-[var(--radius-ui)] bg-accent px-3.5 py-2 text-sm font-bold text-accent-fg no-underline transition-colors hover:bg-accent-hover"
+								>
+									<Lock size={14} aria-hidden="true" />
+									{c.unlock}
+									<ArrowRight size={15} aria-hidden="true" />
+								</Link>
+							) : null}
+						</GuestUnlock>
+					)}
+					<p className="text-xs leading-relaxed text-muted">{c.listLocked}</p>
+				</div>
+			)}
 		</>
 	);
 }

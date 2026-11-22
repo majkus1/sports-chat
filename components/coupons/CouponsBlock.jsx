@@ -10,9 +10,9 @@ import { cn } from '@/lib/utils';
  * szansa, liczba typów, bez meczów. Brak kuponu też jest treścią: rano „pojawi się o 9:30",
  * a gdy model kuponu dnia nie złożył — mówimy to wprost (poza wersją `compact`).
  *
- * @param {{ data: object, c: object, locale: string, compact?: boolean, guest?: boolean, className?: string }} props
+ * @param {{ data: object, c: object, locale: string, compact?: boolean, className?: string }} props
  */
-export default function CouponsBlock({ data, c, locale, compact = false, guest = false, className }) {
+export default function CouponsBlock({ data, c, locale, compact = false, className }) {
 	if (!data) return null;
 	const karty = [
 		data.today?.legs?.length ? { coupon: data.today, label: c.label.daily } : null,
@@ -41,7 +41,7 @@ export default function CouponsBlock({ data, c, locale, compact = false, guest =
 						// Nieparzysta liczba kart (np. trzy kupony): ostatnia na całą szerokość, bez pustej połowy obok.
 						const klasa = cn('h-full', karty.length > 1 && karty.length % 2 === 1 && i === karty.length - 1 && 'md:col-span-2');
 						return k.locked ? (
-							<LockedCouponCard key={k.coupon.key} coupon={k.coupon} c={c} label={k.label} locale={locale} guest={guest} className={klasa} />
+							<LockedCouponCard key={k.coupon.key} coupon={k.coupon} c={c} label={k.label} locale={locale} className={klasa} />
 						) : (
 							<CouponCard key={k.coupon.key} coupon={k.coupon} c={c} label={k.label} locale={locale} compact={compact} className={klasa} />
 						);

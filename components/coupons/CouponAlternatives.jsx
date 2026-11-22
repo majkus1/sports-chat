@@ -15,6 +15,9 @@ import { cn } from '@/lib/utils';
  *
  * Zapowiedź to NIE gotowy kupon: przed pokazaniem AI sprawdza wiadomości, więc karta mówi to wprost,
  * razem z tym, że limit zejdzie dopiero przy złożonym kuponie. Teksty: przestrzeń `builder2` w `messages`.
+ *
+ * KRÓCEJ (22.11.2026): bez zdania wstępu nad listą („Propozycja 1, 2…" mówi to samo), a notka
+ * o zapowiedzi i o limicie w jednym akapicie pod listą.
  */
 
 /** Pole, od którego zaczyna się „dlaczego to działa" — liczby z puli są najbardziej konkretne. */
@@ -174,8 +177,7 @@ export default function CouponAlternatives({ b, t2, wynik, locale, laduje, przyj
 			)}
 			{t.partial && <p className="mt-2 text-xs text-muted">{t.partial}</p>}
 
-			<p className="mt-4 text-xs font-semibold text-muted">{t2('lead')}</p>
-			<ol className="mt-2 flex list-none flex-col gap-3 p-0">
+			<ol className="mt-4 flex list-none flex-col gap-3 p-0">
 				{wynik.alternatives.map((alt, i) => (
 					<Propozycja
 						key={JSON.stringify(alt.params)}
@@ -195,10 +197,9 @@ export default function CouponAlternatives({ b, t2, wynik, locale, laduje, przyj
 			</ol>
 
 			<p id={notatkaId} className="mt-3 text-xs leading-relaxed text-muted">
-				{t2('previewNote')}
+				{t2('previewNote')} <span className="font-semibold text-accent">{b.noCharge}</span>
 			</p>
 			{brakLimitu && <p className="mt-2 text-xs font-semibold text-text">{t2('noLimit')}</p>}
-			<p className="mt-2 text-xs font-semibold text-accent">{b.noCharge}</p>
 		</section>
 	);
 }
