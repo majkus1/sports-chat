@@ -3,6 +3,9 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import { ArrowRight, Check, Lock, Sparkles, X } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import PickUnlock from '@/components/match-preview/PickUnlock';
+import SquadPanel from '@/components/lineups/SquadPanel';
+import { getTranslations } from 'next-intl/server';
+import { squadViewFor } from '@/lib/football/lineupsStore';
 import { Link } from '@/i18n/routing';
 import connectToDb from '@/lib/db';
 import ModelForecast from '@/models/ModelForecast';
@@ -92,7 +95,7 @@ export default async function Page({ params }) {
 	const dzien = localDate(new Date(f.kickoff));
 	const odPolnocy = localMidnight(dzien);
 	const doPolnocy = localMidnight(localDate(new Date(odPolnocy.getTime() + 36 * 3600_000)));
-	const [dzienny, inne] = await Promise.all([
+	const [dzienny, inne, sklady, tl] = await Promise.all([
 		DailyPick.findOne({ fixtureId: f.fixtureId }).select('_id').lean().catch(() => null),
 		ModelForecast.find({ kickoff: { $gte: odPolnocy, $lt: doPolnocy }, fixtureId: { $ne: f.fixtureId } })
 			.select('fixtureId homeName awayName kickoff leagueId leagueName leagueCountry')
@@ -100,6 +103,9 @@ export default async function Page({ params }) {
 			.limit(12)
 			.lean()
 			.catch(() => []),
+		// Składy i nieobecni z zapisu przy meczu (`lib/football/lineupsJob.js`) — tylko przed meczem; jedno zapytanie do bazy.
+		rozpoczety ? null : squadViewFor(f.fixtureId),
+		getTranslations({ locale, namespace: 'lineups' }),
 	]);
 	// Typ odkryty: typ dnia zawsze, każdy inny — od pierwszego gwizdka (wtedy nic już nie odbiera płacącym).
 	const odkryty = hint && (dzienny || rozpoczety);
@@ -197,6 +203,13 @@ export default async function Page({ params }) {
 							</p>
 						</div>
 					)}
+				</section>
+			)}
+
+			{sklady && sklady.stage !== 'none' && (
+				<section className="mt-6">
+					<h2 className="mb-3 text-[11px] font-bold uppercase tracking-wide text-muted">{tl('title')}</h2>
+					<SquadPanel view={sklady} updatedAt={sklady.updatedAt} locale={locale} />
 				</section>
 			)}
 

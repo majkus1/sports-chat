@@ -9,6 +9,7 @@ import AnalysisPanel from '@/components/match/AnalysisPanel';
 import AnalysisChat from '@/components/match/AnalysisChat';
 import WidgetFrame from '@/components/match/WidgetFrame';
 import CommunityPicks from '@/components/picks/CommunityPicks';
+import SquadPanel, { SquadAlert } from '@/components/lineups/SquadPanel';
 import { useUrlState } from '@/lib/hooks/useUrlState';
 
 /** Zakładki panelu danych — także dopuszczalne wartości `?tab=` w adresie pokoju meczowego. */
@@ -228,8 +229,15 @@ function RecentFormTab({ bundle }) {
 	);
 }
 
+/**
+ * Zakładka „Składy". Przed meczem i w trakcie — sekcja z `bundle.squad` (`lib/football/lineupsStore.js`):
+ * wniosek, siła składu, nieobecni i potwierdzone jedenastki z zaznaczeniem podstawowych. Bez niej (mecz
+ * zakończony albo baza niedostępna) — dotychczasowa lista jedenastek.
+ */
 function LineupsTab({ bundle }) {
 	const t = useTranslations('common');
+	const locale = useLocale();
+	if (bundle.squad) return <SquadPanel view={bundle.squad} updatedAt={bundle.fetchedAt} locale={locale} />;
 	if (!bundle.lineups?.length) return <Empty>{t('no_lineups')}</Empty>;
 
 	return (
@@ -410,6 +418,9 @@ export default function MatchDataTabs({
 			</TabsContent>
 
 			<TabsContent value="analysis">
+				{/* Osłabiony skład (brak 3+ podstawowych, bramkarza nr 1, najlepszego strzelca) — nad analizą,
+				    bo analiza mogła powstać rano, a składy przychodzą 20–60 minut przed meczem. */}
+				<SquadAlert view={bundle.squad} className="mb-3" />
 				{analysis?.sections || analysis?.text ? (
 					<>
 						<AnalysisPanel

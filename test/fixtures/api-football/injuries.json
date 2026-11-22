@@ -1,0 +1,182 @@
+{
+	"get": "injuries",
+	"parameters": {
+		"ids": "592872-592873"
+	},
+	"errors": [],
+	"results": 6,
+	"paging": {
+		"current": 1,
+		"total": 1
+	},
+	"response": [
+		{
+			"player": {
+				"id": 629,
+				"name": "K. De Bruyne",
+				"photo": "https://media.api-sports.io/football/players/629.png",
+				"type": "Missing Fixture",
+				"reason": "Hamstring Injury"
+			},
+			"team": {
+				"id": 50,
+				"name": "Manchester City",
+				"logo": "https://media.api-sports.io/football/teams/50.png"
+			},
+			"fixture": {
+				"id": 592872,
+				"timezone": "UTC",
+				"date": "2021-05-23T15:00:00+00:00",
+				"timestamp": 1617822000
+			},
+			"league": {
+				"id": 39,
+				"season": 2020,
+				"name": "Premier League",
+				"country": "England",
+				"logo": "",
+				"flag": null
+			}
+		},
+		{
+			"player": {
+				"id": 629,
+				"name": "K. De Bruyne",
+				"photo": "https://media.api-sports.io/football/players/629.png",
+				"type": "Missing Fixture",
+				"reason": "Hamstring Injury"
+			},
+			"team": {
+				"id": 50,
+				"name": "Manchester City",
+				"logo": "https://media.api-sports.io/football/teams/50.png"
+			},
+			"fixture": {
+				"id": 592872,
+				"timezone": "UTC",
+				"date": "2021-05-23T15:00:00+00:00",
+				"timestamp": 1617822000
+			},
+			"league": {
+				"id": 48,
+				"season": 2020,
+				"name": "League Cup",
+				"country": "England",
+				"logo": "",
+				"flag": null
+			}
+		},
+		{
+			"player": {
+				"id": 617,
+				"name": "Ederson",
+				"photo": "https://media.api-sports.io/football/players/617.png",
+				"type": "Missing Fixture",
+				"reason": "Red Card"
+			},
+			"team": {
+				"id": 50,
+				"name": "Manchester City",
+				"logo": "https://media.api-sports.io/football/teams/50.png"
+			},
+			"fixture": {
+				"id": 592872,
+				"timezone": "UTC",
+				"date": "2021-05-23T15:00:00+00:00",
+				"timestamp": 1617822000
+			},
+			"league": {
+				"id": 39,
+				"season": 2020,
+				"name": "Premier League",
+				"country": "England",
+				"logo": "",
+				"flag": null
+			}
+		},
+		{
+			"player": {
+				"id": 645,
+				"name": "R. Sterling",
+				"photo": "https://media.api-sports.io/football/players/645.png",
+				"type": "Questionable",
+				"reason": "Knock"
+			},
+			"team": {
+				"id": 50,
+				"name": "Manchester City",
+				"logo": "https://media.api-sports.io/football/teams/50.png"
+			},
+			"fixture": {
+				"id": 592872,
+				"timezone": "UTC",
+				"date": "2021-05-23T15:00:00+00:00",
+				"timestamp": 1617822000
+			},
+			"league": {
+				"id": 39,
+				"season": 2020,
+				"name": "Premier League",
+				"country": "England",
+				"logo": "",
+				"flag": null
+			}
+		},
+		{
+			"player": {
+				"id": 2939,
+				"name": "D. Calvert-Lewin",
+				"photo": "https://media.api-sports.io/football/players/2939.png",
+				"type": "Missing Fixture",
+				"reason": "Suspended"
+			},
+			"team": {
+				"id": 45,
+				"name": "Everton",
+				"logo": "https://media.api-sports.io/football/teams/45.png"
+			},
+			"fixture": {
+				"id": 592872,
+				"timezone": "UTC",
+				"date": "2021-05-23T15:00:00+00:00",
+				"timestamp": 1617822000
+			},
+			"league": {
+				"id": 39,
+				"season": 2020,
+				"name": "Premier League",
+				"country": "England",
+				"logo": "",
+				"flag": null
+			}
+		},
+		{
+			"player": {
+				"id": 1100,
+				"name": "E. Haaland",
+				"photo": "https://media.api-sports.io/football/players/1100.png",
+				"type": "Missing Fixture",
+				"reason": "Ankle Injury"
+			},
+			"team": {
+				"id": 165,
+				"name": "Borussia Dortmund",
+				"logo": "https://media.api-sports.io/football/teams/165.png"
+			},
+			"fixture": {
+				"id": 592873,
+				"timezone": "UTC",
+				"date": "2021-05-22T13:30:00+00:00",
+				"timestamp": 1617822000
+			},
+			"league": {
+				"id": 78,
+				"season": 2020,
+				"name": "Bundesliga",
+				"country": "Germany",
+				"logo": "",
+				"flag": null
+			}
+		}
+	]
+}

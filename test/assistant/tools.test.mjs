@@ -63,7 +63,7 @@ const limit = (over = {}) => async ({ kind }) => ({
  * Wszystkie źródła wykonawcy (`ZRODLA` w `lib/assistant/tools.js`). Niepodstawione rzucają —
  * zapomniana atrapa ma wywrócić test, a nie po cichu zapytać prawdziwe API albo model AI.
  */
-const ZRODLA = ['liveCoupon', 'peekLiveCoupon', 'liveMatchesNow', 'liveMatch', 'dailyOverview', 'checkQuota', 'fixture', 'readAnalysis', 'prepareAnalysis', 'generateAnalysis', 'matchSchedule', 'customCoupon', 'marketFor'];
+const ZRODLA = ['liveCoupon', 'peekLiveCoupon', 'liveMatchesNow', 'liveMatch', 'dailyOverview', 'checkQuota', 'fixture', 'readAnalysis', 'prepareAnalysis', 'generateAnalysis', 'matchSchedule', 'customCoupon', 'marketFor', 'squad'];
 const niepodstawione = Object.fromEntries(
 	ZRODLA.map((nazwa) => [
 		nazwa,
@@ -342,6 +342,36 @@ describe('analiza_meczu — gotowa za darmo, nowa na wyraźną prośbę', () => 
 		assert.deepEqual(w.ryzyka, ['Rotacja składu przed pucharem']);
 		assert.equal(w.link, '/pl/mecz/777');
 		assert.equal(wolania.prepareAnalysis, undefined);
+	});
+
+	test('składy przy gotowej analizie: wniosek, brakujący podstawowi, osłabiony skład — z zapisu, bez kosztu', async () => {
+		const widok = {
+			stage: 'confirmed',
+			home: {
+				name: 'Dom',
+				startXI: [{ name: 'Rezerwowy Bramkarz' }],
+				absent: [{ name: 'Nr Jeden', kind: 'injury', reason: 'Finger Injury', goalkeeper: true, regular: true }],
+				doubtful: [],
+				measure: { reliable: true, coreSize: 11, missingCore: 1, missingGoalkeeper: true, missingTopScorer: false, strength: 91, weakened: true },
+				rotation: false,
+			},
+			away: { name: 'Wyjazd', startXI: [], absent: [], doubtful: [], measure: { reliable: true, coreSize: 10, missingCore: 0, strength: 100, weakened: false }, rotation: false },
+		};
+		const { uruchom, wolania } = wykonawca({
+			zrodla: {
+				readAnalysis: async () => ({ status: 'cached', sections: SEKCJE, createdAt: new Date('2099-01-01T10:00:00Z') }),
+				squad: async () => widok,
+			},
+		});
+		const w = await uruchom('analiza_meczu', { fixtureId: '777' });
+		assert.deepEqual(wolania.squad[0], ['777']);
+		assert.equal(w.sklady.etap, 'potwierdzone składy');
+		assert.match(w.sklady.wniosek, /OSŁABIONY SKŁAD — Dom: brak 1 z 11 podstawowych \(Nr Jeden\), bez bramkarza nr 1/);
+		assert.equal(w.sklady.gospodarze.oslabiony_sklad, true);
+		assert.equal(w.sklady.gospodarze.brakuje_podstawowych, '1 z 11');
+		assert.deepEqual(w.sklady.gospodarze.nieobecni, ['Nr Jeden (Finger Injury)']);
+		assert.equal(w.sklady.goscie.oslabiony_sklad, false);
+		assert.match(w.sklady.uwaga, /nie uwzględniają składów/);
 	});
 
 	test('brak gotowej: ile kosztuje nowa i prośba o zgodę — nic się nie generuje', async () => {

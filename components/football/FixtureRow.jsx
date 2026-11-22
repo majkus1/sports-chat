@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { BarChart3, ChevronRight, Lock, Sparkles, Swords } from 'lucide-react';
+import { AlertTriangle, BarChart3, ChevronRight, Lock, Sparkles, Swords } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 import { couponContent } from '@/lib/coupons/content';
@@ -47,6 +47,24 @@ function WidgetButton({ title, onClick, children }) {
 export function hintSourceKey(hint) {
 	if (hint?.chanceSource === 'market') return 'model_hint_source_market';
 	return hint?.chanceConfirmed ? 'model_hint_source_confirmed' : 'model_hint_source_model';
+}
+
+/**
+ * Ostrzeżenie przy plakietce: drużyna, na którą stawia typ, gra osłabiona (`lineupVeto`, `lib/football/lineups.js`)
+ * — ta sama reguła, która wyrzuca typ z kuponów i typu dnia. Serwer dokleja je tylko do odkrytej plakietki.
+ */
+function LineupFlag() {
+	const tl = useTranslations('lineups');
+	return (
+		<span
+			title={tl('warning_hint')}
+			aria-label={tl('warning_hint')}
+			className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-draw/60 bg-draw/10 px-1.5 text-[10px] font-bold uppercase tracking-wide text-draw"
+		>
+			<AlertTriangle size={12} aria-hidden="true" />
+			{tl('warning_badge')}
+		</span>
+	);
 }
 
 /**
@@ -106,7 +124,17 @@ function ModelHint({ hint, t, locale }) {
 		</span>
 	);
 	const kupony = Array.isArray(hint.coupons) ? hint.coupons : [];
-	if (!hint.daily && !kupony.length) return plakietka;
+	const flaga = hint.lineupWarning ? <LineupFlag /> : null;
+	if (!hint.daily && !kupony.length) {
+		return flaga ? (
+			<span className="inline-flex items-center gap-1">
+				{plakietka}
+				{flaga}
+			</span>
+		) : (
+			plakietka
+		);
+	}
 
 	const c = couponContent(locale);
 	const znacznik = 'rounded-md border border-accent px-1.5 py-1 text-[10px] font-bold uppercase tracking-wide text-accent';
@@ -128,6 +156,7 @@ function ModelHint({ hint, t, locale }) {
 				) : null
 			)}
 			{plakietka}
+			{flaga}
 		</span>
 	);
 }
