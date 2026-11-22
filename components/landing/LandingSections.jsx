@@ -74,6 +74,29 @@ function SectionTitle({ id, children }) {
 	);
 }
 
+/**
+ * Tytuł nagłówka z polskim łamaniem.
+ *
+ * Na szerszych ekranach (od `md`) linia łamie się po pierwszym przecinku — „…asystent, / który zna
+ * każdy mecz" czyta się jak dwie części zdania, a nie jak tekst ucięty w przypadkowym miejscu.
+ * Jednoliterowe spójniki i przyimki (i, a, w, z, o, u) dostają twardą spację, żeby nie zostawały
+ * same na końcu linii na telefonie (zasada polskiej typografii). Tekst w `h1` się nie zmienia —
+ * robot i czytnik ekranu widzą to samo zdanie.
+ */
+function HeroTitle({ text }) {
+	const zwiazane = text.replace(/(^|\s)([aiouwzAIOUWZ])\s/g, '$1$2 ');
+	const i = zwiazane.indexOf(', ');
+	if (i < 0) return zwiazane;
+	return (
+		<>
+			{zwiazane.slice(0, i + 1)}
+			<br className="hidden md:inline" aria-hidden="true" />
+			<span className="md:hidden"> </span>
+			{zwiazane.slice(i + 2)}
+		</>
+	);
+}
+
 export function Hero({ content }) {
 	return (
 		<section className="px-5 pb-14 pt-4 sm:pb-20">
@@ -82,7 +105,7 @@ export function Hero({ content }) {
 
 				{/* Jedyny `h1` w całym dokumencie — zawiera to, czego ludzie faktycznie szukają. */}
 				<h1 className="mt-5 font-display text-3xl font-bold leading-tight text-text sm:text-5xl">
-					{content.title}
+					<HeroTitle text={content.title} />
 				</h1>
 
 				<p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
