@@ -1,27 +1,14 @@
 import { getTranslations } from 'next-intl/server';
 import AppShell from '@/components/layout/AppShell';
-import {
-	Faq,
-	Features,
-	FinalCta,
-	Hero,
-	HowItWorks,
-	Pricing,
-	Problem,
-	Register,
-	Sports,
-} from '@/components/landing/LandingSections';
+import { Faq, Features, FinalCta, Hero, Pricing, Register } from '@/components/landing/LandingSections';
 import { buildMetadata } from '@/lib/seo/metadata';
 import { JsonLd, faqLd, organizationLd, webApplicationLd, websiteLd } from '@/lib/seo/jsonLd';
-import { MethodTeaser } from '@/components/method/MethodSections';
 import DailyPickTeaser from '@/components/landing/DailyPickTeaser';
 import CouponTeaser from '@/components/coupons/CouponTeaser';
 import ValueTeaser from '@/components/value/ValueTeaser';
 import { valueContent } from '@/lib/value/content';
 import { landingContent } from '@/lib/landing/content';
-import { methodContent } from '@/lib/landing/method';
 import { faqItems } from '@/lib/landing/faq';
-import { SPORT_CATEGORIES } from '@/lib/navigation';
 import { PLAN_PASS_DAYS, PRO_WEEK, PUBLIC_PLANS } from '@/lib/billing/plans';
 import { ANALIZY, PYTANIA, RAPORTY, odmien } from '@/lib/landing/plural';
 
@@ -32,8 +19,10 @@ import { ANALIZY, PYTANIA, RAPORTY, odmien } from '@/lib/landing/plural';
  * nie miał szans dowiedzieć się, czym jest ten serwis, a wyszukiwarka nie miała czego zaindeksować:
  * strona była komponentem klienckim, więc nie mogła nawet podać własnego tytułu.
  *
- * Wybór dyscypliny nie zniknął — jest sekcją `#dyscypliny` niżej. Osobna trasa na listę
- * jednego sportu byłaby dodatkowym kliknięciem i kolejnym adresem do wypozycjonowania.
+ * Od 22.11.2026 strona jest krótka (ok. 350 słów zamiast ok. 900): nagłówek z jednym przyciskiem
+ * rejestracji, typ dnia i kupony, wyższe kursy, rejestr, cennik w skrócie, cztery kafelki,
+ * dziesięć pytań i finał. Metoda i rzadsze pytania są na „Jak to działa". Sekcja „Dyscypliny"
+ * zniknęła — działa jedna dyscyplina, a kafel „Kolejne sporty w drodze" nic kibicowi nie dawał.
  */
 
 export async function generateMetadata({ params }) {
@@ -88,7 +77,6 @@ export default async function HomePage({ params }) {
 	const t = await getTranslations('common');
 	const tt = await getTranslations('trust');
 	const content = landingContent(locale);
-	const method = methodContent(locale);
 	const faq = faqItems(locale);
 
 	const tb = await getTranslations('billing2');
@@ -138,18 +126,21 @@ export default async function HomePage({ params }) {
 				</div>
 			</section>
 			<Register content={content.register} note={tt('landing_note')} />
-			<Problem content={content.problem} />
-			<Features content={content.features} />
-			<HowItWorks content={content.how} />
-			<MethodTeaser content={method.teaser} />
-			<Sports content={content.sports} categories={SPORT_CATEGORIES} labelFor={(key) => t(key)} />
+			{/* Cennik zaraz po dowodzie — cena na drugim ekranie po typach, nie na dziewiątym. */}
 			<Pricing
 				content={content.pricing}
 				plans={plans}
 				freeLabel={t('pricing_free')}
 				daysLabel={(days) => tb('limit_per_days', { days })}
+				buyWeekLabel={tb('buy_week', { week: PRO_WEEK.days, price: PRO_WEEK.priceGrosze / 100 })}
+				weekId={PRO_WEEK.id}
 			/>
-			<Faq title={content.faq.title} items={faq} />
+			<Features content={content.features} />
+			<Faq
+				title={content.faq.title}
+				items={faq}
+				more={{ text: content.faq.more, link: content.faq.moreLink, href: '/jak-to-dziala' }}
+			/>
 			<FinalCta content={content.finalCta} note={t('footer_responsible_gaming')} />
 		</AppShell>
 	);

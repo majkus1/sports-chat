@@ -1,7 +1,7 @@
 'use client';
 
 import { useContext, useEffect, useState } from 'react';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ArrowRight } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { UserContext, useAuthKey } from '@/context/UserContext';
@@ -24,6 +24,8 @@ import { cn } from '@/lib/utils';
 export default function DailyPickTeaser() {
 	const locale = useLocale();
 	const c = todayPicksContent(locale);
+	// Etykieta przycisku gościa na karcie z kłódką — z treści „Typów na dziś", a gdy jej tam brak, z `ux_p1`.
+	const tx = useTranslations('ux_p1');
 	const { isAuthed } = useContext(UserContext);
 	const authKey = useAuthKey();
 	const [dane, setDane] = useState(null);
@@ -99,7 +101,15 @@ export default function DailyPickTeaser() {
 								className="h-full"
 							/>
 						) : (
-							<LockedPickCard pick={drugi} c={c} label={lockedLabel} locale={locale} guest={!isAuthed} className="h-full" />
+							<LockedPickCard
+								pick={drugi}
+								c={c}
+								label={lockedLabel}
+								locale={locale}
+								guest={!isAuthed}
+								unlockGuest={c.unlockGuest || tx('unlock_guest')}
+								className="h-full"
+							/>
 						))}
 				</div>
 				<div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">

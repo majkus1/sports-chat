@@ -842,5 +842,8 @@
 		"warning_badge": "Skład",
 		"warning_hint": "Osłabiony skład drużyny, na którą stawia typ — bez kilku podstawowych, bramkarza nr 1 albo najlepszego strzelca.",
 		"leg_warning_after": "Opublikowano przed składami — typ zostaje bez zmian."
+	},
+	"ux_p1": {
+		"unlock_guest": "Odkryj typ za darmo"
 	}
 }

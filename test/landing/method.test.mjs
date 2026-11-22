@@ -58,11 +58,30 @@ describe('treść nie wraca do żargonu', () => {
 	test('każda sekcja ma komplet pól, których oczekuje strona', () => {
 		for (const locale of ['pl', 'en']) {
 			const c = methodContent(locale);
-			for (const sekcja of ['summary', 'steps', 'threshold', 'limits', 'proof', 'teaser']) {
+			for (const sekcja of ['summary', 'cta', 'details', 'steps', 'threshold', 'limits', 'proof', 'faq']) {
 				assert.ok(c[sekcja], `${locale}: brak sekcji ${sekcja}`);
 			}
 			assert.equal(c.threshold.example.lines.length >= 3, true, `${locale}: przykład za krótki`);
-			assert.ok(c.proof.cta && c.teaser.cta, `${locale}: brak odnośnika`);
+			assert.ok(c.proof.cta && c.cta.register, `${locale}: brak odnośnika`);
 		}
 	});
+});
+
+describe('pytania na stronie „Jak to działa"', () => {
+	/*
+	 * 22.11.2026 strona główna zeszła do dziesięciu pytań, reszta przeszła tutaj. Każde pytanie
+	 * stoi na jednej stronie — dwa FAQPage z tym samym pytaniem to dla wyszukiwarki duplikat.
+	 */
+	for (const locale of ['pl', 'en']) {
+		test(`${locale}: komplet pól, bez powtórek ze strony głównej i bez kursów`, async () => {
+			const { faqItems, methodFaqItems } = await import('@/lib/landing/faq');
+			const pytania = methodFaqItems(locale);
+			assert.ok(pytania.length > 0, 'brak pytań');
+			for (const p of pytania) assert.ok(p.question && p.answer, 'pytanie bez odpowiedzi');
+			const naGlownej = new Set(faqItems(locale).map((p) => p.question));
+			for (const p of pytania) assert.ok(!naGlownej.has(p.question), `pytanie na obu stronach: ${p.question}`);
+			const tekst = JSON.stringify(pytania).toLowerCase();
+			for (const slowo of ['kurs', 'odds', 'stawk', 'obstaw', 'pewniak']) assert.ok(!tekst.includes(slowo), slowo);
+		});
+	}
 });

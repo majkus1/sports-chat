@@ -842,5 +842,8 @@
 		"warning_badge": "Line-up",
 		"warning_hint": "Weakened line-up of the team this pick backs — several regulars, the first-choice keeper or the top scorer missing.",
 		"leg_warning_after": "Published before line-ups — the pick stays unchanged."
+	},
+	"ux_p1": {
+		"unlock_guest": "Reveal the pick for free"
 	}
 }
