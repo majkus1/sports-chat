@@ -22,6 +22,7 @@ import {
 	matchPreviewContent,
 	matchSlug,
 	pickOutcome,
+	previewIndexable,
 	previewLeague,
 	previewNumbers,
 	sportsEventLd,
@@ -41,6 +42,7 @@ import { accuracyHref } from '@/lib/urlState';
  *
  * Bez liczb modelu (stary zapis, prognoza bez dopasowania) strona dostaje `noindex, follow`:
  * sam tytuł i data to cienka treść, a linki do innych meczów tego dnia mają nadal działać.
+ * Tak samo ponad `PREVIEW_INDEX_DAYS` (30) dni po meczu — strona działa dalej, ale wypada z indeksu.
  */
 export const revalidate = 600;
 
@@ -67,7 +69,8 @@ export async function generateMetadata({ params }) {
 		path: matchPath(f),
 		title: c.title(f.homeName, f.awayName, when.data),
 		description: Number.isFinite(n.home) ? c.description(f.homeName, f.awayName, n, previewLeague(f), when) : undefined,
-		noindex: !Number.isFinite(n.home),
+		// Bez liczb albo ponad miesiąc po meczu — `noindex, follow` (`previewIndexable`).
+		noindex: !previewIndexable(f, Number.isFinite(n.home)),
 		follow: true,
 	});
 }

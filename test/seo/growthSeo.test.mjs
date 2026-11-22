@@ -16,7 +16,7 @@ const { leaguePageModel, leaguePageContent } = await import('@/lib/seo/leaguePag
 const { leagueSitemapEntries } = await import('@/lib/seo/sitemapLeagues');
 const { matchStory, teamForm, shotAverages, MIN_FORM } = await import('@/lib/seo/matchStory');
 const { buildMetadata } = await import('@/lib/seo/metadata');
-const { sportsEventData, sportsEventLd, matchPreviewContent } = await import('@/lib/seo/matchPreview');
+const { sportsEventData, sportsEventLd, matchPreviewContent, previewIndexable, PREVIEW_INDEX_DAYS } = await import('@/lib/seo/matchPreview');
 const { SITE_URL } = await import('@/lib/seo/config');
 
 const NOW = new Date('2099-03-10T10:00:00Z');
@@ -211,5 +211,20 @@ describe('dane strukturalne meczu', () => {
 		const html = sportsEventLd({ forecast: forecast({ homeName: '</script><b>' }), url: 'x', name: 'x' }).__html;
 		assert.ok(!html.includes('</script>'));
 		assert.equal(JSON.parse(html)['@context'], 'https://schema.org');
+	});
+});
+
+describe('strona meczu w indeksie najwyżej miesiąc po meczu', () => {
+	const now = new Date('2099-03-31T12:00:00Z');
+	const dni = (n) => ({ kickoff: new Date(now.getTime() - n * 86_400_000) });
+	test('przed meczem i do 30 dni po — w indeksie', () => {
+		assert.equal(previewIndexable({ kickoff: new Date(now.getTime() + 86_400_000) }, true, now), true);
+		assert.equal(previewIndexable(dni(1), true, now), true);
+		assert.equal(previewIndexable(dni(PREVIEW_INDEX_DAYS), true, now), true);
+	});
+	test('ponad 30 dni po meczu albo bez liczb modelu — poza indeksem', () => {
+		assert.equal(previewIndexable(dni(PREVIEW_INDEX_DAYS + 1), true, now), false);
+		assert.equal(previewIndexable(dni(1), false, now), false);
+		assert.equal(previewIndexable(null, true, now), false);
 	});
 });
