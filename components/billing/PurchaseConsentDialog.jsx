@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { CONSENT_VERSION, consentFor } from '@/lib/legal/purchaseConsent';
 import PaymentMethods from '@/components/billing2/PaymentMethods';
+import { Link } from '@/i18n/routing';
 
 /**
  * Oświadczenie konsumenta odbierane przed przejściem do płatności.
@@ -71,7 +72,13 @@ export default function PurchaseConsentDialog({ item, onConfirm, onClose, busy =
 					<span>{copy.statement}</span>
 				</label>
 
-				<p className="mt-3 text-xs leading-relaxed text-muted">{copy.footnote}</p>
+				{/* Szczegóły zwrotów są na `/zwroty` — tu jedno zdanie i odnośnik, bez powtarzania regulaminu. */}
+				<p className="mt-3 text-xs leading-relaxed text-muted">
+					{copy.footnote}{' '}
+					<Link href="/zwroty" target="_blank" className="underline">
+						{copy.refunds}
+					</Link>
+				</p>
 				<p className="mt-1.5 text-xs leading-relaxed text-muted">{b('consent_next')}</p>
 
 				<div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

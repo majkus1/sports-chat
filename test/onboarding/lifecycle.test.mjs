@@ -15,7 +15,7 @@ import { setupEnv } from '../helpers/setup.mjs';
 
 setupEnv();
 const { buildDayTwoEmail, buildTrialEndEmail, dayTwoEligible, trialEndEligible, trialEndsAt, sendLifecycleEmails } = await import('@/lib/onboarding/lifecycle');
-const { TRIAL, PLANS } = await import('@/lib/billing/plans');
+const { TRIAL, PLANS, PRO_WEEK } = await import('@/lib/billing/plans');
 
 const H = 3600 * 1000;
 const NOW = new Date('2026-11-22T07:00:00Z'); // 8:00 w Warszawie
@@ -129,12 +129,19 @@ describe('treść maila ostatniego dnia', () => {
 		assert.ok(m.subject.includes('dziś o 21:14'));
 		assert.ok(m.text.includes('4 × analiza AI meczu'));
 		assert.ok(m.text.includes('1 × kupon z kreatora'));
-		assert.equal(m.text.includes('× raport AI kolejki'), false, 'zera nie wypisujemy');
-		assert.ok(m.text.includes('30 z 40 trafionych (75%, przy normie 62%'));
+		assert.equal(m.text.includes('× raport AI'), false, 'zera nie wypisujemy');
+		assert.ok(m.text.includes('30 z 40 trafionych (75%, zwykle 62%)'));
 		assert.ok(m.text.includes('3 z 7 weszło'), 'słaby wynik kuponów też pokazujemy');
 		assert.ok(m.text.includes(`${PLANS.free.limits.analysis} analiz AI i ${PLANS.free.limits.aiChat} pytań`));
 		assert.ok(m.text.includes(`Pro to ${PLANS.pro.priceMonthlyPln} zł za 30 dni`));
 		assert.ok(m.text.includes('https://x.pl/pl/cennik'));
+		// Pierwsza opcja to Pro na 7 dni: zdanie i przycisk z ceną z planów, adres z wyróżnioną kartą i źródłem.
+		const cena = PRO_WEEK.priceGrosze / 100;
+		assert.ok(m.text.includes(`Na start: Pro na ${PRO_WEEK.days} dni za ${cena} zł`));
+		assert.ok(m.text.indexOf(`Pro na ${PRO_WEEK.days} dni`) < m.text.indexOf(`Pro to ${PLANS.pro.priceMonthlyPln} zł`), 'przepustka przed planem na 30 dni');
+		assert.ok(m.text.includes(`Kup ${PRO_WEEK.days} dni za ${cena} zł: https://x.pl/pl/cennik?oferta=pro_week&z=mail_trial_end`));
+		assert.ok(m.html.includes(`>Kup ${PRO_WEEK.days} dni za ${cena} zł</a>`));
+		assert.ok(m.html.includes('cennik?oferta=pro_week&amp;z=mail_trial_end'));
 		assert.ok(m.text.includes(OPT));
 	});
 

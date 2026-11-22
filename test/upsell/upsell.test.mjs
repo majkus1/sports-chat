@@ -60,6 +60,11 @@ describe('miejsca i adres cennika', () => {
 		assert.equal(pricingHref('coupon_live'), '/cennik?oferta=pro_week&z=coupon_live');
 		assert.equal(pricingHref('dowolne'), '/cennik?oferta=pro_week');
 		for (const label of Object.values(UPSELL_PLACEMENTS)) assert.ok(label.trim());
+		// Od 22.11.2026: wyczerpane limity, panel konta i maile próby też niosą źródło do pomiaru.
+		for (const p of ['limit_analysis', 'limit_ai_chat', 'limit_analysis_view', 'limit_report', 'panel_plan', 'mail_trial_end', 'mail_morning_trial']) {
+			assert.ok(isPlacement(p), p);
+		}
+		assert.equal(pricingHref('mail_trial_end'), '/cennik?oferta=pro_week&z=mail_trial_end');
 	});
 });
 

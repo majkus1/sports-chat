@@ -19,7 +19,7 @@ import { setupEnv } from '../helpers/setup.mjs';
 setupEnv();
 
 const { FEATURE_ROWS, QUOTA_ROWS, planMessageParams, pricingMetaDescription } = await import('@/lib/billing/planTexts');
-const { PLANS, PLAN_PASS_DAYS, QUOTA_KINDS, QUOTA_PERIODS, TRIAL } = await import('@/lib/billing/plans');
+const { PLANS, PLAN_PASS_DAYS, PRO_WEEK, QUOTA_KINDS, QUOTA_PERIODS, TRIAL } = await import('@/lib/billing/plans');
 const { COUPON_TYPES } = await import('@/lib/coupons/build');
 const { CUSTOM_ODDS } = await import('@/lib/coupons/custom');
 
@@ -84,6 +84,8 @@ describe('cennik: liczby w zdaniach z planów', () => {
 			assert.ok(wyrenderuj(locale, 'report_login_hint').includes(`${TRIAL.days} ${dni}`));
 			assert.ok(wyrenderuj(locale, 'report_login_hint').includes(String(TRIAL.limits.report)));
 			assert.ok(wyrenderuj(locale, 'pricing_one_off_note').includes(`${PLAN_PASS_DAYS} ${dni}`));
+			// Od 22.11.2026 zdanie o płatności jednorazowej podaje oba bilety — długość przepustki też z planów.
+			assert.ok(wyrenderuj(locale, 'pricing_one_off_note').includes(`${PRO_WEEK.days} ${dni}`));
 			assert.ok(wyrenderuj(locale, 'quota_reset_note').includes(`${PLAN_PASS_DAYS} ${dni}`));
 			const przecinek = (v) => (locale === 'en' ? v.toFixed(1) : v.toFixed(1).replace('.', ','));
 			const zakres = `${przecinek(COUPON_TYPES.days3.target)}–${przecinek(COUPON_TYPES.days3.max)}`;
@@ -121,7 +123,7 @@ describe('cennik: liczby w zdaniach z planów', () => {
 		test(`${locale}: opis cennika w wyszukiwarce z planów`, () => {
 			const opis = pricingMetaDescription(locale);
 			const free = PLANS.free.limits;
-			for (const n of [free.analysis, free.aiChat, TRIAL.days, PLAN_PASS_DAYS]) assert.ok(opis.includes(String(n)), `${n}: ${opis}`);
+			for (const n of [free.analysis, free.aiChat, TRIAL.days, PLAN_PASS_DAYS, PRO_WEEK.priceGrosze / 100]) assert.ok(opis.includes(String(n)), `${n}: ${opis}`);
 			assert.ok(opis.length <= 200, `opis za długi (${opis.length})`);
 		});
 	}

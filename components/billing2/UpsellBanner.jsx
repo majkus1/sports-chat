@@ -13,6 +13,9 @@ import { PRO_WEEK } from '@/lib/billing/plans';
  * Nie ma go na stronach, na których byłby nie na miejscu: cennik (tam oferta i tak jest),
  * dokumenty prawne, panel admina. Zamknięty znika na 3 dni; trafiony typ ma własny klucz
  * zamknięcia (mecz + typ), więc następny trafiony pojawi się mimo zamknięcia poprzedniego.
+ *
+ * Każdy baner: tytuł, jedno zdanie z ceną (ok. 20 słów) i ten sam przycisk „Kup 7 dni za 19 zł" —
+ * od 22.11.2026 także przy trafionym typie (wcześniej „Odblokuj raport całej kolejki", bez ceny).
  */
 const BEZ_BANERA = /\/(cennik|regulamin|polityka-prywatnosci|zwroty|admin)(\/|$)/;
 
@@ -50,7 +53,7 @@ export default function UpsellBanner() {
 				dismissKey={`analysis_win:${d.home}:${d.away}:${d.selection}`}
 				title={t('nudge_win_title', { home: d.home || '', away: d.away || '' })}
 				body={t('nudge_win_body', { selection: d.selection || '', reports: l.report, price })}
-				cta={t('nudge_win_cta')}
+				cta={cta}
 				hideDays={7}
 				className="mb-5"
 			/>
