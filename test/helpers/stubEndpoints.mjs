@@ -119,6 +119,11 @@ export async function leagueFixtures({ leagueId, season }) {
 export async function oddsByDate() {
 	return [];
 }
+/** Kursy na żywo — analiza meczu w trakcie pyta o nie od 21.11.2026 (`liveForBundle`). */
+export async function liveOdds() {
+	return [];
+}
+
 export async function oddsByFixture() {
 	return [];
 }

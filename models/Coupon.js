@@ -57,8 +57,12 @@ const LegSchema = new mongoose.Schema(
 		/** Klucz plakietki (`home`, `X2`, `awayScores`…) i jej opis. */
 		key: { type: String, required: true },
 		selection: { type: String, required: true },
+		/** Pokazana szansa typu; od 21.11.2026 z kursu po zdjęciu marży (`chanceSource: 'market'`). */
 		probability: { type: Number, required: true },
 		base: { type: Number, default: null },
+		/** Druga liczba do pomiaru — szansa modelu — i źródło pokazanej (`lib/picks/chance.js`). */
+		modelProbability: { type: Number, default: null },
+		chanceSource: { type: String, default: null },
 		/** Mediana bukmacherów w chwili wyboru (kurs dziesiętny). */
 		odds: { type: Number, required: true },
 		/** Po meczu: `won` / `lost` / `void` (mecz odwołany) i wynik z 90 minut. */

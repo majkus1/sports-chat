@@ -233,6 +233,9 @@ export async function POST(request) {
 							: null;
 						return {
 							marketProbability: wpis?.marketProbability ?? null,
+							// Obie liczby i źródło szansy przy typie (`lib/picks/chance.js`).
+							modelProbability: wpis?.modelProbability ?? null,
+							chanceSource: wpis?.chanceSource ?? null,
 							promptVersion: REPORT_PROMPT_VERSION,
 							modelVersion: meta?.model ?? null,
 							// `buildReportCandidates` zapisuje ją przy kandydacie, gdy model policzył selekcje.

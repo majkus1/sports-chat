@@ -52,6 +52,7 @@ const typ = (kickoff, probability, odds, extra = {}) => ({
 	selection: `Gospodarz ${n} wygra`,
 	probability,
 	odds,
+	chanceConfirmed: true,
 	...extra,
 });
 const iloczyn = (xs) => xs.reduce((a, b) => a * b, 1);
@@ -92,9 +93,9 @@ describe('ustawienia kreatora', () => {
 });
 
 describe('widełki kursu', () => {
-	test('„ok. 2,5" to dokładnie przedział kuponów serwisu; każdy cel nie schodzi wyraźnie poniżej nazwy', () => {
+	test('„ok. 2,5" to dokładnie przedział kuponu 5-dniowego; każdy cel nie schodzi wyraźnie poniżej nazwy', () => {
 		const dwaIPol = CUSTOM_ODDS.find((x) => x.id === '2.5');
-		assert.deepEqual([dwaIPol.target, dwaIPol.max], [COUPON_TYPES.daily.target, COUPON_TYPES.daily.max]);
+		assert.deepEqual([dwaIPol.target, dwaIPol.max], [COUPON_TYPES.days5.target, COUPON_TYPES.days5.max]);
 		for (const cel of CUSTOM_ODDS) {
 			assert.ok(cel.target >= cel.nominal - 0.1 - 1e-9 && cel.target <= cel.nominal, cel.id);
 			assert.ok(cel.max > cel.target && cel.max <= cel.nominal + 0.6 + 1e-9, cel.id);
@@ -102,21 +103,21 @@ describe('widełki kursu', () => {
 		assert.deepEqual(customRules({ odds: '3.0', legs: 5 }), { target: 2.9, max: 3.6, maxLegs: 5 });
 	});
 
-	test('najmniej meczów z typami do 1,40: ~2,0 i ~2,5 — trzy, ~3,0 — cztery (1,40³ = 2,74)', () => {
-		assert.equal(minLegsFor(2.0), 3);
-		assert.equal(minLegsFor(2.4), 3);
-		assert.equal(minLegsFor(2.9), 4);
-		assert.ok(LEG_MAX_ODDS ** 2 < 2.0);
+	test('najmniej meczów z typami do 1,60 (te same nogi co kupon dnia): ~2,0 i ~2,5 — dwa, ~3,0 — trzy', () => {
+		assert.equal(minLegsFor(2.0), 2);
+		assert.equal(minLegsFor(2.4), 2);
+		assert.equal(minLegsFor(2.9), 3);
+		assert.ok(LEG_MAX_ODDS ** 2 >= 2.4 && LEG_MAX_ODDS ** 2 < 2.9);
 	});
 
 	test('za mało meczów na ten kurs — „nie da się" od razu, bez pobierania', () => {
-		assert.deepEqual(customPrecheck({ ...CUSTOM_DEFAULTS, legs: 2 }, o(DZIEN, 10)), {
+		assert.deepEqual(customPrecheck({ ...CUSTOM_DEFAULTS, odds: '3.0', legs: 2 }, o(DZIEN, 10)), {
 			reason: 'too_few_legs',
 			needed: 3,
 			suggest: ['legs'],
 		});
-		assert.equal(customPrecheck({ ...CUSTOM_DEFAULTS, odds: '3.0', legs: 3 }, o(DZIEN, 10)).needed, 4);
-		assert.equal(customPrecheck({ ...CUSTOM_DEFAULTS, odds: '3.0', legs: 4 }, o(DZIEN, 10)), null);
+		assert.equal(customPrecheck({ ...CUSTOM_DEFAULTS, legs: 2 }, o(DZIEN, 10)), null, '~2,5 z dwóch meczów już się da');
+		assert.equal(customPrecheck({ ...CUSTOM_DEFAULTS, odds: '3.0', legs: 3 }, o(DZIEN, 10)), null);
 	});
 });
 
@@ -235,13 +236,13 @@ describe('„nie da się" — powód z liczb, które już są', () => {
 		assert.deepEqual(awaria.suggest, ['retry']);
 	});
 
-	test('za mało typów spełniających zasady (kurs 1,40+ albo rynek mniej pewny niż model)', () => {
-		const kandydaci = [typ(o(DZIEN, 19), 80, 1.25), typ(o(DZIEN, 20), 60, 1.6), typ(o(DZIEN, 21), 85, 1.3)];
+	test('za mało typów spełniających zasady (kurs 1,60+ albo szansa bez potwierdzenia kursem)', () => {
+		const kandydaci = [typ(o(DZIEN, 19), 80, 1.25), typ(o(DZIEN, 20), 60, 1.6), typ(o(DZIEN, 21), 85, 1.3, { chanceConfirmed: false })];
 		const d = customDiagnosis({ params, stats: { entries: 4, withOdds: 3, failed: 0 }, candidates: kandydaci, now: teraz });
 		assert.equal(d.reason, 'few_picks');
-		assert.deepEqual(d.counts, { matches: 4, withOdds: 3, picks: 1, needed: 3 });
+		assert.deepEqual(d.counts, { matches: 4, withOdds: 3, picks: 1, needed: 2 });
 		const tekst = customImpossibleText('pl', { ...d, params });
-		assert.match(tekst.reason, /Z 4 meczów z typem modelu zasady kuponu .* spełnia 1 — a potrzeba co najmniej 3\. Kursy są na razie przy 3 z nich\./);
+		assert.match(tekst.reason, /Z 4 meczów z typem modelu zasady kuponu .* spełnia 1 — a potrzeba co najmniej 2\. Kursy są na razie przy 3 z nich\./);
 		assert.ok(tekst.suggestions.length >= 2);
 	});
 
@@ -282,7 +283,7 @@ describe('„nie da się" — powód z liczb, które już są', () => {
 				assert.deepEqual(t.suggestions, [c.suggest.window]);
 			}
 		}
-		assert.match(customImpossibleText('pl', { reason: 'too_few_legs', needed: 3, params }).reason, /co najmniej 3 meczów: .* 2 dają najwyżej 1,96/);
+		assert.match(customImpossibleText('pl', { reason: 'too_few_legs', needed: 3, params }).reason, /co najmniej 3 meczów: .* 2 dają najwyżej 2,56/);
 	});
 });
 

@@ -63,7 +63,7 @@ const limit = (over = {}) => async ({ kind }) => ({
  * Wszystkie źródła wykonawcy (`ZRODLA` w `lib/assistant/tools.js`). Niepodstawione rzucają —
  * zapomniana atrapa ma wywrócić test, a nie po cichu zapytać prawdziwe API albo model AI.
  */
-const ZRODLA = ['liveCoupon', 'peekLiveCoupon', 'liveMatchesNow', 'liveMatch', 'dailyOverview', 'checkQuota', 'fixture', 'readAnalysis', 'prepareAnalysis', 'generateAnalysis', 'matchSchedule', 'customCoupon'];
+const ZRODLA = ['liveCoupon', 'peekLiveCoupon', 'liveMatchesNow', 'liveMatch', 'dailyOverview', 'checkQuota', 'fixture', 'readAnalysis', 'prepareAnalysis', 'generateAnalysis', 'matchSchedule', 'customCoupon', 'marketFor'];
 const niepodstawione = Object.fromEntries(
 	ZRODLA.map((nazwa) => [
 		nazwa,
@@ -666,7 +666,7 @@ describe('moje_mecze_i_typy (prawdziwa baza)', () => {
 
 /* ------------------------------------------------------------------------------------------ */
 
-describe('definicje narzędzi i prompt assistant/6', () => {
+describe('definicje narzędzi i prompt assistant/7', () => {
 	const NOWE = ['na_zywo', 'mecz_na_zywo', 'analiza_meczu', 'typ_dnia', 'raporty', 'funkcje_aplikacji', 'moje_mecze_i_typy'];
 
 	test('nowe narzędzia mają definicję (wykonawców sprawdzają testy wyżej); gotowa_analiza zastąpiona', async () => {
@@ -689,7 +689,7 @@ describe('definicje narzędzi i prompt assistant/6', () => {
 	});
 
 	test('prompt w obu językach zna wszystkie narzędzia i nowe zasady', () => {
-		assert.equal(ASSISTANT_PROMPT_VERSION, 'assistant/6');
+		assert.equal(ASSISTANT_PROMPT_VERSION, 'assistant/7');
 		const pl = assistantSystemPrompt({ language: 'pl', locale: 'pl', today: '2099-01-01' });
 		const en = assistantSystemPrompt({ language: 'en', locale: 'en', today: '2099-01-01' });
 		for (const prompt of [pl, en]) {
@@ -733,6 +733,8 @@ describe('zloz_kupon — kreator kuponu z rozmowy', () => {
 			status: 'pending',
 			totalOdds: 2.52,
 			chance: 39,
+			// `couponDto().chanceSource` — wszystkie typy z szansą z kursu.
+			chanceSource: 'market',
 			createdAt: '2099-01-01T09:00:00.000Z',
 			params: { odds: '2.5', legs: 4, window: 'evening', leagues: ['england'], skipPublished: false },
 			newsCheck: { checked: 4, dropped: [{ match: 'A – B', selection: 'A wygra', reason: 'kontuzja lidera' }] },
@@ -761,7 +763,8 @@ describe('zloz_kupon — kreator kuponu z rozmowy', () => {
 		assert.equal(String(args.userId), String(USER_ID));
 		assert.deepEqual(args.params, { odds: 2.5, legs: 4, window: 'evening', leagues: ['england'], skipPublished: true });
 		assert.equal(w.kupon.kurs_laczny, 2.52);
-		assert.equal(w.kupon.szansa_wg_modelu_pct, 39);
+		assert.equal(w.kupon.szansa_pct, 39);
+		assert.match(w.kupon.zrodlo_szansy, /z kursów/);
 		assert.match(w.kupon.ustawienia, /ok\. 2,5 · najwyżej 4 mecze · Dziś 18–23 · Anglia/);
 		assert.deepEqual(
 			w.kupon.typy.map((t) => [t.mecz, t.typ, t.kurs, t.link]),
@@ -801,6 +804,36 @@ describe('zloz_kupon — kreator kuponu z rozmowy', () => {
 		assert.match(w.nie_da_sie, /Z 6 meczów z typem modelu zasady kuponu .* spełniają 2 — a potrzeba co najmniej 3/);
 		assert.equal(w.podpowiedzi.length, 1);
 		assert.equal(w.limit, 'nie został zużyty — zostało 3 z 3 na dziś');
+	});
+
+	test('„nie da się" z propozycjami: asystent dostaje ustawienia do ponownego `zloz_kupon` i zapowiedź', async () => {
+		const { uruchom } = wykonawca({
+			zrodla: {
+				customCoupon: async () => ({
+					status: 'impossible',
+					reason: 'few_picks',
+					params: { odds: '2.5', legs: 4, window: 'evening', leagues: [], skipPublished: false },
+					counts: { matches: 2, withOdds: 2, picks: 1, needed: 2 },
+					suggest: ['window'],
+					dropped: [],
+					partial: false,
+					alternatives: [
+						{
+							params: { odds: '2.5', legs: 4, window: 'tomorrow', leagues: [], skipPublished: false },
+							changes: [{ field: 'window', from: 'evening', to: 'tomorrow' }],
+							preview: { legs: [{}, {}, {}], totalOdds: 2.52, chance: 39 },
+							picks: { before: 1, after: 6 },
+						},
+					],
+					quota: { limit: 3, used: 0, remaining: 3 },
+				}),
+			},
+		});
+		const w = await uruchom('zloz_kupon', { kurs: 2.5, okno: 'evening' });
+		assert.equal(w.propozycje.length, 1);
+		assert.deepEqual(w.propozycje[0].zloz_z, { kurs: 2.5, mecze: 4, okno: 'tomorrow', bez_kuponow_serwisu: false });
+		assert.deepEqual(w.propozycje[0].zapowiedz, { liczba_meczow: 3, kurs_laczny: 2.52, szansa_pct: 39 });
+		assert.match(w.propozycje[0].ustawienia, /Jutro 12–23/);
 	});
 
 	test('plan bez kreatora — "dostep" z cennikiem; limit na dziś — "niedostepne"; gość — bez wołania serwisu', async () => {

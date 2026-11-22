@@ -41,6 +41,15 @@ function WidgetButton({ title, onClick, children }) {
 }
 
 /**
+ * Klucz podpisu źródła szansy przy plakietce (`lib/picks/chance.js`) — wspólny dla listy i panelu
+ * „Model widzi": z kursów, z modelu po potwierdzeniu kursem albo z samego modelu (bez kursów / wstępna).
+ */
+export function hintSourceKey(hint) {
+	if (hint?.chanceSource === 'market') return 'model_hint_source_market';
+	return hint?.chanceConfirmed ? 'model_hint_source_confirmed' : 'model_hint_source_model';
+}
+
+/**
  * Plakietka modelu: „X2 +18" albo kłódka, gdy plan nie obejmuje liczb.
  *
  * Skrót idzie konwencją kuponową (1, X2, G1…), a pełne zdanie — selekcja, procent, o ile
@@ -81,10 +90,13 @@ function ModelHint({ hint, t, locale }) {
 
 	// Przewaga bywa nieznana tylko przy zapisie bez normy — wtedy bez „+…" zamiast „+null".
 	const lift = Number.isFinite(hint.lift) ? hint.lift : null;
-	const opis =
+	// Skąd procent (od 21.11.2026, `lib/picks/chance.js`): z kursów, z modelu po potwierdzeniu kursem albo z samego modelu.
+	const zrodlo = t(hintSourceKey(hint));
+	const opis = `${
 		lift === null
 			? `${hint.selection} — ${hint.probability}%`
-			: t('model_hint_title', { selection: hint.selection, probability: hint.probability, lift });
+			: t('model_hint_title', { selection: hint.selection, probability: hint.probability, lift })
+	} (${zrodlo})`;
 
 	const plakietka = (
 		<span title={opis} aria-label={opis} className={cn(baza, 'bg-accent text-accent-fg tabular-nums')}>

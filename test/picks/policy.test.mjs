@@ -81,9 +81,12 @@ describe('przewaga nad normą, nie wysokość procentu', () => {
 		assert.equal(wynik.reason, 'below_min_lift');
 	});
 
-	test('gol gościa przy tym samym procencie przechodzi, bo jego norma jest niższa', () => {
-		// 85% wobec normy 70% to +15 pkt — o tyle ten mecz różni się od przeciętnego.
-		assert.equal(meetsPolicy(typ('Gole drużyny', 'Legia Warszawa powyżej 0.5 gola'), 85).ok, true);
+	test('gol gościa nie przechodzi nigdy — wyłączony pomiarem 21.11.2026, gol gospodarza zostaje', () => {
+		// Obiecywał 85%, trafiał 67% (123 typy). Gol gospodarza: skalibrowany, 26 typów 92% / 92%.
+		const gosc = meetsPolicy(typ('Gole drużyny', 'Legia Warszawa powyżej 0.5 gola'), 88);
+		assert.equal(gosc.ok, false);
+		assert.equal(gosc.reason, 'market_not_predictable');
+		assert.equal(meetsPolicy(typ('Gole drużyny', 'Lech Poznań powyżej 0.5 gola'), 92).ok, true);
 	});
 
 	test('ten sam procent przechodzi w rynku o niższej normie', () => {
@@ -121,7 +124,6 @@ describe('przewaga nad normą, nie wysokość procentu', () => {
 			['Podwójna szansa', '1X'],
 			['Podwójna szansa', 'X2'],
 			['Gole drużyny', 'Lech Poznań powyżej 0.5 gola'],
-			['Gole drużyny', 'Legia Warszawa powyżej 0.5 gola'],
 		]) {
 			const n = typ(market, selection);
 			const prog = entryThresholdFor(n);
@@ -204,30 +206,31 @@ describe('norma warunkowa — mecz w trakcie', () => {
 
 describe('sufit rynkowy — „to już wszyscy wiedzą"', () => {
 	/*
-	 * Typ „gość strzeli" przy 85% wobec normy 70% to +15 pkt i przechodzi próg przewagi —
-	 * a u bukmachera miał kurs 1,04. Rynek widział dziurawą obronę lepiej niż my. Gdy rynek
-	 * uznaje zdarzenie za pewne, typ nie wnosi informacji niezależnie od naszego procentu.
+	 * Typ „gospodarz strzeli" przy 92% wobec normy 79% to +13 pkt i przechodzi próg przewagi —
+	 * a u bukmachera bywa po 1,04. Gdy rynek uznaje zdarzenie za pewne, typ nie wnosi informacji
+	 * niezależnie od naszego procentu. (Pierwotny przykład, „gość strzeli", jest od 21.11.2026 wyłączony.)
 	 */
+	const gosp = typ('Gole drużyny', 'Lech Poznań powyżej 0.5 gola');
 	const gosc = typ('Gole drużyny', 'Legia Warszawa powyżej 0.5 gola');
 
 	test('zdarzenie pewne dla rynku nie jest typem, choć przechodzi próg przewagi', () => {
-		assert.equal(meetsPolicy(gosc, 85).ok, true, 'bez rynku przechodzi');
-		const wynik = meetsPolicy(gosc, 85, { market: 94 });
+		assert.equal(meetsPolicy(gosp, 92).ok, true, 'bez rynku przechodzi');
+		const wynik = meetsPolicy(gosp, 92, { market: 94 });
 		assert.equal(wynik.ok, false);
 		assert.equal(wynik.reason, 'market_certain');
 	});
 
 	test('rynek poniżej sufitu niczego nie zmienia', () => {
-		assert.equal(meetsPolicy(gosc, 85, { market: MARKET_CEILING - 1 }).ok, true);
+		assert.equal(meetsPolicy(gosp, 92, { market: MARKET_CEILING - 1 }).ok, true);
 	});
 
 	test('brak kursu to brak sufitu, nie odrzucenie', () => {
-		assert.equal(meetsPolicy(gosc, 85, { market: null }).ok, true);
-		assert.equal(meetsPolicy(gosc, 85, { market: undefined }).ok, true);
+		assert.equal(meetsPolicy(gosp, 92, { market: null }).ok, true);
+		assert.equal(meetsPolicy(gosp, 92, { market: undefined }).ok, true);
 	});
 
 	test('sufit działa przed progami — odrzuca nawet typ bez własnego procentu', () => {
-		assert.equal(meetsPolicy(gosc, null, { market: 95 }).reason, 'market_certain');
+		assert.equal(meetsPolicy(gosp, null, { market: 95 }).reason, 'market_certain');
 	});
 
 	test('selekcje mapują się na klucze prawdopodobieństw rynkowych', () => {

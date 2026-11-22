@@ -5,10 +5,14 @@ import { customGenerateHttp } from '@/lib/coupons/customService';
 /**
  * Kreator kuponu — złożenie własnego kuponu (`lib/coupons/customService.js`).
  *
- * `POST { params: { odds, legs, window, leagues, skipPublished } }`. Sesja z ciasteczka, limit
- * `couponGen` (dziennie) i blokada na użytkownika po stronie serwera. Odpowiedzi: 200 z kuponem
- * (`ok: true`) albo z powodem „nie da się" (`ok: false`, limit nietknięty), 400 złe ustawienia,
- * 401 bez sesji, 403 plan bez kreatora (zapowiedź), 409 złożenie już trwa, 429 limit na dziś.
+ * `POST { params: { odds, legs, window, leagues, skipPublished }, from?: { attempt, index } }`. Sesja
+ * z ciasteczka, limit `couponGen` (dziennie) i blokada na użytkownika po stronie serwera. Odpowiedzi:
+ * 200 z kuponem (`ok: true`) albo z powodem „nie da się" (`ok: false`, limit nietknięty) i 0–3
+ * propozycjami działających ustawień (`alternatives`, `attemptId`), 400 złe ustawienia, 401 bez sesji,
+ * 403 plan bez kreatora (zapowiedź), 409 złożenie już trwa, 429 limit na dziś.
+ *
+ * `from` — przyjęta propozycja (identyfikator próby i numer karty); tylko do dziennika prób, zasady
+ * i limit są te same co przy każdym złożeniu.
  *
  * Limit czasu jak u asystenta: sprawdzenie wiadomości to kilka wyszukań AI po kilka sekund, w najgorszym
  * razie w kilku rundach (typ odrzucony → następny), do tego dociąganie brakujących kursów.

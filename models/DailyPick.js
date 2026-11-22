@@ -26,6 +26,11 @@ const DailyPickSchema = new mongoose.Schema(
 		market: { type: String, required: true },
 		selection: { type: String, required: true },
 		probability: { type: Number, required: true },
+		/** Od 21.11.2026: źródło pokazanej szansy (`market` — z kursu, `model`) i szansa modelu obok (`lib/picks/chance.js`). */
+		chanceSource: { type: String, default: null },
+		modelProbability: { type: Number, default: null },
+		/** Czy kurs potwierdził typ (obie szanse przechodzą próg); `false` — kursów nie było. */
+		chanceConfirmed: { type: Boolean, default: null },
 		base: { type: Number, required: true },
 		lift: { type: Number, required: true },
 		/** Rekord typu w `Pick` — z niego status i wynik po meczu. */

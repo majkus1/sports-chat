@@ -5,6 +5,7 @@ import { ChevronRight, Lock, Sparkles } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 import { couponContent } from '@/lib/coupons/content';
+import { hintSourceKey } from '@/components/football/FixtureRow';
 
 /**
  * „Model widzi" — najmocniejsze typy modelu na wybrany dzień, obok listy meczów.
@@ -78,7 +79,10 @@ function Pick({ pick, locale, t }) {
 			) : (
 				<p className="text-sm text-text">
 					<span className="font-semibold text-accent">{pick.hint.selection}</span>
-					<span className="tabular-nums"> · {pick.hint.probability}%</span>
+					<span className="tabular-nums" title={t(hintSourceKey(pick.hint))}>
+						{' '}
+						· {pick.hint.probability}%
+					</span>
 					{Number.isFinite(pick.hint.base) && (
 						<span className="text-muted"> ({t('model_sees_usual', { base: Math.round(pick.hint.base) })})</span>
 					)}

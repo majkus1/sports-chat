@@ -60,7 +60,7 @@ describe('ta sama selekcja z raportu i z analizy', () => {
 
 	test('inna selekcja na ten sam mecz nie jest duplikatem', async () => {
 		await recordPicks({
-			picks: [{ market: 'Gole drużyny', selection: 'HNK Gorica powyżej 0.5 gola', probability: 85 }],
+			picks: [{ market: 'Gole drużyny', selection: 'Dinamo Zagreb powyżej 0.5 gola', probability: 92 }],
 			kind: 'prematch',
 			source: 'analysis',
 			userId: null,
@@ -88,7 +88,7 @@ describe('ta sama selekcja z raportu i z analizy', () => {
 
 	test('ponowne wygenerowanie tej samej analizy nie robi z niej duplikatu samej siebie', async () => {
 		await recordPicks({
-			picks: [{ market: 'Gole drużyny', selection: 'HNK Gorica powyżej 0.5 gola', probability: 85 }],
+			picks: [{ market: 'Gole drużyny', selection: 'Dinamo Zagreb powyżej 0.5 gola', probability: 92 }],
 			kind: 'prematch',
 			source: 'analysis',
 			userId: null,

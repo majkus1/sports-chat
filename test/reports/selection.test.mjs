@@ -113,15 +113,12 @@ describe('przewaga nad normą jako próg wejścia', () => {
 		assert.equal(znajdz(rynki, 'awayScores'), null);
 	});
 
-	test('gol gościa wyraźnie powyżej normy przechodzi', () => {
+	test('gol gościa nie wchodzi nawet wyraźnie powyżej normy — wyłączony pomiarem 21.11.2026', () => {
 		const rynki = evaluateMarkets({
 			...mecz(),
 			modelPrediction: zModelu({ awayScores: 0.86 }),
 		});
-		const wpis = znajdz(rynki, 'awayScores');
-
-		assert.equal(wpis?.pModel, 86);
-		assert.equal(wpis?.lift, 16);
+		assert.equal(znajdz(rynki, 'awayScores'), null);
 	});
 
 	test('podwójna szansa 1X potrzebuje znacznie więcej niż X2, bo jej norma jest wyższa', () => {
@@ -222,15 +219,17 @@ describe('prawdopodobieństwa z własnego modelu', () => {
 		assert.equal(znajdz(rynki, 'home').support, 1);
 	});
 
-	test('model wystawia typ na to, czy drużyna strzeli — jedyny potwierdzony rynek bramkowy', () => {
-		// Gość: norma 70%, więc 88% to +18 pkt. Ten sam procent u gospodarza (norma 79%) nie wchodzi.
+	test('model wystawia typ na to, czy gospodarz strzeli — gość od 21.11.2026 nie', () => {
+		// Gospodarz: norma 79%, więc 92% to +13 pkt; przy 88% (+9) nie wchodzi. Gość — nigdy.
 		const rynki = evaluateMarkets({
 			...mecz(),
-			modelPrediction: zModelu({ homeScores: 0.88, awayScores: 0.88 }),
+			modelPrediction: zModelu({ homeScores: 0.92, awayScores: 0.88 }),
 		});
 
-		assert.equal(znajdz(rynki, 'awayScores')?.pModel, 88);
-		assert.equal(znajdz(rynki, 'homeScores'), null);
+		assert.equal(znajdz(rynki, 'homeScores')?.probability, 92);
+		assert.equal(znajdz(rynki, 'awayScores'), null);
+		const mniej = evaluateMarkets({ ...mecz(), modelPrediction: zModelu({ homeScores: 0.88 }) });
+		assert.equal(znajdz(mniej, 'homeScores'), null);
 	});
 
 	test('bez modelu działa ścieżka zapasowa na procentach dostawcy', () => {
@@ -289,7 +288,7 @@ describe('ranking selekcji', () => {
 describe('wiązanie typów modelu językowego z selekcją', () => {
 	const rynki = evaluateMarkets({
 		...mecz(),
-		modelPrediction: zModelu({ home: 0.55, draw: 0.3, away: 0.15, awayScores: 0.86 }),
+		modelPrediction: zModelu({ home: 0.55, draw: 0.3, away: 0.15, homeScores: 0.92 }),
 	});
 	const kandydat = {
 		fixtureId: 777,
@@ -313,12 +312,13 @@ describe('wiązanie typów modelu językowego z selekcją', () => {
 
 	test('gol drużyny rozpoznawany po nazwie zespołu w selekcji', () => {
 		const [typ] = bindPicksToSelection(
-			[{ fixtureId: 777, market: 'Gole drużyny', selection: 'Kawasaki Frontale powyżej 0.5 gola', probability: 80 }],
+			[{ fixtureId: 777, market: 'Gole drużyny', selection: 'Machida Zelvia powyżej 0.5 gola', probability: 80 }],
 			[kandydat]
 		);
 
-		assert.equal(typ.probability, 86);
-		assert.equal(typ.lift, 16);
+		assert.equal(typ.probability, 92);
+		assert.equal(typ.lift, 13);
+		assert.equal(typ.chanceSource, 'model', 'bez kursów szansa z modelu — i to zapisujemy');
 	});
 
 	test('typ spoza selekcji zostaje z własnym procentem, ale dostaje normę z tej samej tabeli', () => {
@@ -345,16 +345,19 @@ describe('wiązanie typów modelu językowego z selekcją', () => {
 });
 
 describe('brak danych rynkowych', () => {
-	test('selekcja działa bez jakiejkolwiek informacji o kursach', () => {
+	test('selekcja działa bez jakiejkolwiek informacji o kursach — szansa z modelu, pole rynku puste', () => {
 		const rynki = evaluateMarkets({ ...mecz(), modelPrediction: zModelu() });
 
 		assert.ok(rynki.length > 0);
 		for (const wpis of rynki) {
 			assert.deepEqual(
 				Object.keys(wpis).sort(),
-				['base', 'lift', 'market', 'normalized', 'pModel', 'selection', 'support'],
-				'wpis selekcji nie może nieść pola pochodzącego z rynku zakładów'
+				['base', 'chanceSource', 'lift', 'market', 'marketProbability', 'modelProbability', 'normalized', 'pModel', 'pRaw', 'probability', 'selection', 'support'],
+				'nowe pole w selekcji musi być świadome'
 			);
+			assert.equal(wpis.marketProbability, null);
+			assert.equal(wpis.chanceSource, 'model');
+			assert.equal(wpis.probability, wpis.modelProbability);
 		}
 	});
 });
@@ -362,7 +365,7 @@ describe('brak danych rynkowych', () => {
 describe('sufit rynkowy w selekcji raportu', () => {
 	const rynki = evaluateMarkets({
 		...mecz(),
-		modelPrediction: zModelu({ home: 0.7, draw: 0.2, away: 0.1, awayScores: 0.86 }),
+		modelPrediction: zModelu({ home: 0.7, draw: 0.2, away: 0.1, homeScores: 0.92 }),
 	});
 
 	test('bez kursów wszystko zostaje, a prawdopodobieństwo rynkowe jest puste', () => {
@@ -372,18 +375,30 @@ describe('sufit rynkowy w selekcji raportu', () => {
 		for (const wpis of po) assert.equal(wpis.marketProbability, null);
 	});
 
-	test('selekcja, którą rynek uznaje za pewną, wypada; reszta dostaje swój procent rynkowy', () => {
+	test('selekcja, którą rynek uznaje za pewną, wypada; reszta dostaje szansę według tabeli źródeł', () => {
 		const implied = { home: 60, draw: 22, away: 18, '1X': 82, X2: 40, homeScores: 92, awayScores: 93 };
 		const po = applyMarketCeiling(rynki, implied);
 
-		assert.equal(znajdz(po, 'awayScores'), null, 'rynek 93% — odcięte');
+		assert.equal(znajdz(po, 'homeScores'), null, 'rynek 92% — odcięte');
 		assert.equal(znajdz(po, 'home')?.marketProbability, 60);
+		assert.equal(znajdz(po, 'home')?.probability, 60, 'pokazana szansa z kursu');
+		assert.equal(znajdz(po, 'home')?.modelProbability, 70, 'obok szansa modelu');
+		// „1X" pokazuje szansę modelu (tabela źródeł w `lib/picks/chance.js`), kurs zostaje obok.
+		assert.equal(znajdz(po, '1X')?.probability, 90);
+		assert.equal(znajdz(po, '1X')?.chanceSource, 'model');
 		assert.equal(znajdz(po, '1X')?.marketProbability, 82);
+		assert.equal(znajdz(po, '1X')?.chanceConfirmed, true);
 	});
 
-	test('wpis selekcji nie niesie liczby rynkowej do promptu ani do typu', () => {
-		// `bindPicksToSelection` kopiuje wyłącznie procent, normę i przewagę.
-		const implied = { home: 60, draw: 22, away: 18, '1X': 82, X2: 40, homeScores: 80, awayScores: 70 };
+	test('selekcja, której rynek nie potwierdza, wypada — choć model przechodził próg', () => {
+		// Model: 1 przy 70%. Rynek daje 55% — poniżej progu 60, więc typu nie ma.
+		const po = applyMarketCeiling(rynki, { home: 55, draw: 25, away: 20, '1X': 80, X2: 45 });
+		assert.equal(znajdz(po, 'home'), null);
+	});
+
+	test('do typu idzie szansa z kursu i jej źródło, a liczba rynkowa jako taka nie', () => {
+		// `bindPicksToSelection` kopiuje pokazaną szansę, normę, przewagę, szansę modelu i źródło.
+		const implied = { home: 64, draw: 22, away: 14, '1X': 86, X2: 36, homeScores: 80, awayScores: 70 };
 		const po = applyMarketCeiling(rynki, implied);
 		const kandydat = { fixtureId: 5, home: 'Machida Zelvia', away: 'Kawasaki Frontale', best: po[0], otherMarkets: po.slice(1) };
 		const [typ] = bindPicksToSelection(
@@ -391,6 +406,9 @@ describe('sufit rynkowy w selekcji raportu', () => {
 			[kandydat]
 		);
 
+		assert.equal(typ.probability, 64);
+		assert.equal(typ.chanceSource, 'market');
+		assert.equal(typ.modelProbability, 70);
 		assert.equal('marketProbability' in typ, false);
 	});
 });

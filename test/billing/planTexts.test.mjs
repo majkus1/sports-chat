@@ -88,11 +88,9 @@ describe('cennik: liczby w zdaniach z planów', () => {
 			const przecinek = (v) => (locale === 'en' ? v.toFixed(1) : v.toFixed(1).replace('.', ','));
 			const zakres = `${przecinek(COUPON_TYPES.days3.target)}–${przecinek(COUPON_TYPES.days3.max)}`;
 			assert.ok(wyrenderuj(locale, 'pricing_what_coupons').includes(zakres), zakres);
-			assert.deepEqual(
-				[COUPON_TYPES.days5.target, COUPON_TYPES.days5.max],
-				[COUPON_TYPES.days3.target, COUPON_TYPES.days3.max],
-				'kupony 3- i 5-dniowy mają różne przedziały — cennik podaje jeden'
-			);
+			// Od 21.11.2026 5-dniowy ma własny przedział — cennik podaje oba.
+			const zakres5 = `${przecinek(COUPON_TYPES.days5.target)}–${przecinek(COUPON_TYPES.days5.max)}`;
+			assert.ok(wyrenderuj(locale, 'pricing_what_coupons').includes(zakres5), zakres5);
 		});
 
 		test(`${locale}: kreator kuponu — limit dzienny, cele kursu z kodu`, () => {

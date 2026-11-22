@@ -41,7 +41,9 @@ export default function LockedCouponCard({ coupon, c, label, locale, guest = fal
 						</p>
 					</div>
 					<div>
-						<p className="text-[11px] font-semibold uppercase tracking-wide text-muted">{c.chance}</p>
+						<p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+							{{ market: c.chance, confirmed: c.chanceConfirmed }[coupon.chanceSource] ?? c.chanceModel}
+						</p>
 						<p className="mt-1 font-display text-3xl font-bold leading-none tabular-nums text-accent sm:text-4xl">
 							{coupon.chance}%
 						</p>

@@ -83,11 +83,16 @@ const ModelForecastSchema = new mongoose.Schema(
 			base: { type: Number, default: null },
 		},
 
-		/** Co pokazałaby plakietka — najlepsza selekcja po polityce, albo nic. */
+		/**
+		 * Co pokazałaby plakietka SAMEGO MODELU — najlepsza selekcja po polityce, albo nic. Bez kursów:
+		 * od 21.11.2026 lista pokazuje plakietkę potwierdzoną kursem (`lib/model/hints.js`), a tu zostaje
+		 * prognoza modelu, bo to ją dziennik mierzy. `probability` — po korekcie z dziennika, `raw` — przed.
+		 */
 		hint: {
 			key: { type: String, default: null },
 			selection: { type: String, default: null },
 			probability: { type: Number, default: null },
+			raw: { type: Number, default: null },
 			base: { type: Number, default: null },
 			lift: { type: Number, default: null },
 		},

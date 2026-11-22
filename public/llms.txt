@@ -22,8 +22,9 @@ Operator: ML Devworks Michał Lipka, Kraków, Polska. Kontakt: office@ml-devwork
   Typ dnia jest odkryty dla każdego; pozostałe typy z liczbami w planach Pro i VIP
   oraz przez 7 dni po założeniu konta.
 - Kupony — codziennie o 9:30: kupon dnia (za darmo) oraz kupony na 3 i 5 dni (Pro, VIP,
-  okres próbny), kurs łączny 2,4–2,8, najwyżej 4 typy na kuponie dnia i 5 na pozostałych.
-  Każdy kupon rozliczany publicznie.
+  okres próbny): kupon dnia i 3-dniowy — kurs łączny 2,0–2,5, najwyżej 3 typy; 5-dniowy — 2,4–2,8,
+  najwyżej 5 typów. Typ trafia na kupon tylko potwierdzony przez kursy; szansa kuponu to iloczyn
+  szans typów. Każdy kupon rozliczany publicznie.
 - Kupon live — generator kuponu z trwających meczów (Pro, VIP, okres próbny).
 - Kreator kuponu — własny kupon z meczów, które jeszcze się nie zaczęły: kurs łączny ok. 2,0, 2,5
   albo 3,0, najwyżej 2–5 meczów, wybrane godziny (najdalej 3 dni) i ligi. Te same zasady co kupony
@@ -65,7 +66,8 @@ Kolejne sporty są w planach.
 ## Skąd pochodzą dane
 
 Dane sportowe od komercyjnego dostawcy (terminarze, wyniki na żywo, składy, kontuzje,
-tabele, statystyki). Szanse i typy liczy własny model statystyczny; treści opisowe generują
+tabele, statystyki). Typy wybiera własny model statystyczny, a kursy (bez marży) je potwierdzają
+i przy części rodzajów typów dają pokazaną szansę; treści opisowe generują
 modele językowe Anthropic i OpenAI i nie mogą zmieniać liczb. Analizy i raporty powstają bez
 dostępu do internetu; wiadomości z internetu sprawdza wyłącznie asystent na prośbę użytkownika
 oraz kontrola płatnych kuponów przed publikacją.
