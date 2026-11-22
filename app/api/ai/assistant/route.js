@@ -171,6 +171,8 @@ export async function POST(request) {
 				language,
 				locale,
 				today: localDate(),
+				// Asystent już tu odpowiadał — prompt mówi wprost, żeby nie tłumaczyć przewagi drugi raz.
+				explained: history.some((m) => m.role === 'assistant'),
 			}),
 			messages: [...history, { role: 'user', content: question }],
 			tools: TOOLS,

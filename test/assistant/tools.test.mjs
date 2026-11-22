@@ -696,7 +696,7 @@ describe('moje_mecze_i_typy (prawdziwa baza)', () => {
 
 /* ------------------------------------------------------------------------------------------ */
 
-describe('definicje narzędzi i prompt assistant/7', () => {
+describe('definicje narzędzi i prompt assistant/8', () => {
 	const NOWE = ['na_zywo', 'mecz_na_zywo', 'analiza_meczu', 'typ_dnia', 'raporty', 'funkcje_aplikacji', 'moje_mecze_i_typy'];
 
 	test('nowe narzędzia mają definicję (wykonawców sprawdzają testy wyżej); gotowa_analiza zastąpiona', async () => {
@@ -718,8 +718,20 @@ describe('definicje narzędzi i prompt assistant/7', () => {
 		assert.deepEqual([...wKodzie].sort(), [...ZRODLA].sort());
 	});
 
-	test('prompt w obu językach zna wszystkie narzędzia i nowe zasady', () => {
-		assert.equal(ASSISTANT_PROMPT_VERSION, 'assistant/7');
+	test('assistant/8: bez formułki o różnicy do przepisania; w trwającej rozmowie — zakaz powtórki', () => {
+		for (const language of ['pl', 'en']) {
+			const nowa = assistantSystemPrompt({ language, locale: language, today: '2099-01-01' });
+			const dalej = assistantSystemPrompt({ language, locale: language, today: '2099-01-01', explained: true });
+			// Fraza może paść tylko w zakazie („nigdy nie piszesz …"), nie jako wzór do skopiowania.
+			assert.doesNotMatch(nowa, /czyli o 22 punkty więcej|that's 22 points more/);
+			assert.match(nowa, language === 'en' ? /never write "the gap is what's interesting"/ : /nigdy nie piszesz „to ta różnica jest ciekawa"/);
+			assert.doesNotMatch(nowa, /TA ROZMOWA|THIS CONVERSATION/);
+			assert.match(dalej, language === 'en' ? /THIS CONVERSATION: you have already answered/ : /TA ROZMOWA: już tu odpowiadałeś/);
+		}
+	});
+
+		test('prompt w obu językach zna wszystkie narzędzia i nowe zasady', () => {
+		assert.equal(ASSISTANT_PROMPT_VERSION, 'assistant/8');
 		const pl = assistantSystemPrompt({ language: 'pl', locale: 'pl', today: '2099-01-01' });
 		const en = assistantSystemPrompt({ language: 'en', locale: 'en', today: '2099-01-01' });
 		for (const prompt of [pl, en]) {
