@@ -104,10 +104,12 @@ export default function Footer({ className }) {
 				</nav>
 			</div>
 
-			<p className="mt-10 border-t border-border pt-6 text-xs leading-relaxed text-muted">
-				{t('footer_responsible_gaming')}
-			</p>
-			<p className="mt-2 text-xs text-muted">© {year} Czat Sportowy</p>
+			{/* Odpowiedzialna gra i prawa autorskie w jednym pasku: dwa osobne akapity
+			    wydłużały stopkę, a każdy z nich to jedno zdanie. */}
+			<div className="mt-10 flex flex-col gap-2 border-t border-border pt-6 text-xs leading-relaxed text-muted sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+				<p className="max-w-2xl">{t('footer_responsible_gaming')}</p>
+				<p className="shrink-0">© {year} Czat Sportowy</p>
+			</div>
 		</footer>
 	);
 }

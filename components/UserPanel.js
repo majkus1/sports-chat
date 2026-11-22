@@ -37,6 +37,7 @@ export default function UserPanel() {
   useEffect(() => setSoundOn(isSoundEnabled()), []);
   const [searchResults, setSearchResults] = useState([]);
   const t = useTranslations('common');
+  const tx = useTranslations('ux_p5');
 
   const { user, isAuthed } = useContext(UserContext);
   const username = user?.username;
@@ -248,7 +249,17 @@ export default function UserPanel() {
               </h3>
 
               {favorites.length === 0 ? (
-                <p className="px-1 py-2 text-sm text-muted">{t('favorites_empty')}</p>
+                /* Pusty stan z wyjściem: sam napis zostawiał w miejscu, z którego nie było dokąd pójść. */
+                <div className="flex flex-wrap items-center justify-between gap-2 px-1 py-2">
+                  <p className="text-sm text-muted">{t('favorites_empty')}</p>
+                  <Link
+                    href="/pilka-nozna/przedmeczowe"
+                    className="inline-flex items-center gap-1 text-sm font-semibold text-accent hover:underline"
+                  >
+                    {tx('favorites_empty_cta')}
+                    <ArrowRight size={13} aria-hidden="true" />
+                  </Link>
+                </div>
               ) : (
                 (() => {
                   const groups = { live: [], upcoming: [], finished: [] };
