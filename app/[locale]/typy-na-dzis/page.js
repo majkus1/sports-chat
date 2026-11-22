@@ -20,6 +20,8 @@ import { buildMetadata } from '@/lib/seo/metadata';
 import { JsonLd, breadcrumbLd } from '@/lib/seo/jsonLd';
 import { localDate } from '@/lib/time';
 import { accuracyHref } from '@/lib/urlState';
+import LeagueLinks from '@/components/seo/LeagueLinks';
+import { activeLeaguePages } from '@/lib/seo/seoData';
 
 /**
  * „Typy na dziś" — publiczna strona pod frazę, którą ludzie wpisują codziennie.
@@ -126,6 +128,8 @@ export default async function Page({ params }) {
 
 	const { today, tomorrow, yesterday, record } = overview;
 	const labels = { usually: c.usually, listEmpty: c.listEmpty, listLocked: c.listLocked };
+	// Strony lig z meczami dziś i jutro — jedna agregacja na 10 minut w pamięci procesu, pusta przy błędzie bazy.
+	const ligi = await activeLeaguePages();
 
 	return (
 		<AppShell contentClassName="mx-auto w-full max-w-3xl">
@@ -138,6 +142,8 @@ export default async function Page({ params }) {
 
 			<h1 className="font-display text-3xl font-bold leading-tight text-text sm:text-4xl">{c.title(ladnaData(locale))}</h1>
 			<p className="mt-3 text-base leading-relaxed text-muted">{c.lead}</p>
+			{/* Linki do „typy na dziś [liga]" — wejście z frazy ogólnej do frazy z nazwą ligi i z powrotem. */}
+			<LeagueLinks items={ligi} locale={locale} title={locale === 'en' ? 'Today’s picks by competition' : 'Typy na dziś według rozgrywek'} className="mt-5" />
 
 			<div className="mt-6 flex flex-col gap-4">
 				{today ? (

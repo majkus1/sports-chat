@@ -1,5 +1,19 @@
 import mongoose from 'mongoose'
 
+/** Źródło rejestracji — pola i walidacja w `lib/growth/source.js` (`normalizeSignupSource`). */
+const SignupSourceSchema = new mongoose.Schema(
+	{
+		channel: { type: String, default: 'unknown' },
+		referrerHost: { type: String, default: null, maxlength: 100 },
+		utmSource: { type: String, default: null, maxlength: 64 },
+		utmMedium: { type: String, default: null, maxlength: 64 },
+		utmCampaign: { type: String, default: null, maxlength: 64 },
+		landingPath: { type: String, default: null, maxlength: 120 },
+		firstSeenAt: { type: Date, default: null },
+	},
+	{ _id: false }
+)
+
 const UserSchema = new mongoose.Schema(
 	{
 		email: {
@@ -110,6 +124,18 @@ const UserSchema = new mongoose.Schema(
 			dayTwoSentAt: { type: Date, default: null },
 			trialEndSentAt: { type: Date, default: null },
 		},
+
+		/**
+		 * Skąd przyszła osoba, która założyła konto — pierwsze wejście (`lib/growth/source.js`).
+		 *
+		 * PO CO. Do 21.11.2026 dziesięć kont z zewnątrz i zero wiedzy, skąd: bez tego nie da się
+		 * odpowiedzieć, czy posty na X, grupa na Facebooku albo strony meczów w Google dają ludzi,
+		 * którzy potem używają AI i wracają (panel `/admin/zrodla`).
+		 *
+		 * `null` = konto sprzed tej zmiany; `channel: 'unknown'` = przeglądarka nic nie przysłała.
+		 * Zapisywane raz, przy zakładaniu konta — logowanie niczego tu nie zmienia.
+		 */
+		signupSource: { type: SignupSourceSchema, default: null },
 	},
 	{ timestamps: true }
 )

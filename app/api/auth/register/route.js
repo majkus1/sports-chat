@@ -10,6 +10,7 @@ import { getTransporter } from '@/lib/mailer';
 import { limitByIp, tooManyRequests } from '@/lib/rateLimit';
 import { TERMS_VERSION } from '@/lib/legal/operator';
 import { morningConsentSet } from '@/lib/morning/consent';
+import { signupSourceFromRequest } from '@/lib/growth/signupSource';
 
 export async function POST(request) {
   try {
@@ -24,7 +25,7 @@ export async function POST(request) {
     await connectToDb();
 
     const body = await request.json();
-    const { email, password, username, locale = 'pl', acceptedTerms, morningEmail } = body || {};
+    const { email, password, username, locale = 'pl', acceptedTerms, morningEmail, signupSource } = body || {};
     
     // Validate all fields exist and are strings
     /*
@@ -77,6 +78,8 @@ export async function POST(request) {
       emailVerificationTokenExp: verificationTokenExp,
       termsAcceptedAt: new Date(),
       termsVersion: TERMS_VERSION,
+      // Skąd ktoś przyszedł (host, utm, pierwsza strona) — każde pole walidowane po stronie serwera.
+      signupSource: signupSourceFromRequest(signupSource, request),
     });
 
     /*
