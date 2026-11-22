@@ -16,7 +16,8 @@ import { Button } from '@/components/ui/Button';
 import AutoGrowTextarea from '@/components/ui/AutoGrowTextarea';
 import { MAX_CHAT_MSG_LEN } from '@/lib/chatConstraints';
 import { cn } from '@/lib/utils';
-import LimitPass from '@/components/assistant/LimitPass';
+// Jedna wersja komunikatu o limicie dla całego serwisu: chowa się płacącym i liczy kliknięcia (`lib/upsell`).
+import LimitPassCta from '@/components/billing2/LimitPassCta';
 import {
 	NEW_KEY,
 	claimMemory,
@@ -633,7 +634,7 @@ export default function AssistantClient() {
 
 									{error && <p className="text-sm text-loss">{error}</p>}
 									{/* Koniec puli pytań: zdanie z ceną Pro na 7 dni i przycisk zamiast samego „Zobacz plany". */}
-									{limitReached && <LimitPass kind="chat" />}
+									{limitReached && <LimitPassCta kind="aiChat" />}
 
 									{!limitReached && (
 										<form

@@ -886,11 +886,6 @@
 		"clv_more": "What is CLV?",
 		"rules_more": "Register rules",
 		"breakdowns_more": "Breakdowns: periods, pick types, leagues",
-		"match_tab_form": "Form",
-		"buy_pass": "Buy {days} days for {price} zł",
-		"ai_chat_limit_pass": "Pro for {days, plural, one {# day} other {# days}}: {questions, plural, one {# question} other {# questions}} for {price} zł.",
-		"analysis_limit_pass": "Pro for {days, plural, one {# day} other {# days}}: {analyses, plural, one {# analysis} other {# analyses}} for {price} zł.",
-		"report_limit_pass": "Pro for {days, plural, one {# day} other {# days}}: {reports, plural, one {# report} other {# reports}} for {price} zł.",
-		"analysis_view_limit_pass": "Today’s limit of ready analyses ({limit}) is used up. Pro for {days, plural, one {# day} other {# days}}: no limit, for {price} zł."
+		"match_tab_form": "Form"
 	}
 }

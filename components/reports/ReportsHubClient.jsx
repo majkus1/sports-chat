@@ -13,7 +13,8 @@ import { useGameDetailsModal } from '@/components/football/useGameDetailsModal';
 import { UserContext } from '@/context/UserContext';
 import { useReportStream } from '@/components/reports/useReportStream';
 import ReportPicks from '@/components/reports/ReportPicks';
-import LimitPass from '@/components/assistant/LimitPass';
+// Jedna wersja komunikatu o limicie dla całego serwisu: chowa się płacącym i liczy kliknięcia (`lib/upsell`).
+import LimitPassCta from '@/components/billing2/LimitPassCta';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -291,7 +292,7 @@ export default function ReportsHubClient() {
 											<CardContent className="flex flex-col items-center gap-3 px-6 py-6 text-center">
 												<p className="text-sm text-loss">{report.error}</p>
 												{/* Koniec puli raportów: zdanie z ceną Pro na 7 dni i przycisk zamiast „Zobacz plany". */}
-												{report.limitReached && <LimitPass kind="report" className="items-center [&>p]:text-center" />}
+												{report.limitReached && <LimitPassCta kind="report" />}
 											</CardContent>
 										</Card>
 									)}

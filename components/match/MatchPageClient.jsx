@@ -13,7 +13,8 @@ import ChatPanel from '@/components/chat/ChatPanel';
 import { useAnalysisStream } from '@/components/match/useAnalysisStream';
 import { shouldRefresh } from '@/lib/football/refreshPolicy';
 import { Button } from '@/components/ui/Button';
-import LimitPass from '@/components/assistant/LimitPass';
+// Jedna wersja komunikatu o limicie dla całego serwisu: chowa się płacącym i liczy kliknięcia (`lib/upsell`).
+import LimitPassCta from '@/components/billing2/LimitPassCta';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { useUrlState } from '@/lib/hooks/useUrlState';
@@ -170,17 +171,17 @@ export default function MatchPageClient({ params }) {
 
 	/*
 	 * Wyczerpany limit: zamiast martwego zdania i „Zobacz plany" — jedno zdanie z tym, co daje
-	 * Pro na 7 dni, i przycisk z ceną (`LimitPass`). Limit oglądania gotowych analiz ma własne zdanie.
+	 * Pro na 7 dni, i przycisk z ceną (`LimitPassCta`). Limit oglądania gotowych analiz ma własne zdanie.
 	 */
 	const analysisButton = analysis.limitReached ? (
 		/* `gap`, nie `space-y` — margines na dzieciach kasuje globalne `* { margin: 0 }`. */
 		<div className="flex max-w-sm flex-col items-center gap-3 py-2 [&>div]:items-center">
 			{Number.isFinite(analysis.viewLimit) ? (
-				<LimitPass kind="analysis_view" limit={analysis.viewLimit} />
+				<LimitPassCta kind="analysisView" />
 			) : (
 				<>
 					<p className="text-sm leading-relaxed text-loss">{analysis.text}</p>
-					<LimitPass kind="analysis" />
+					<LimitPassCta kind="analysis" />
 				</>
 			)}
 		</div>

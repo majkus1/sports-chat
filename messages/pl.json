@@ -886,11 +886,6 @@
 		"clv_more": "Co to jest CLV?",
 		"rules_more": "Zasady rejestru",
 		"breakdowns_more": "Przekroje: okresy, rodzaje typów, ligi",
-		"match_tab_form": "Forma",
-		"buy_pass": "Kup {days} dni za {price} zł",
-		"ai_chat_limit_pass": "Pro na {days, plural, one {# dzień} other {# dni}}: {questions, plural, one {# pytanie} few {# pytania} other {# pytań}} za {price} zł.",
-		"analysis_limit_pass": "Pro na {days, plural, one {# dzień} other {# dni}}: {analyses, plural, one {# analiza} few {# analizy} other {# analiz}} za {price} zł.",
-		"report_limit_pass": "Pro na {days, plural, one {# dzień} other {# dni}}: {reports, plural, one {# raport} few {# raporty} other {# raportów}} za {price} zł.",
-		"analysis_view_limit_pass": "Dzisiejszy limit gotowych analiz ({limit}) wykorzystany. Pro na {days, plural, one {# dzień} other {# dni}}: bez limitu, za {price} zł."
+		"match_tab_form": "Forma"
 	}
 }
