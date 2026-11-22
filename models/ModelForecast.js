@@ -59,6 +59,12 @@ const ModelForecastSchema = new mongoose.Schema(
 		/** Pula łączona (`europe`, `international`) albo `null` dla modelu jednej ligi. */
 		pool: { type: String, default: null, index: true },
 		matchesUsed: { type: Number, default: null },
+		/**
+		 * Skąd siła drużyn w 1X2 i podwójnej szansie (od `dixon-coles/6`): `shots` — 0,7·gole +
+		 * 0,3·strzały celne, `goals` — same gole (brak strzałów którejś drużyny, pula, `MODEL_SHOTS=off`).
+		 * `null` w starszych zapisach. Cotygodniowy raport porównuje po nim obie drogi.
+		 */
+		strength: { type: String, default: null },
 
 		/** Średnie bramkowe Dixona-Colesa — z nich wynika cała macierz. */
 		lambdaHome: { type: Number, default: null },

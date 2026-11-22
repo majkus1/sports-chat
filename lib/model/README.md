@@ -21,7 +21,12 @@ z korektą Dixona-Colesa, wszystkie rynki wyprowadzone z jednej macierzy.
 | `forecastCheck.mjs` | pomiar na dzienniku: kalibracja, Brier wobec stałej, warianty 2,5, ligi, plakietki |
 | `chanceCalibration.js` | korekta zawyżonej szansy modelu per selekcja, z bezpiecznikami (sekcja z 21.11.2026) |
 | `chanceCalibration.mjs` | generator korekty z dziennika prognoz (`--emit`), tylko odczyt bazy |
-| `chanceCalibrationData.js` | GENEROWANY: przesunięcia per selekcja, wersja, data, wynik sprawdzianu |
+| `chanceCalibrationData.js` | GENEROWANY: przesunięcia per selekcja, wersja, data, wynik sprawdzianu (zapas, gdy w bazie nie ma aktywnej wersji) |
+| `shotStrength.js` | siła drużyn z 0,7·gole + 0,3·strzały celne, reguła per mecz, wyłącznik (`dixon-coles/6`, sekcja z 22.11.2026) |
+| `xgFeatures.js`, `xgExperiment.mjs` | eksperyment xG/strzały celne; `--source=api` na serwerze sprawdza produkcję (wiersz `S70R`) |
+| `weeklyCalibration.js` | cotygodniowa korekta szansy z bezpiecznikami (część czysta) |
+| `chanceCalibrationStore.js` | wersje korekty w bazie (`ChanceCalibration`): odczyt co kwadrans, włączenie, wycofanie |
+| `weeklyReport.js`, `weeklyJob.js` | raport tygodnia (log loss, kubełki, źródło szansy, kupony, CLV), mail do administratora, `/admin/model` |
 
 ## Stan: PODPIĘTY DO PRODUKCJI — raporty i analizy pojedynczych meczów
 
@@ -413,8 +418,8 @@ od 20.10 278, 83% → 79%; 90%+: 26, 93% → 81% i 29, 92% → 90%. Mechanizm: m
 logitu per selekcja, tylko w dół (w stronę faktów, nigdy w górę), najwyżej 8 pkt, minimum 150
 plakietek, sprawdzian tydzień po tygodniu (≥ 100 plakietek), wersja i data w pliku. Odświeżanie:
 `node --experimental-loader ./test/helpers/alias.mjs lib/model/chanceCalibration.mjs --emit=lib/model/chanceCalibrationData.js`
-co 2–4 tygodnie (plik w repozytorium, jak `goalsCalibrationData.js`; bez crona — zmiana liczb
-widocznych dla użytkownika ma przejść przez przegląd).
+(plik w repozytorium, jak `goalsCalibrationData.js`). **Od 22.11.2026 korektę liczy i — przez
+bezpieczniki — włącza co tydzień zadanie `weeklyJob.js`; plik jest już tylko zapasem** (sekcja z 22.11.2026).
 
 Sprawdzian tydzień po tygodniu na plakietkach modelu bez „gości strzelą" (1228 od 2.10; korekta
 dopasowana wyłącznie na wcześniejszych tygodniach):
@@ -469,6 +474,153 @@ Kursów live przy typach z analizy wcześniej nie zapisywano, więc reguły nie 
 na tych 44 typach; od teraz `marketProbability` przy typie live to 100/kurs live — po kilku tygodniach
 policzyć trafienia nowych typów i kalibrację szansy live.
 
+## Strzały celne w sile drużyn i cotygodniowa kalibracja (22.11.2026)
+
+### 1. Pokrycie strzałów w `FixtureStats` (tylko odczyt, 22.11)
+
+8585 meczów, strzały celne w 90%. Od sierpnia 2026, w 49 ligach liczonych modelem jednej ligi:
+**40 lig ma strzały celne w ≥ 90% meczów**, 4 w 50–90% (292, 172, 301, 296), 5 prawie wcale (107, 98,
+332, 318, 255; tam reguła per mecz zostawia same gole). Przed wrześniem kolekcja ma tylko ~12 ostatnich
+meczów drużyny (start zbieracza). Przez wygaszanie po dacie strzały pokrywają mimo to ok. 2/3 wagi
+dwuletniego okna modelu. Reguła per mecz (niżej) przepuściłaby strzały w **86,9%** meczów dziennika
+od 1.10 (1667 z 1919). Puchary i reprezentacje (pule) zostają na golach, bo zbieracz ich nie obejmuje.
+
+### 2. Pomiar: walk-forward, podział po dacie
+
+Archiwum: 11 lig football-data.co.uk, sezony 2022–2026, przeliczanie co 7 dni, strzały ze wszystkich
+meczów. Dziennik: 619 meczów dziennika z tych 11 lig, dopasowanych do archiwum po dacie i nazwach.
+Reszta z 2081 meczów z porannym kursem to ligi spoza archiwum: ich historia jest tylko w API, więc
+pełny pomiar robi serwer (pkt 5). Na dzienniku przeliczanie co dobę jak na produkcji, a strzały TYLKO
+z meczów, które produkcja ma w `FixtureStats` (od 1.09 wszystkie, wcześniej ostatnie 12 meczów drużyny),
+z regułą per mecz. Log loss 1X2, w nawiasie zysk wobec samych goli / t:
+
+| okres | meczów | gole (dziś) | S70 (wdrożone) | S50 | rynek |
+|---|---|---|---|---|---|
+| archiwum 08.2024–07.2025 | 3798 | 0,9970 | 0,9907 (+0,0064 / **5,7**) | 0,9889 (+0,0081 / 4,4) | 0,9636 (zamknięcie) |
+| archiwum 08.2025–17.09.2026 | 4280 | 1,0182 | 1,0132 (+0,0050 / **5,2**) | 1,0120 (+0,0063 / 4,0) | 0,9808 |
+| dziennik do 19.10 | 295 | 1,0528 | 1,0439 (+0,0089 / **2,4**) | 1,0401 (+0,0127 / 2,1) | 0,9477 (poranny, 195 meczów) |
+| dziennik od 20.10 | 324 | 0,9572 | 0,9567 (+0,0005 / 0,1) | 0,9584 (**−0,0013** / −0,2) | 0,9361 (poranny, 323) |
+
+Brier 1X2 zmienia się tak samo (archiwum 0,5934 → 0,5894 i 0,6053 → 0,6022; dziennik 0,6187 → 0,6134
+i 0,5670 → 0,5659). S70 jest na plusie w **11 z 11 lig w obu okresach archiwum** (t 1,4–3,6 na ligę).
+Luka do rynku na porannym kursie: 0,9938 → 0,9874 (do 19.10) i 0,9560 → 0,9554 (od 20.10).
+
+**Dlaczego 0,7, a nie zamówione 0,5.** S50 ma większy zysk na archiwum, ale na dzienniku od 20.10
+wychodzi na minus (w granicach szumu), a warunek wdrożenia brzmiał „poprawia OBA okresy". S70 jest
+na plusie we wszystkich czterech okresach, ma wyższe t (mniejszy rozrzut) i mniej zmienia liczby, które
+użytkownik już zna. Waga jest zmienną środowiskową: `MODEL_SHOTS_WEIGHT=0.5` przełącza na S50 bez
+zmiany kodu.
+
+Rynki goli (Brier; regresja na macierzy modelu goli / na macierzy S70):
+
+| | arch. 1 | arch. 2 | dz. do 19.10 | dz. od 20.10 |
+|---|---|---|---|---|
+| powyżej 2,5 (skalibrowane) | 0,2427 / 0,2429 | 0,2442 / 0,2439 | 0,2365 / 0,2359 | 0,2384 / 0,2385 |
+| BTTS (skalibrowane) | 0,2463 / 0,2463 | 0,2456 / 0,2455 | 0,2424 / 0,2422 | 0,2446 / 0,2451 |
+| gospodarze strzelą | 0,1657 / 0,1644 | 0,1701 / 0,1682 | 0,1700 / 0,1674 | 0,1437 / 0,1432 |
+
+Regresja goli nic nie zyskuje na macierzy S70, więc **zostaje na macierzy modelu goli** i rynki goli
+są bez zmian z definicji. Gole drużyny zyskałyby odrobinę, ale plakietek „gospodarze strzelą" z tego
+nie przybywa, a plakietek ogółem jest wtedy mniej. Zostają na golach: jedna zmiana naraz.
+
+Kubełki (1, 2, 1X, X2 razem; obiecane → weszło):
+
+| przedział | arch. 08.2025–, gole | arch., S70 | dziennik od 20.10, gole | dziennik, S70 |
+|---|---|---|---|---|
+| 70–80% | 74,7 → 73,6 | 74,7 → 75,0 | 75,3 → 72,8 | 75,1 → 74,1 |
+| 80–90% | 84,4 → 81,5 | 84,3 → 82,6 | 84,5 → 77,7 | 84,5 → 80,5 |
+| 90%+ | 93,9 → 88,8 | 93,7 → 89,6 | 93,9 → 100 (33) | 93,1 → 100 (27) |
+
+Plakietki według zasad produkcji (`evaluateMarkets` → `confirmMarkets` → `bestHint`):
+
+| | gole | S70 |
+|---|---|---|
+| sam model, archiwum 08.2024–07.2025 | 2350 (10,4 dziennie): 74,8% → 71,9%, Brier 0,1985 | 2188 (9,6 dziennie): 74,6% → 74,4%, **0,1869** |
+| sam model, archiwum 08.2025–17.09.2026 | 2429 (9,3 dziennie): 74,7% → 72,4%, 0,1945 | 2244 (8,6 dziennie): 74,3% → 73,9%, **0,1874** |
+| potwierdzone kursem zamknięcia (tylko 1X2), arch. 1 | 1740: 76,4% → 78,3%, 0,1657 | 1728: 76,5% → 78,9%, **0,1630** |
+| potwierdzone kursem zamknięcia, arch. 2 | 1791: 75,8% → 78,7%, **0,1625** | 1770: 75,7% → 78,3%, 0,1639 |
+| **dziennik do 19.10, poranny kurs (jak na produkcji)** | 88: 75,5% → 79,5%, 0,1541 | 87: 76,0% → 79,3%, **0,1503** |
+| **dziennik od 20.10** | 148: 76,0% → 79,1%, 0,1667 | 146: 76,4% → 80,1%, **0,1645** |
+
+Dla użytkownika: plakietek z kursem jest tyle samo (1–2% mniej), trafienia bez zmian albo trochę
+lepsze. Plakietek bez kursu (wstępne na jutro, mecze bez kursów) jest ~7% mniej, ale obiecują tyle,
+ile wchodzi, zamiast 2–3 pkt za dużo. Szanse 1X2 w analizie i na liście rzadziej pokazują 80%+ tam,
+gdzie wchodzi 78%.
+
+### 3. Tabela źródeł szansy (`MARKET_CHANCE_KEYS`) bez zmian
+
+Ten sam sprawdzian co 21.11 (potwierdzone plakietki od 11.10; Brier model / kurs; tygodnie z kursem
+lepszym) na 619 meczach dziennika z 11 lig. Model goli wobec S70:
+
+| selekcja | gole | S70 | kierunek |
+|---|---|---|---|
+| „1" | 54: 0,1881 / 0,1875, 2 z 5 | 47: 0,1863 / 0,1834, 4 z 5 | kurs ≤ model w obu |
+| „X2" | 94: 0,1883 / 0,1915, 1 z 5 | 93: 0,1889 / 0,1894, 1 z 5 | model ≤ kurs w obu |
+| „2" | 21: 0,1546 / 0,1472, 2 z 5 | 20: 0,1627 / 0,1518, 3 z 5 | kurs w obu |
+| „1X" | 19: 0,0931 / 0,1011, 1 z 5 | 27: 0,0998 / 0,1038, 2 z 5 | model w obu |
+
+Przejście na S70 nie odwraca żadnej selekcji, więc tabela zostaje. Na tym podzbiorze „X2" i „2"
+wychodzą inaczej niż na pełnym dzienniku z 21.11; przy 20–90 typach to szum, więc obowiązuje decyzja
+z pełnego dziennika. Od teraz tabelę przelicza co tydzień raport (pkt 4), na pełnym dzienniku, już
+z prognozami `dixon-coles/6`. Gdy wynik różni się od obowiązującej tabeli o więcej niż 0,002 Briera,
+raport oznacza selekcję „DO DECYZJI". Tabela sama się nie przełącza, bo to zmienia liczbę, którą widzi
+użytkownik. Pierwszy podgląd (22.11, 28 dni, model goli): „1" 142 typy, model 0,1813 / kurs 0,1840.
+To sygnał do obejrzenia za 2–3 tygodnie, już na nowym modelu.
+
+### 4. Co wdrożone
+
+- **`dixon-coles/6`** (`shotStrength.js`, `index.js`, `analysis/model.js`): obok modelu goli działa
+  drugi model sił, uczony na „golach skorygowanych" 0,7·gole + 0,3·k·strzały celne (`k` = gole /
+  strzały celne ligi z tych samych danych). 1X2 i podwójna szansa pochodzą z niego, gdy OBIE drużyny
+  mają strzały celne w ≥ 6 z ostatnich 10 meczów (`enoughShotHistory`, ta sama reguła co wariant `shots`
+  regresji goli). W pozostałych meczach liczy model goli. Gole drużyny, suma, BTTS, najbardziej
+  prawdopodobny wynik, oczekiwane gole i mecz w trakcie zawsze liczy model goli. Jedno zapytanie do bazy
+  na ligę co 6 h. Liga z < 30 meczami ze strzałami albo bez bazy liczy się jak w `/5`. Pule bez zmian.
+- Dziennik zapisuje `strength` (`shots` / `goals`), a raport porównuje obie drogi na żywo.
+- **Wyłącznik**: `MODEL_SHOTS=off` w `.env` i `.env.local` (`server.js` i Next czytają różne pliki),
+  potem `pm2 restart all`; wersja wraca do `dixon-coles/5`. `MODEL_SHOTS_WEIGHT=0.5` ustawia wagę S50.
+- **Cotygodniowe zadanie**, poniedziałek 6:30 czasu polskiego (`scheduler.cjs` → `/api/cron/model-weekly`,
+  `INTERNAL_API_SECRET`; `MODEL_WEEKLY_ENABLED=false` wyłącza). Liczy korektę szansy per selekcja
+  (`fitSelection`, jak generator) i włącza ją sama tylko wtedy, gdy przejdzie bezpieczniki z
+  `weeklyCalibration.js`:
+  - próba: 150 plakietek selekcji, 100 w sprawdzianie, 300 razem;
+  - poprawa walk-forward na całości I na ostatnich 4 tygodniach (≥ 40 plakietek);
+  - tylko w stronę faktów: model musiał zawyżać, po korekcie jest bliżej faktów, nigdy w górę,
+    najwyżej 8 pkt;
+  - **najwyżej 2 pkt zmiany na tydzień**; szkodzącą korektę też wyłącza krokami, a brak danych nie
+    zdejmuje działającej;
+  - wersja i data w bazie (`ChanceCalibration`), poprzednia zostaje. Next i `server.js` czytają aktywną
+    co kwadrans.
+  Podgląd 22.11 na prawdziwym dzienniku: **bez zmian** („X2" i „1": sprawdzian nie potwierdza, także
+  na ostatnich tygodniach; reszta: za mała próba).
+- **Raport** idzie mailem do kont z rolą `admin` (nadawca jak w porannym mailu): korekta i powody,
+  log loss model / rynek (7 i 28 dni, siła ze strzałów osobno), kubełki obietnica/fakt na plakietkach,
+  tabela źródeł szansy, kupony, CLV (`odds.close`). **Panel `/admin/model`**: obowiązująca korekta,
+  historia wersji z przyciskiem „Wycofaj do poprzedniej wersji" i raporty tygodni.
+
+### 5. Na serwerze
+
+```bash
+cd /var/www/html/czat-sportowy
+node --experimental-loader ./test/helpers/alias.mjs lib/model/xgExperiment.mjs --source=api --split=2026-09-01
+```
+
+~100 zapytań (terminarze z cache'u Redisa), wynik w terminalu i w `modelxgchecks`. Czytać wiersz
+**`S70R`** (dokładnie produkcja: waga 0,7 i reguła per mecz) w tabeli „WSZYSTKIE MECZE TESTOWE" i w
+„WERDYKT". `TAK` (zysk dodatni, `t ≥ 2`, dodatni w obu połowach) znaczy: zostaje. Zysk ujemny albo
+„nie" z ujemną którąś połową znaczy: wyłączyć (`MODEL_SHOTS=off`) albo przejść na `S50R`, jeśli to on
+ma „TAK". Linia „KONTROLA" porównuje wynik z tym, co produkcja zapisała (do `/5` ma być blisko G,
+od `/6` blisko `S70R`), i podaje, w ilu meczach reguła przepuściła strzały. Podgląd raportu tygodnia
+bez zapisu i bez maila:
+
+```bash
+curl -s -X POST -H "x-internal-secret: $INTERNAL_API_SECRET" "http://127.0.0.1:3001/api/cron/model-weekly?dryRun=1"
+```
+
+Ryzyka: dziennik w pomiarze to 30% meczów z kursem (11 lig archiwum), reszta lig dopiero na serwerze;
+od 20.10 zysk jest zerowy. Gdy w jakiejś lidze zbieracz przestanie pobierać strzały, reguła per mecz
+sama przełączy jej mecze na gole po kilku kolejkach (okno 10 meczów).
+
 ## Uruchomienie backtestu
 
 Wymaga ważnego klucza `API_SPORTS_KEY`, więc w praktyce uruchamia się go na serwerze:
@@ -514,7 +666,8 @@ zaniża wynik i karze model za beniaminków, o których przez rok nie mógł nic
 ## Co model wie, a czego nie
 
 Wie: kto z kim grał, jaki był wynik, kiedy, i kto grał u siebie. Z tego wyprowadza siłę
-ataku i obrony każdej drużyny w skali ligi.
+ataku i obrony każdej drużyny w skali ligi. Od `dixon-coles/6` wie też, ile strzałów celnych
+oddała każda strona (siła w 1X2, gdy obie drużyny mają strzały — sekcja z 22.11.2026).
 
 Nie wie: o kontuzjach, składach, stawce meczu, pogodzie ani zmęczeniu. To zostaje rolą
 modelu językowego, który dostaje prognozę liczbową i ma ją uzasadnić **albo

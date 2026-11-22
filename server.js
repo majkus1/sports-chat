@@ -11,6 +11,7 @@ const {
   startMorningEmailSchedule,
   startFixtureStatsSchedule,
   startOddsShadowSchedule,
+  startModelWeeklySchedule,
 } = require('./lib/picks/scheduler.cjs');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -541,4 +542,6 @@ server.listen(PORT, () => {
   startFixtureStatsSchedule();
   // Tryb cienia „kurs ≥ 1,50" — kursy do dziennika prognoz, patrz lib/model/oddsShadow.js.
   startOddsShadowSchedule();
+  // Raport modelu i korekta szansy z bezpiecznikami — poniedziałek 6:30, patrz lib/model/weeklyJob.js.
+  startModelWeeklySchedule();
 });

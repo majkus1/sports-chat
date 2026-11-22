@@ -9,6 +9,7 @@ import { couponsOverview } from '@/lib/coupons/service';
 import { buildCouponPost, buildDailyPost, xIntentUrl, X_LIMIT } from '@/lib/social/posts';
 import { buildMetadata } from '@/lib/seo/metadata';
 import { SITE_URL } from '@/lib/seo/config';
+import { Link } from '@/i18n/routing';
 
 /**
  * Gotowy post z typem dnia — strona tylko dla administratora.
@@ -65,6 +66,9 @@ export default async function Page() {
 			<p className="mt-2 text-sm leading-relaxed text-muted">
 				{dzisAktualny ? 'Typ dnia na dziś.' : 'Dzisiejszy typ dnia już się zaczął albo go nie ma — post z typem na jutro.'} Ten sam
 				tekst przychodzi rano w Twoim porannym mailu.
+			</p>
+			<p className="mt-1 text-sm text-muted">
+				Raporty modelu i korekta szansy: <Link href="/admin/model">/admin/model</Link>.
 			</p>
 
 			{post ? (
