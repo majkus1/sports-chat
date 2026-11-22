@@ -14,6 +14,7 @@ import { buildCouponVariants, buildRecapVariants, buildWeekVariants } from '@/li
 import { weekNumbers, yesterdayPicks } from '@/lib/growth/recap';
 import { buildMetadata } from '@/lib/seo/metadata';
 import { SITE_URL } from '@/lib/seo/config';
+import { Link } from '@/i18n/routing';
 
 /**
  * Gotowe posty — strona tylko dla administratora.
@@ -84,6 +85,9 @@ export default async function Page({ params }) {
 			<p className="mt-2 text-sm leading-relaxed text-muted">
 				{dzisAktualny ? 'Typ dnia na dziś.' : 'Dzisiejszy typ dnia już się zaczął albo go nie ma — post z typem na jutro.'} Ten sam
 				tekst przychodzi rano w Twoim porannym mailu.
+			</p>
+			<p className="mt-1 text-sm text-muted">
+				Raporty modelu i korekta szansy: <Link href="/admin/model">/admin/model</Link>.
 			</p>
 
 			{post ? (
