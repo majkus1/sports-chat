@@ -533,6 +533,7 @@
 		"register_accept_prefix": "Zakładając konto akceptuję",
 		"register_accept_and": "oraz",
 		"register_accept_age": "Oświadczam, że mam ukończone 18 lat.",
+		"register_morning_optin": "Chcę dostawać poranny mail z typami modelu na dziś — o 8:00, w okresie próbnym i w planach Pro i VIP. Nieobowiązkowe, wyłączysz jednym kliknięciem.",
 		"register_accept_hint": "Zaznacz powyższą zgodę, aby założyć konto.",
 		"register_terms_required": "Do założenia konta konieczna jest akceptacja regulaminu.",
 		"blog_title": "Blog",

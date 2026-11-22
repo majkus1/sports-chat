@@ -56,7 +56,8 @@ export async function GET(request) {
     await user.save();
 
     // Pierwsze potwierdzenie adresu — jednorazowy mail powitalny, bez czekania na pocztę.
-    sendWelcomeEmail(user._id);
+    // Język z zgody na poranny mail, jeśli zaznaczona przy rejestracji; inaczej polski jak dotąd.
+    sendWelcomeEmail(user._id, { locale: user.morningEmail?.locale === 'en' ? 'en' : 'pl' });
 
     return Response.json({ ok: true, username: user.username, verified: true }, { status: 200 });
   } catch (e) {

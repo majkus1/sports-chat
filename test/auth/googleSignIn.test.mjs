@@ -60,6 +60,23 @@ describe('nowe konto przez Google', () => {
 		assert.ok(user.username.startsWith('user'));
 	});
 
+	test('poranny mail zaznaczony przy rejestracji — zgoda z datą, językiem i tokenem wypisu', async () => {
+		const { user, created } = await googleSignIn(token(11), { acceptedTerms: true, morningEmail: true, locale: 'en' });
+		assert.equal(created, true);
+		assert.equal(user.morningEmail.enabled, true);
+		assert.ok(user.morningEmail.enabledAt instanceof Date);
+		assert.equal(user.morningEmail.locale, 'en');
+		assert.match(user.morningEmail.unsubscribeToken, /^[a-f0-9]{48}$/);
+	});
+
+	test('bez zaznaczenia — poranny mail wyłączony; logowanie istniejącego konta zgody nie nadaje', async () => {
+		const { user } = await googleSignIn(token(12), { acceptedTerms: true });
+		assert.equal(user.morningEmail.enabled, false);
+		const potem = await googleSignIn(token(12), { morningEmail: true });
+		assert.equal(potem.created, false);
+		assert.equal(potem.user.morningEmail.enabled, false);
+	});
+
 	test('adres niepotwierdzony przez Google — odmowa', async () => {
 		const wynik = await googleSignIn(token(4, { email_verified: false }), { acceptedTerms: true });
 		assert.equal(wynik.error, 'google_email_not_verified');

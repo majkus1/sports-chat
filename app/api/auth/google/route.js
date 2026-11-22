@@ -29,7 +29,7 @@ export async function POST(request) {
     await connectToDb();
 
     const body = await request.json().catch(() => null);
-    const { credential, acceptedTerms } = body || {};
+    const { credential, acceptedTerms, morningEmail, locale } = body || {};
 
     if (!credential || typeof credential !== 'string') {
       return Response.json({ error: 'google_invalid_token' }, { status: 400 });
@@ -46,14 +46,18 @@ export async function POST(request) {
       return Response.json({ error: 'google_invalid_token' }, { status: 400 });
     }
 
-    const result = await googleSignIn(p, { acceptedTerms: acceptedTerms === true });
+    const result = await googleSignIn(p, {
+      acceptedTerms: acceptedTerms === true,
+      morningEmail: morningEmail === true,
+      locale: locale === 'en' ? 'en' : 'pl',
+    });
     if (result.error) {
       return Response.json({ error: result.error }, { status: STATUS[result.error] ?? 400 });
     }
     const { user, created } = result;
 
     // Nowe konto — jednorazowy mail powitalny. Bez `await`: logowanie nie czeka na pocztę.
-    if (created) sendWelcomeEmail(user._id);
+    if (created) sendWelcomeEmail(user._id, { locale: locale === 'en' ? 'en' : 'pl' });
 
     const accessToken = signAccessToken({
       userId: user.id,

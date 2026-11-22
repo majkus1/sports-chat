@@ -9,6 +9,7 @@ import {
 import { getTransporter } from '@/lib/mailer';
 import { limitByIp, tooManyRequests } from '@/lib/rateLimit';
 import { TERMS_VERSION } from '@/lib/legal/operator';
+import { morningConsentSet } from '@/lib/morning/consent';
 
 export async function POST(request) {
   try {
@@ -23,7 +24,7 @@ export async function POST(request) {
     await connectToDb();
 
     const body = await request.json();
-    const { email, password, username, locale = 'pl', acceptedTerms } = body || {};
+    const { email, password, username, locale = 'pl', acceptedTerms, morningEmail } = body || {};
     
     // Validate all fields exist and are strings
     /*
@@ -77,6 +78,16 @@ export async function POST(request) {
       termsAcceptedAt: new Date(),
       termsVersion: TERMS_VERSION,
     });
+
+    /*
+     * Poranny mail z rejestracji — osobne, NIEzaznaczone pole w formularzu, więc to zgoda wprost.
+     * Tylko `=== true`: brak pola albo cokolwiek innego znaczy „nie". Wysyłka czeka na
+     * potwierdzenie adresu (`sendMorningEmails` bierze tylko `isEmailVerified`) — inaczej ktoś
+     * mógłby wpisać cudzy adres, zaznaczyć pole i zasypać obcą skrzynkę porannymi mailami.
+     */
+    if (morningEmail === true) {
+      await User.updateOne({ _id: user._id }, { $set: morningConsentSet({ locale: validLocale }) });
+    }
 
     // Send verification email
     try {

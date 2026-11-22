@@ -81,6 +81,23 @@ const UserSchema = new mongoose.Schema(
 			unsubscribeToken: { type: String, default: null },
 			lastSentOn: { type: String, default: null },
 		},
+
+		/**
+		 * Dwie wiadomości o okresie próbnym (`lib/onboarding/lifecycle.js`): w 2. dniu — tylko gdy
+		 * poranny mail nie jest włączony — i w ostatnim dniu próby, z podsumowaniem tygodnia.
+		 *
+		 * PO CO. Do 21.11.2026 dziewięć z dziesięciu kont z zewnątrz użyło AI jednego dnia i nie
+		 * wróciło; poranny mail włączyły dwa. Mail powitalny był jedynym kontaktem po rejestracji.
+		 *
+		 * WIADOMOŚĆ O KONCIE, NIE LISTA. Dwie sztuki na całe życie konta, każda raz (znacznik
+		 * ustawiany przed wysyłką), z wypisem jednym kliknięciem (`optOut` + token, bez logowania).
+		 */
+		lifecycleEmail: {
+			optOut: { type: Boolean, default: false },
+			unsubscribeToken: { type: String, default: null },
+			dayTwoSentAt: { type: Date, default: null },
+			trialEndSentAt: { type: Date, default: null },
+		},
 	},
 	{ timestamps: true }
 )
