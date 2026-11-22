@@ -2,11 +2,14 @@
 
 import { useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
+import { useB2 } from '@/components/billing2/useB2';
 import { Coins, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import PurchaseConsentDialog from '@/components/billing/PurchaseConsentDialog';
+import CheckoutError from '@/components/billing2/CheckoutError';
+import { startCheckout } from '@/components/billing2/checkout';
 import { CREDIT_COSTS, CREDIT_PACKS } from '@/lib/billing/plans';
 import { cn } from '@/lib/utils';
 
@@ -20,8 +23,9 @@ import { cn } from '@/lib/utils';
  * Cena za sztukę jest tu celowo wyższa niż w abonamencie i pokazujemy ją wprost — to nie
  * wstyd, tylko sedno oferty: kto kupuje regularnie, sam zobaczy, że abonament się opłaca.
  */
-export default function CreditPacks({ credits = 0, isLoggedIn = false, available = false }) {
+export default function CreditPacks({ credits = 0, isLoggedIn = false, available = false, source = null }) {
 	const t = useTranslations('common');
+	const b = useB2();
 	const locale = useLocale();
 	const [pending, setPending] = useState(null);
 	const [busyPack, setBusyPack] = useState(null);
@@ -32,6 +36,7 @@ export default function CreditPacks({ credits = 0, isLoggedIn = false, available
 	 *
 	 * Trasa checkoutu odrzuca żądanie bez zgody, więc pominięcie tego kroku i tak nie
 	 * doprowadziłoby do zakupu — okno jest tu po to, żeby użytkownik wiedział, na co się godzi.
+	 * Start płatności i komunikaty błędów — wspólne z planami (`components/billing2/checkout.js`).
 	 */
 	const confirm = async (consent) => {
 		const pack = pending;
@@ -39,34 +44,13 @@ export default function CreditPacks({ credits = 0, isLoggedIn = false, available
 
 		setBusyPack(pack.id);
 		setError(null);
-		try {
-			const res = await fetch('/api/billing/checkout', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				credentials: 'include',
-				body: JSON.stringify({ packId: pack.id, locale, ...consent }),
-			});
-			const data = await res.json().catch(() => ({}));
-
-			if (res.ok && data.url) {
-				// Pełne przekierowanie, nie router Next.js — cel jest poza aplikacją.
-				window.location.href = data.url;
-				return;
-			}
-			// 409 znaczy, że regulamin zmienił się po wczytaniu strony — zgoda dotyczyłaby
-			// innej treści niż obowiązująca, więc jedynym wyjściem jest odświeżenie.
-			setError(
-				res.status === 503
-					? t('credits_unavailable')
-					: res.status === 409
-						? t('consent_outdated')
-						: t('credits_error')
-			);
+		const wynik = await startCheckout({
+			body: { packId: pack.id, locale, source, ...consent },
+			before: { credits },
+		});
+		if (!wynik.ok) {
+			setError(wynik.error);
 			setPending(null);
-		} catch {
-			setError(t('credits_error'));
-			setPending(null);
-		} finally {
 			setBusyPack(null);
 		}
 	};
@@ -121,21 +105,22 @@ export default function CreditPacks({ credits = 0, isLoggedIn = false, available
 								 * klucze Stripe'a nie są ustawione — a kliknięcie kończy się komunikatem
 								 * o błędzie. Wyłączony przycisk z uczciwą etykietą jest lepszy.
 								 */}
+								{/* Gość dostaje czynny przycisk do rejestracji, nie wyłączony napis bez wyjścia. */}
 								<Button
 									variant={pack.highlight ? 'accent' : 'outline'}
 									block
-									disabled={!isLoggedIn || !available || busyPack !== null}
+									disabled={!available || busyPack !== null}
 									title={!available ? t('pricing_soon_hint') : undefined}
-									onClick={() => setPending(pack)}
+									onClick={() =>
+										isLoggedIn
+											? setPending(pack)
+											: window.dispatchEvent(new CustomEvent('czat:auth', { detail: 'register' }))
+									}
 								>
 									{busyPack === pack.id && (
 										<Loader2 size={15} aria-hidden="true" className="animate-spin" />
 									)}
-									{!available
-										? t('pricing_soon')
-										: isLoggedIn
-											? t('credits_buy')
-											: t('credits_login_first')}
+									{!available ? t('pricing_soon') : isLoggedIn ? t('credits_buy') : b('guest_buy')}
 								</Button>
 							</CardContent>
 						</Card>
@@ -143,7 +128,7 @@ export default function CreditPacks({ credits = 0, isLoggedIn = false, available
 				})}
 			</div>
 
-			{error && <p className="mt-3 text-sm text-loss">{error}</p>}
+			<CheckoutError error={error} />
 			<p className="mt-4 text-xs leading-relaxed text-muted">{t('credits_note')}</p>
 
 			<PurchaseConsentDialog

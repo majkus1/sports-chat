@@ -40,7 +40,7 @@ export async function POST(request) {
 		const userId = session?.userId || null;
 
 		const user = userId
-			? await User.findById(userId).select('plan planStatus planValidUntil role credits createdAt').lean()
+			? await User.findById(userId).select('plan planStatus planValidUntil planPeriod role credits createdAt').lean()
 			: null;
 
 		// Mecze na żywo pomijają cache — zapisana analiza opisuje minutę, która już minęła.

@@ -144,7 +144,7 @@ export async function POST(request) {
 		}
 
 		const user = await User.findById(session.userId)
-			.select('plan planStatus planValidUntil role credits createdAt grantedFeatures')
+			.select('plan planStatus planValidUntil planPeriod role credits createdAt grantedFeatures')
 			.lean();
 
 		const quota = await checkQuota({ kind: 'aiChat', user, userId: session.userId });

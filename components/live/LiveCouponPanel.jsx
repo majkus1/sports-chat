@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useLocale } from 'next-intl';
-import { ArrowRight, Loader2, Lock, Radio, RefreshCw, Sparkles, Zap } from 'lucide-react';
+import { Loader2, Lock, Radio, RefreshCw, Sparkles, Zap } from 'lucide-react';
 import { Link } from '@/i18n/routing';
+import LockedUpsellCta from '@/components/billing2/LockedUpsellCta';
 import { useAuthKey } from '@/context/UserContext';
 import { liveContent } from '@/lib/live/content';
 import { cn } from '@/lib/utils';
@@ -107,14 +108,8 @@ function Zablokowany({ c, teaser }) {
 				<p className="text-sm font-semibold text-text">{c.lockedReady(teaser.totalOdds, teaser.chance, teaser.legsCount)}</p>
 			)}
 			<p className="text-sm leading-relaxed text-muted">{c.lockedNote}</p>
-			<Link
-				href="/cennik"
-				className="inline-flex w-fit items-center gap-1.5 rounded-[var(--radius-ui)] bg-accent px-3.5 py-2 text-sm font-bold text-accent-fg no-underline transition-opacity hover:opacity-90"
-			>
-				<Lock size={14} aria-hidden="true" />
-				{c.unlock}
-				<ArrowRight size={15} aria-hidden="true" />
-			</Link>
+			{/* Przycisk z pomiarem i ceną wejścia (przepustka 7 dni) — `components/billing2`. */}
+			<LockedUpsellCta placement="coupon_live" label={c.unlock} />
 		</div>
 	);
 }

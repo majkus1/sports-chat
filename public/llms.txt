@@ -51,6 +51,8 @@ Operator: ML Devworks Michał Lipka, Kraków, Polska. Kontakt: office@ml-devwork
 - Plan darmowy: 5 analiz i 20 pytań do asystenta miesięcznie, bez raportów. Bez karty płatniczej.
 - Okres próbny nowego konta: 7 dni z typami modelu z liczbami, wszystkimi kuponami, kreatorem kuponu i porannym
   mailem, a do tego 10 analiz, 30 pytań i 2 raporty.
+- Pro na 7 dni (przepustka na start): 19 zł — 20 analiz, 30 pytań, 3 raporty, 5 wyszukiwań wiadomości,
+  3 kupony z kreatora dziennie; te same funkcje co Pro. Dokupienie Pro na 30 dni w trakcie nie zabiera dni.
 - Pro: 49 zł za 30 dni — 100 analiz, 150 pytań, 12 raportów, 30 wyszukiwań wiadomości, 3 kupony z kreatora dziennie.
 - VIP: 99 zł za 30 dni — 200 analiz, 250 pytań, 30 raportów, 60 wyszukiwań wiadomości, 10 kuponów z kreatora dziennie.
 - Plany kupuje się jak bilet: płatność jednorazowa, nic nie odnawia się automatycznie.

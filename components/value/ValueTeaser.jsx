@@ -1,5 +1,6 @@
 import { ArrowRight, TrendingUp } from 'lucide-react';
 import { Link } from '@/i18n/routing';
+import ValueUpsell from '@/components/billing2/ValueUpsell';
 import { accuracyHref } from '@/lib/urlState';
 import { cn } from '@/lib/utils';
 
@@ -53,6 +54,8 @@ export default function ValueTeaser({ c, stats, compact = false, className }) {
 					{c.teaserAccess} {c.warning}
 				</p>
 			)}
+			{/* Bez planu: „pełna lista dla Pro" z przepustką 7 dni (pomiar: `value_list`). */}
+			{!compact && <ValueUpsell className="mt-4" />}
 		</div>
 	);
 }

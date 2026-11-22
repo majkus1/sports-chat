@@ -46,6 +46,18 @@ const UserSchema = new mongoose.Schema(
 		},
 		/** null = plan bezterminowy (dotyczy darmowego). */
 		planValidUntil: { type: Date, default: null },
+		/**
+		 * Bieżący bilet i kotwica okien limitów (`lib/billing/planAccess.js`, `paidWindow`).
+		 *
+		 * `pass` — `pro_week` (przepustka 7 dni: limity tygodniowe, okno 7 dni) albo `pro`/`vip`
+		 * (okno 30 dni). `from` — początek pierwszego okna; kolejne okna liczą się OD NIEGO do przodu,
+		 * więc dokupienie dni na końcu nie przesuwa granic bieżącego okna (licznik się nie zeruje).
+		 * Konta sprzed 21.11.2026 mają tu puste pola i liczą okna po staremu, wstecz od końca dostępu.
+		 */
+		planPeriod: {
+			pass: { type: String, default: null },
+			from: { type: Date, default: null },
+		},
 
 		// Wypełniane przez operatora płatności; pusto, dopóki żaden nie jest podpięty.
 		billingCustomerId: { type: String, default: null, index: true, sparse: true },

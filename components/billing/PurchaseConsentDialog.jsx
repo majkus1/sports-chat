@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useLocale } from 'next-intl';
+import { useB2 } from '@/components/billing2/useB2';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { CONSENT_VERSION, consentFor } from '@/lib/legal/purchaseConsent';
+import PaymentMethods from '@/components/billing2/PaymentMethods';
 
 /**
  * Oświadczenie konsumenta odbierane przed przejściem do płatności.
@@ -24,6 +26,7 @@ import { CONSENT_VERSION, consentFor } from '@/lib/legal/purchaseConsent';
  */
 export default function PurchaseConsentDialog({ item, onConfirm, onClose, busy = false }) {
 	const locale = useLocale();
+	const b = useB2();
 	const copy = consentFor(locale);
 	const [accepted, setAccepted] = useState(false);
 
@@ -42,12 +45,21 @@ export default function PurchaseConsentDialog({ item, onConfirm, onClose, busy =
 					<DialogDescription>{copy.lead}</DialogDescription>
 				</DialogHeader>
 
+				{/*
+				 * Co, za ile, na ile i czym — w jednym miejscu, zanim kupujący zobaczy stronę Stripe'a.
+				 * Do 21.11.2026 było tu samo „Plan PRO — 30 dni 49,00 zł", bez metod płatności
+				 * i bez słowa, że za chwilę nastąpi przejście na inną stronę.
+				 */}
 				{item && (
-					<p className="rounded-[var(--radius-ui)] bg-surface-2 px-3 py-2 text-sm text-text">
-						<span className="text-muted">{item.label}</span>
-						<span className="ml-2 font-bold tabular-nums">{(item.priceGrosze / 100).toFixed(2).replace('.', ',')} zł</span>
-					</p>
+					<div className="rounded-[var(--radius-ui)] bg-surface-2 px-3 py-2.5 text-sm text-text">
+						<p className="flex flex-wrap items-baseline justify-between gap-x-3">
+							<span className="text-muted">{item.label}</span>
+							<span className="font-bold tabular-nums">{(item.priceGrosze / 100).toFixed(2).replace('.', ',')} zł</span>
+						</p>
+						{item.days && <p className="mt-1 text-xs text-muted">{b('consent_pass_note', { days: item.days })}</p>}
+					</div>
 				)}
+				<PaymentMethods withNote={false} className="mt-3" />
 
 				<label className="mt-4 flex cursor-pointer items-start gap-2.5 text-sm leading-relaxed text-text">
 					<input
@@ -60,6 +72,7 @@ export default function PurchaseConsentDialog({ item, onConfirm, onClose, busy =
 				</label>
 
 				<p className="mt-3 text-xs leading-relaxed text-muted">{copy.footnote}</p>
+				<p className="mt-1.5 text-xs leading-relaxed text-muted">{b('consent_next')}</p>
 
 				<div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
 					<Button variant="outline" onClick={onClose} disabled={busy}>

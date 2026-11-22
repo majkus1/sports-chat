@@ -21,7 +21,7 @@ import {
 	buildValueReportPrompt,
 } from '@/lib/ai/prompts/reportValue';
 import { recordValuePicks } from '@/lib/value/service';
-import { CREDIT_COSTS, PLAN_PASS_DAYS } from '@/lib/billing/plans';
+import { CREDIT_COSTS, PLAN_PASS_DAYS, PRO_WEEK } from '@/lib/billing/plans';
 import { KREDYTY, odmien } from '@/lib/landing/plural';
 
 export const maxDuration = 300;
@@ -41,7 +41,7 @@ const PARTIAL_INTERVAL_MS = 220;
 
 const MESSAGES = {
 	pl: {
-		limit: `Wykorzystałeś limit raportów w tym okresie ({limit}). W planie płatnym odnawia się co ${PLAN_PASS_DAYS} dni od zakupu, w darmowym — pierwszego dnia miesiąca.`,
+		limit: `Wykorzystałeś limit raportów w tym okresie ({limit}). W planie płatnym odnawia się co ${PLAN_PASS_DAYS} dni od zakupu (przepustka — co ${PRO_WEEK.days}), w darmowym — pierwszego dnia miesiąca.`,
 		/*
 		 * Widzi to konto bez puli raportów i bez kredytów — czyli po okresie próbnym (w nim pula
 		 * jest doliczona i kończy się komunikatem `limit`). Stąd droga dalej, a nie „2 na start".
@@ -55,7 +55,7 @@ const MESSAGES = {
 		emptySummary: 'Spróbuj ponownie, gdy terminarz będzie bogatszy — raport pokazuje tylko typy, które dane wspierają wyraźnie.',
 	},
 	en: {
-		limit: `You have used the report limit for this period ({limit}). On a paid plan it renews every ${PLAN_PASS_DAYS} days from purchase; on the free plan, on the first of the month.`,
+		limit: `You have used the report limit for this period ({limit}). On a paid plan it renews every ${PLAN_PASS_DAYS} days from purchase (the pass: every ${PRO_WEEK.days}); on the free plan, on the first of the month.`,
 		noReports: `AI reports come with the Pro and VIP plans. Without a plan a report costs ${CREDIT_COSTS.report} credits.`,
 		busy: 'Report generation is paused for now. Please try again later.',
 		failed: 'Could not generate the report. Please try again in a moment.',
@@ -85,7 +85,7 @@ export async function POST(request) {
 
 	await connectToDb();
 	const user = await User.findById(session.userId)
-		.select('plan planStatus planValidUntil role credits createdAt')
+		.select('plan planStatus planValidUntil planPeriod role credits createdAt')
 		.lean();
 
 	const spend = await checkSpendCap();

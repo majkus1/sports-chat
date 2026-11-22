@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
+import { useB2 } from '@/components/billing2/useB2';
 import { Coins, TriangleAlert } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { planMessageParams } from '@/lib/billing/planTexts';
@@ -79,6 +80,7 @@ function UsageRow({ label, limit, used }) {
 
 export default function PlanSummary({ className = '' }) {
 	const t = useTranslations('common');
+	const b = useB2();
 	const locale = useLocale();
 	const [data, setData] = useState(null);
 
@@ -103,12 +105,16 @@ export default function PlanSummary({ className = '' }) {
 	const isPaid = data.plan !== 'free';
 	// Trzy dni to moment, w którym przedłużenie jest jeszcze decyzją, a nie ratowaniem sytuacji.
 	const expiringSoon = isPaid && left !== null && left <= 3;
+	// Przepustka 7 dni: ten sam Pro, krótszy bilet — panel pokazuje „Pro · 7 dni" i drogę do 30 dni.
+	const isPass = data.pass === 'pro_week';
+	// Z przepustki naturalnym przedłużeniem jest Pro na 30 dni (dni przepustki nie przepadają).
+	const extendHref = isPass ? '/cennik?oferta=pro' : '/cennik';
 
 	return (
 		<div className={className}>
 			<div className="flex flex-wrap items-center gap-x-3 gap-y-2">
 				<span className="rounded-[var(--radius-ui)] bg-accent px-2 py-0.5 font-display text-xs font-bold uppercase tracking-wide text-white">
-					{t(data.nameKey)}
+					{isPass ? b('panel_pass', { plan: t(data.nameKey), days: data.passDays }) : t(data.nameKey)}
 				</span>
 
 				{isPaid && data.validUntil && (
@@ -131,10 +137,18 @@ export default function PlanSummary({ className = '' }) {
 					<TriangleAlert size={14} aria-hidden="true" className="mt-0.5 shrink-0 text-draw" />
 					<span>
 						{t('plan_expiring_soon', { days: left })}{' '}
-						<Link href="/cennik" className="footer-link underline">
+						<Link href={extendHref} className="footer-link underline">
 							{t('plan_extend')}
 						</Link>
 					</span>
+				</p>
+			)}
+
+			{isPass && !expiringSoon && (
+				<p className="mt-2 text-xs leading-relaxed text-muted">
+					<Link href={extendHref} className="footer-link underline">
+						{b('panel_upgrade')}
+					</Link>
 				</p>
 			)}
 
