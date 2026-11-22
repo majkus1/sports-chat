@@ -6,6 +6,7 @@ import {
 	Mail,
 	MessagesSquare,
 	Radio,
+	ShieldCheck,
 	Sparkles,
 	Target,
 	Trophy,
@@ -16,7 +17,8 @@ import { Link } from '@/i18n/routing';
 import BallIcon from '@/components/icons/BallIcon';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import AccuracyTeaser from '@/components/landing/AccuracyTeaser';
+import RegisterTeaser from '@/components/landing/RegisterTeaser';
+import { registerHref } from '@/lib/trust/params';
 import { cn } from '@/lib/utils';
 import HeroAsk from '@/components/landing/HeroAsk';
 
@@ -25,7 +27,7 @@ import HeroAsk from '@/components/landing/HeroAsk';
  *
  * Cała treść marketingowa musi znaleźć się w HTML-u wysyłanym z serwera. Robot wyszukiwarki
  * i asystent AI czytają odpowiedź na żądanie; to, co dorysuje się dopiero po uruchomieniu
- * JavaScriptu, dla części z nich nie istnieje. Klientem jest tu wyłącznie licznik skuteczności.
+ * JavaScriptu, dla części z nich nie istnieje. Klientem jest tu wyłącznie żywy fragment rejestru typów.
  *
  * Struktura jest semantyczna, nie ozdobna: jeden `h1` w sekcji otwierającej, każda kolejna
  * sekcja jako `section` z własnym `h2` i powiązaniem przez `aria-labelledby`.
@@ -101,6 +103,17 @@ export function Hero({ content }) {
 						{content.secondaryCta}
 					</CtaLink>
 				</div>
+
+				{/* Sprawdzalny wynik od pierwszego ekranu — odnośnik, nie trzeci przycisk, żeby nie rozbijać wyboru. */}
+				{content.registerCta && (
+					<Link
+						href={registerHref()}
+						className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-accent no-underline hover:underline"
+					>
+						<ShieldCheck size={15} aria-hidden="true" />
+						{content.registerCta}
+					</Link>
+				)}
 
 				<p className="mt-5 text-xs text-muted">{content.trust}</p>
 			</div>
@@ -179,19 +192,36 @@ export function HowItWorks({ content }) {
 	);
 }
 
-export function Accuracy({ content, methodText }) {
+/**
+ * Rejestr typów — „sprawdzalny wynik". Tekst sekcji z serwera (widzi go robot i czytelnik bez
+ * JavaScriptu), liczby i ostatnie typy z wysepki klienckiej. Notka 18+ i odpowiedzialna gra stoją
+ * przy liczbach, nie tylko w stopce — to tu pada słowo „rynek".
+ */
+export function Register({ content, note }) {
 	return (
-		<Section titleId="accuracy-title">
+		<Section id="rejestr" titleId="register-title">
 			<div className="mx-auto max-w-3xl">
-				<SectionTitle id="accuracy-title">{content.title}</SectionTitle>
+				<Badge variant="outline">
+					<ShieldCheck size={12} aria-hidden="true" />
+					{content.eyebrow}
+				</Badge>
+				<div className="mt-3">
+					<SectionTitle id="register-title">{content.title}</SectionTitle>
+				</div>
 				<p className="mt-4 text-base leading-relaxed text-muted">{content.body}</p>
 
-				<AccuracyTeaser methodText={methodText} />
+				<RegisterTeaser fallback={content.fallback} />
 
-				<Link href="/pilka-nozna/skutecznosc" className="footer-link mt-5 inline-flex items-center gap-2">
+				<div className="mt-6 rounded-[var(--radius-ui)] border-l-2 border-accent bg-surface-2 px-4 py-3">
+					<h3 className="text-sm font-bold text-text">{content.whyTitle}</h3>
+					<p className="mt-1 text-sm leading-relaxed text-muted">{content.why}</p>
+				</div>
+
+				<CtaLink href={registerHref()} variant="outline" className="mt-6">
 					{content.cta}
-					<ArrowRight size={15} aria-hidden="true" />
-				</Link>
+					<ArrowRight size={18} aria-hidden="true" />
+				</CtaLink>
+				<p className="mt-4 text-xs leading-relaxed text-muted">{note}</p>
 			</div>
 		</Section>
 	);
