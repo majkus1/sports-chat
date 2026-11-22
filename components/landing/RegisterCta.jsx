@@ -92,3 +92,17 @@ export function GuestLink({ href, children, className }) {
 		</Link>
 	);
 }
+
+/**
+ * Drugi przycisk tylko dla zalogowanego — np. „Wszystkie mecze" obok „Zobacz typy na dziś".
+ * Gość go nie widzi (ma „Załóż darmowe konto"); przed sprawdzeniem sesji też nie, żeby nic nie migało.
+ */
+export function UserButton({ href, children, variant = 'outline', size = 'md', className }) {
+	const zalogowany = useZalogowany();
+	if (!zalogowany) return null;
+	return (
+		<Link href={href} className={cn(KLASY.base, KLASY.size[size], KLASY.variant[variant], className)}>
+			{children}
+		</Link>
+	);
+}

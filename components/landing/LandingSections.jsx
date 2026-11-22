@@ -5,7 +5,7 @@ import { Link } from '@/i18n/routing';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import RegisterTeaser from '@/components/landing/RegisterTeaser';
-import RegisterCta, { GuestLink, GuestText } from '@/components/landing/RegisterCta';
+import RegisterCta, { GuestLink, GuestText, UserButton } from '@/components/landing/RegisterCta';
 import { registerHref } from '@/lib/trust/params';
 import { cn } from '@/lib/utils';
 import HeroAsk from '@/components/landing/HeroAsk';
@@ -113,7 +113,11 @@ export function Hero({ content }) {
 				<p className="mx-auto mt-4 max-w-2xl text-balance text-base leading-relaxed text-muted sm:text-lg">{content.subtitle}</p>
 
 				<div className="mt-6 flex flex-col items-center gap-3">
-					<RegisterCta label={content.primaryCta} userLabel={content.userCta} userHref="/typy-na-dzis" />
+					{/* Zalogowany: typy na dziś (główny) i cała lista meczów obok — dwie rzeczy, po które przychodzi najczęściej. */}
+					<div className="flex flex-wrap items-center justify-center gap-3">
+						<RegisterCta label={content.primaryCta} userLabel={content.userCta} userHref="/typy-na-dzis" />
+						{content.matchesCta && <UserButton href="/pilka-nozna/przedmeczowe">{content.matchesCta}</UserButton>}
+					</div>
 					<p className="text-xs font-semibold text-muted">
 						<GuestText guest={content.trust} />
 					</p>
