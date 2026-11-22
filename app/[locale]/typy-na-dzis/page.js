@@ -243,7 +243,9 @@ export default async function Page({ params }) {
 
 			{/* Jedno główne wezwanie: gość — rejestracja, zalogowany — lista meczów. */}
 			<div className="mt-8">
-				<TodayCta c={c} />
+				{/* Tylko napisy: komponent działa w przeglądarce, a `c` ma funkcje (tytuły z datą) — Next ich nie przeniesie
+				    i cała strona padała na produkcji (22.11.2026). */}
+				<TodayCta c={{ ctaRegister: c.ctaRegister, ctaTrial: c.ctaTrial, ctaMatches: c.ctaMatches }} />
 			</div>
 
 			{/* Jak czytać typ — pod rozwinięciem (treść zostaje w HTML dla robota). */}

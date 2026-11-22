@@ -109,7 +109,8 @@ export function Hero({ content }) {
 					<HeroTitle text={content.title} />
 				</h1>
 
-				<p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-muted sm:text-lg">{content.subtitle}</p>
+				{/* `text-balance` — linie podobnej długości, bez jednego słowa samego w ostatniej linii. */}
+				<p className="mx-auto mt-4 max-w-2xl text-balance text-base leading-relaxed text-muted sm:text-lg">{content.subtitle}</p>
 
 				<div className="mt-6 flex flex-col items-center gap-3">
 					<RegisterCta label={content.primaryCta} userLabel={content.userCta} userHref="/typy-na-dzis" />
