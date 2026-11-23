@@ -10,6 +10,7 @@ import { valueContent } from '@/lib/value/content';
 import { landingContent } from '@/lib/landing/content';
 import { faqItems } from '@/lib/landing/faq';
 import { PLAN_PASS_DAYS, PRO_WEEK, PUBLIC_PLANS } from '@/lib/billing/plans';
+import { approxForeign } from '@/lib/billing/approxPrice';
 import { ANALIZY, PYTANIA, RAPORTY, odmien } from '@/lib/landing/plural';
 
 /**
@@ -88,6 +89,7 @@ export default async function HomePage({ params }) {
 		const karta = {
 			id: plan.id,
 			price: plan.priceMonthlyPln,
+			approx: locale === 'en' ? approxForeign(plan.priceMonthlyPln) : '',
 			days: plan.priceMonthlyPln > 0 ? PLAN_PASS_DAYS : null,
 			name: t(plan.nameKey),
 			summary: planSummary(plan.limits, locale, plan.priceMonthlyPln > 0 ? PLAN_PASS_DAYS : null),
@@ -96,6 +98,7 @@ export default async function HomePage({ params }) {
 		const tydzien = {
 			id: PRO_WEEK.id,
 			price: PRO_WEEK.priceGrosze / 100,
+			approx: locale === 'en' ? approxForeign(PRO_WEEK.priceGrosze / 100) : '',
 			days: PRO_WEEK.days,
 			name: tb('card_week_title', { week: PRO_WEEK.days }),
 			summary: planSummary(PRO_WEEK.limits, locale, PRO_WEEK.days),

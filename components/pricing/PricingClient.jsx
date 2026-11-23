@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button';
 import { PRO_WEEK, QUOTA_PERIODS, TRIAL } from '@/lib/billing/plans';
 import { FEATURE_ROWS, QUOTA_ROWS, planMessageParams } from '@/lib/billing/planTexts';
 import { PRICING_OFFERS, compareParams, formatZl } from '@/lib/billing/offers';
+import { approxForeign } from '@/lib/billing/approxPrice';
 import { OPERATOR } from '@/lib/legal/operator';
 import { isPlacement } from '@/lib/upsell/placements';
 import { trackUpsell } from '@/lib/upsell/track';
@@ -434,6 +435,9 @@ export default function PricingClient() {
 											</>
 										)}
 									</p>
+									{locale === 'en' && offer.priceGrosze > 0 && (
+										<p className="mt-0.5 text-xs text-muted">{approxForeign(offer.priceGrosze / 100)}</p>
+									)}
 									{offer.priceGrosze > 0 && (
 										<p className="mt-0.5 text-xs text-muted">
 											{b('price_per_day', { price: formatZl(offer.perDayGrosze, locale) })}

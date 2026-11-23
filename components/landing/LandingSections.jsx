@@ -245,6 +245,7 @@ export function Pricing({ content, plans, freeLabel, daysLabel, buyWeekLabel, we
 										<>
 											{plan.price} zł
 											<span className="text-sm font-normal text-muted"> {daysLabel(plan.days)}</span>
+											{plan.approx && <span className="block text-xs font-normal text-muted">{plan.approx}</span>}
 										</>
 									)}
 								</p>

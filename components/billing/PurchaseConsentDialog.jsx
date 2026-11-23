@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { CONSENT_VERSION, consentFor } from '@/lib/legal/purchaseConsent';
 import PaymentMethods from '@/components/billing2/PaymentMethods';
+import { approxForeign } from '@/lib/billing/approxPrice';
 import { Link } from '@/i18n/routing';
 
 /**
@@ -55,7 +56,7 @@ export default function PurchaseConsentDialog({ item, onConfirm, onClose, busy =
 					<div className="rounded-[var(--radius-ui)] bg-surface-2 px-3 py-2.5 text-sm text-text">
 						<p className="flex flex-wrap items-baseline justify-between gap-x-3">
 							<span className="text-muted">{item.label}</span>
-							<span className="font-bold tabular-nums">{(item.priceGrosze / 100).toFixed(2).replace('.', ',')} zł</span>
+							<span className="font-bold tabular-nums">{(item.priceGrosze / 100).toFixed(2).replace('.', ',')} zł{locale === 'en' && ` (${approxForeign(item.priceGrosze / 100)})`}</span>
 						</p>
 						{item.days && <p className="mt-1 text-xs text-muted">{b('consent_pass_note', { days: item.days })}</p>}
 					</div>

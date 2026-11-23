@@ -11,6 +11,7 @@ import PurchaseConsentDialog from '@/components/billing/PurchaseConsentDialog';
 import CheckoutError from '@/components/billing2/CheckoutError';
 import { startCheckout } from '@/components/billing2/checkout';
 import { CREDIT_COSTS, CREDIT_PACKS } from '@/lib/billing/plans';
+import { approxForeign } from '@/lib/billing/approxPrice';
 import { cn } from '@/lib/utils';
 
 /**
@@ -91,6 +92,7 @@ export default function CreditPacks({ credits = 0, isLoggedIn = false, available
 
 								<p className="mt-auto text-2xl font-bold text-text">
 									{price} zł
+									{locale === 'en' && <span className="ml-1 text-sm font-normal text-muted">{approxForeign(price)}</span>}
 									<span className="ml-2 text-xs font-normal text-muted">
 										{t('credits_per_unit', { price: perCredit })}
 									</span>
